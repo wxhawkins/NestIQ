@@ -347,6 +347,7 @@ def get_verts_from_html(gui, in_file):
 				if data_point not in data_point_list:
 					data_point_list.append(data_point)	
 
+		print("data_point_list =", sorted(data_point_list))
 		return sorted(data_point_list)
 
 	vertices = []
@@ -805,12 +806,15 @@ def generate_plot(gui, master_array, days_list, select_mode = False):
 	
 	# Set plot dimensions
 	if not gui.manual_plot_dims.get():
-		monitor_resolutions = [str(monitor) for monitor in get_monitors()]
-		res_search = re.search("(\d+)x(\d+)", monitor_resolutions[0])
-		mon_x = int(res_search.group(1))
-		mon_y = int(res_search.group(2))
-		plot_width = (mon_x - 100)
-		plot_height = (mon_y - 200)
+		try:
+			monitor_resolutions = [str(monitor) for monitor in get_monitors()]
+			mon_x = re.search("width=(\d+)", monitor_resolutions[0]).group(1)
+			mon_y = re.search("height=(\d+)", monitor_resolutions[0]).group(1)
+			plot_width = (int(mon_x) - 100)
+			plot_height = (int(mon_y) - 200)
+		except AttributeError:
+			plot_width = int(gui.plot_dim_x_E.get())
+			plot_height = int(gui.plot_dim_y_E.get())
 	else:
 		plot_width = int(gui.plot_dim_x_E.get())
 		plot_height = int(gui.plot_dim_y_E.get())
