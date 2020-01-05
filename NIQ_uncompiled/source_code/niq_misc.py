@@ -12,6 +12,7 @@ from bokeh.models import HoverTool, PointDrawTool, Span
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.plotting import ColumnDataSource, figure, output_file, show
 from tkinter import messagebox
+from bs4 import BeautifulSoup
 
 import niq_classes
 
@@ -319,34 +320,25 @@ def get_verts_from_html(gui, in_file):
 		min_dp = int(gui.master_array[0, 0])
 		
 		with open(in_file, "r") as vertex_file:
-			vertex_file_lines = vertex_file.readlines()
-			
-		# Remove superfluous lines of table data if present
-		found = False
-		with open(in_file, "w") as vertex_file:
-			for line in vertex_file_lines:
-				if line.find("<div class") == -1:
-					# Retain all non-table data containing lines
-					vertex_file.write(line)	
-				elif not found:
-					found = True
-					vertex_file.write(line)
+			content = vertex_file.read()
 
-		with open(in_file, "r") as cleaned_vertex_file_:
-			cleaned_vertex_file = cleaned_vertex_file_.read()
-			
-		# Gets all data points and temperatures from table
-		tokens = re.finditer("((\d+\.)?\d+)</span>", cleaned_vertex_file)
-		
-		for counter, match in enumerate(tokens):
-			if (counter % 2) == 0:
-				data_point = round(float(match.group(1)))
-				if data_point < min_dp: data_point = min_dp
-				if data_point > max_dp: data_point = max_dp
-				if data_point not in data_point_list:
-					data_point_list.append(data_point)	
+		soup = BeautifulSoup(content, "html.parser")
+		# Extract html behind table
+		table_widget = "bk-widget-box bk-layout-fixed"
+		table_content = soup.find("div", class_=table_widget)
 
-		# print("data_point_list =", sorted(data_point_list))
+		# Extract leftmost column of data (data points)
+		hits = table_content.find_all("div", class_="slick-cell l1 r1")
+		for hit in hits:
+			# Clean hits and append
+			data_point_raw = hit.find("span", style="text-align: left;").text
+			data_point = round(float(data_point_raw))
+			data_point = max(data_point, min_dp)
+			data_point = min(data_point, max_dp)
+			if data_point not in data_point_list:
+				data_point_list.append(data_point)
+
+		print("data points =", sorted(data_point_list))
 		return sorted(data_point_list)
 
 	vertices = []
