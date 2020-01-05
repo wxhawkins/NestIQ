@@ -265,7 +265,7 @@ class Block:
 class BlockGroup:
 	"""
 		Stores information about all blocks of a single type such as daytime blocks, nightime
-		blocks, and day-night pair blocks.
+		blocks, or day-night pair blocks.
 
 		Atributes:
 			block_list (list of Blocks)
@@ -379,7 +379,7 @@ class BlockGroup:
 		if self.off_count > 0:
 			self.mean_off_dur    = round(statistics.mean(bulk_off_durs), 2)
 			self.mean_off_dec    = round(statistics.mean(bulk_off_decs), 3)
-			self.mean_off_temper   = round(statistics.mean(bulk_off_tempers), 3)
+			self.mean_off_temper = round(statistics.mean(bulk_off_tempers), 3)
 			self.off_time_sum    = round(sum(bulk_off_durs), 2)
 			if self.off_count > 1:
 				self.off_dur_stdev   = round(statistics.stdev(bulk_off_durs), 2)
@@ -389,7 +389,7 @@ class BlockGroup:
 		if self.on_count > 0:
 			self.mean_on_dur     = round(statistics.mean(bulk_on_durs), 2)
 			self.mean_on_inc     = round(statistics.mean(bulk_on_incs), 3)
-			self.mean_on_temper    = round(statistics.mean(bulk_on_tempers), 3)
+			self.mean_on_temper  = round(statistics.mean(bulk_on_tempers), 3)
 			self.on_time_sum     = round(sum(bulk_on_durs), 2)
 			if self.on_count > 1:
 				self.on_dur_stdev    = round(statistics.stdev(bulk_on_durs), 2)
@@ -401,8 +401,8 @@ class BlockGroup:
 			self.egg_temper_stdev = round(statistics.stdev(self.egg_tempers), 3)
 		
 		self.median_temper = statistics.median(self.egg_tempers)
-		self.min_egg_temper    = min(self.egg_tempers)
-		self.max_egg_temper    = max(self.egg_tempers)
+		self.min_egg_temper = min(self.egg_tempers)
+		self.max_egg_temper = max(self.egg_tempers)
 		
 		if gui.air_valid:
 			self.mean_air_temper = round(statistics.mean(self.air_tempers), 3)

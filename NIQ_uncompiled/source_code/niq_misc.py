@@ -11,7 +11,6 @@ from bokeh.layouts import column, widgetbox
 from bokeh.models import HoverTool, PointDrawTool, Span
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.plotting import ColumnDataSource, figure, output_file, show
-from screeninfo import get_monitors
 from tkinter import messagebox
 
 import niq_classes
@@ -347,7 +346,7 @@ def get_verts_from_html(gui, in_file):
 				if data_point not in data_point_list:
 					data_point_list.append(data_point)	
 
-		print("data_point_list =", sorted(data_point_list))
+		# print("data_point_list =", sorted(data_point_list))
 		return sorted(data_point_list)
 
 	vertices = []
@@ -785,7 +784,7 @@ def smooth_col(radius, col):
 
 	return smoothed_arr
 
-def generate_plot(gui, master_array, days_list, select_mode = False):
+def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False):
 	"""
 		Uses the Bokeh module to generate an interactive plot for the current input file.
 
@@ -807,12 +806,12 @@ def generate_plot(gui, master_array, days_list, select_mode = False):
 	# Set plot dimensions
 	if not gui.manual_plot_dims.get():
 		try:
-			monitor_resolutions = [str(monitor) for monitor in get_monitors()]
-			mon_x = re.search("width=(\d+)", monitor_resolutions[0]).group(1)
-			mon_y = re.search("height=(\d+)", monitor_resolutions[0]).group(1)
+			mon_x = mon_dims[0]
+			mon_y = mon_dims[1]
 			plot_width = (int(mon_x) - 100)
 			plot_height = (int(mon_y) - 200)
-		except AttributeError:
+		except:
+			print("Defaulting to manual plot dimensions")
 			plot_width = int(gui.plot_dim_x_E.get())
 			plot_height = int(gui.plot_dim_y_E.get())
 	else:

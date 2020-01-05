@@ -42,6 +42,9 @@ class GUIClass():
 		self.date_time_col = 1
 		self.egg_temper_col = 2
 		self.air_temper_col = 3
+
+		# Store primary monitor dimensions
+		self.mon_dims = (root.winfo_screenwidth(), root.winfo_screenheight())
 			
 		# Variables used for storing information accross multiple input files
 		self.multi_file_off_durs     = []
@@ -973,7 +976,7 @@ class GUIClass():
 		# self.input_file_E.delete(0, "end")
 		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/testing/stat_testing_in.csv")
 		self.input_file_E.delete(0, "end")
-		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/GitHub/NestIQ/inputFiles/hellaBirds/WODUA1B_fullinc.csv")
+		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/GitHub/NestIQ/NIQ_uncompiled/input_files/example_input.csv")
 		# self.input_file_E.delete(0, "end")
 		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/GitHub/NestIQ/inputFiles/hellaBirds/CanaryCtrlB68-1.csv")
 		# self.input_file_E.delete(0, "end")
@@ -1934,7 +1937,7 @@ class GUIClass():
 				traceback.print_exc()
 				return False
 			
-			niq_misc.generate_plot(self, self.master_array, days_list, select_mode = True)
+			niq_misc.generate_plot(self, self.master_array, days_list, self.mon_dims, select_mode = True)
 				
 	def init_config(self):
 		"""
@@ -2306,9 +2309,10 @@ def main(gui):
 	if len(pairs_list) > 0:
 		pairs_block_group.get_stats(gui, append = False)
 	if gui.make_plot_BV.get():
-		niq_misc.generate_plot(gui, gui.master_array, days_list)
+		niq_misc.generate_plot(gui, gui.master_array, days_list, gui.mon_dims)
 
 	if gui.get_stats_BV.get():
 		niq_misc.write_stats(gui, days, nights, pairs_block_group, master_block)
 
-gui = GUIClass()
+if __name__ == "__main__":
+	gui = GUIClass()
