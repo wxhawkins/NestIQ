@@ -12,10 +12,13 @@ import tkinter as tk
 from tkinter import filedialog, font, messagebox, ttk
 from PIL import Image, ImageTk
 
+from bs4 import BeautifulSoup
+
 import niq_misc
 from niq_misc import get_novel_name, replace_entry
 import niq_classes
 import niq_hmm
+
 
 root = tk.Tk()
 
@@ -79,13 +82,16 @@ class GUIClass():
 		nb.grid(row = 1, rowspan = 28, columnspan = 1, sticky = "NESW")
 
 		tab1 = ttk.Frame(nb)
+		tab2 = ttk.Frame(nb)
 		tab3 = ttk.Frame(nb)
 		tab4 = ttk.Frame(nb)
-		tab2 = ttk.Frame(nb)
+		tab5 = ttk.Frame(nb)
+
 		nb.add(tab1, text = "Main")
 		nb.add(tab2, text = "Advanced")
 		nb.add(tab3, text = "Plot Options")
 		nb.add(tab4, text = "Stats Options")
+		nb.add(tab5, text = "Edit")
 		
 		# ----------------------------------------------- Main tab ---------------------------------------------------
 		# ----- Header -----
@@ -266,7 +272,7 @@ class GUIClass():
 		vertex_file_L.grid(row = 10, sticky = "W", padx = 10, pady = (10, 0))
 		self.vertex_file_E = tk.Entry(tab2, width = 32)
 		self.vertex_file_E.grid(row = 10, sticky = "W", padx = 85, pady = (10, 0))
-		vertex_file_B = tk.Button(tab2, text = "Browse File", command = (lambda : self.get_vertex_file(self.vertex_file_E)))
+		vertex_file_B = tk.Button(tab2, text = "Browse File", command = (lambda : self.get_plot_file(self.vertex_file_E)))
 		vertex_file_B.grid(row = 10, sticky = "W", padx = 287, pady = (10, 0))
 		vertex_file_B.configure(background = "white")
 
@@ -671,6 +677,42 @@ class GUIClass():
 		self.time_below_temper_E = tk.Entry(tab4, width = 5)
 		self.time_below_temper_E.grid(row = 25, sticky = "W", padx = 97)
 
+		
+		# ----------------------------------------------- Edit tab -----------------------------------------------
+		# ----- Header -----
+		tab5_BG = tk.Label(tab5, text = "", bg = "red4")
+		tab5_BG.grid(row = 0, sticky = "NSEW")
+		header_title = tk.Label(tab5, text = "NestIQ", fg = "white", bg = "red4", font = ("Helvetica", 18))
+		header_title.grid(row = 0, sticky = "NSW", padx = 10, pady = 5)
+		
+		ori_plot_L  = tk.Label(tab5, text = "Original Plot:", font = STANDARD_FONT)
+		ori_plot_L.grid(row = 10, sticky = "W", padx = 10, pady = (10, 0))
+		self.ori_plot_E = tk.Entry(tab5, width = 30)
+		self.ori_plot_E.grid(row = 10, sticky = "W", padx = 90, pady = (10, 0))
+		ori_plot_B = tk.Button(tab5, text = "Browse File", command = (lambda: self.get_plot_file(self.ori_plot_E)))
+		ori_plot_B.grid(row = 10, sticky = "W", padx = 287, pady = (10, 0))
+		ori_plot_B.configure(background = "white")
+
+		mod_B = tk.Button(tab5, text = "Modify", command = lambda: self.select_vertices(mod_plot=True))
+		mod_B.grid(row = 11, sticky = "W", padx = 10, pady = (10, 0))
+		mod_B.configure(background = "white")
+
+
+		# niq_misc.generate_plot(self, self.master_array, days_list, self.mon_dims, select_mode = True)
+
+		mod_plot_L = tk.Label(tab5, text = "Modified Plot:", font = STANDARD_FONT)
+		mod_plot_L.grid(row = 12, sticky = "W", padx = 10, pady = (10, 0))
+		self.mod_plot_E = tk.Entry(tab5, width = 30)
+		self.mod_plot_E.grid(row = 12, sticky = "W", padx = 90, pady = (10, 0))
+		mod_plot_B = tk.Button(tab5, text = "Browse File", command = (lambda: self.get_plot_file(self.mod_plot_E)))
+		mod_plot_B.grid(row = 12, sticky = "W", padx = 287, pady = (10, 0))
+		mod_plot_B.configure(background = "white")
+
+		rerun_B = tk.Button(tab5, text = "Rerun", command = lambda: self.trigger_run(root, rerun=True))
+		rerun_B.grid(row = 13, sticky = "W", padx = 10, pady = (10, 0))
+		rerun_B.configure(background = "white")
+
+
 		# -----------------------------------------------------------------------------------------------------------
 		# ----- Footer -----
 		path1 = "./../misc_files/NIQ_Sups/uark.png"
@@ -967,35 +1009,22 @@ class GUIClass():
 		
 	# Flag
 	def test_run(self, root):
-		# self.input_file_E.delete(0, "end")
-		# self.input_file_E.insert(0, "C:\\Users\\wxhaw\\Desktop\\github\\whereabout\\inputFiles\\Static\\testInFile.csv")
-
-		# GREAT TIT
-		# self.input_file_E.delete(0, "end")
-		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/NIQ_test_input/GRTI/stat_testing.csv")
-		# self.input_file_E.delete(0, "end")
-		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/testing/stat_testing_in.csv")
+		
+		# In file
 		self.input_file_E.delete(0, "end")
 		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/GitHub/NestIQ/NIQ_uncompiled/input_files/example_input.csv")
-		# self.input_file_E.delete(0, "end")
-		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/GitHub/NestIQ/inputFiles/hellaBirds/CanaryCtrlB68-1.csv")
-		# self.input_file_E.delete(0, "end")
-		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/GitHub/NestIQ/inputFiles/hellaBirds/KTallam.csv")
-		# self.input_file_E.delete(0, "end")
-		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/GitHub/NestIQ/inputFiles/hellaBirds/CanaryMGB23-1.csv")
-		
-		# self.inputFileAdvE.delete(0, "end")
-		# self.inputFileAdvE.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/NIQ_test_input/GRTI/GRTI2.csv")
-		# self.vertex_file_E.delete(0, "end")
-		# self.vertex_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/NIQ_test_input/GRTI/GRTI_train_verts_minus_amb.html")
 
-		# TREE SWALLOW
-		# self.input_file_E.delete(0, "end")
-		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/NIQ_test_input/tree_swallow/TRES8crop_minus_amb_alt.csv")
-		# self.inputFileAdvE.delete(0, "end")
-		# self.inputFileAdvE.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/NIQ_test_input/tree_swallow/TRES8crop_minus_amb_alt.csv")
-		# self.vertex_file_E.delete(0, "end")
-		# self.vertex_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/NIQ_test_input/tree_swallow/TRES_minus_amb_verts_alt.html")
+		# Ori plot
+		# self.ori_plot_E.delete(0, "end")
+		# self.ori_plot_E.insert(0, "C:/Users/wxhaw/Downloads/NIQ_testing/ori_plot.html")
+		# Ori plot
+		self.ori_plot_E.delete(0, "end")
+		self.ori_plot_E.insert(0, "C:/Users/wxhaw/Downloads/dumb name.html")
+
+		#Mod plot
+		self.mod_plot_E.delete(0, "end")
+		self.mod_plot_E.insert(0, "C:/Users/wxhaw/Downloads/NIQ_testing/mod_plot_1.html")
+
 
 	# Flag
 	def test_stats(self, root):
@@ -1004,6 +1033,8 @@ class GUIClass():
 		# Get run get stats for reduced input file
 		self.input_file_E.delete(0, "end")
 		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/testing/stat_testing_in.csv")
+
+		
 
 		self.stats_file_E.delete(0, "end")
 		self.stats_file_E.insert(0, "stat_testing_out.csv")
@@ -1832,16 +1863,23 @@ class GUIClass():
 			replace_entry(self.plot_file_E, "------------------")
 			replace_entry(self.stats_file_E, "------------------")
 	
-	def get_vertex_file(self, entry):	
+	def get_plot_file(self, entry):	
 		"""
-			Handles vertex file browsing and selection
+			Handles plot file browsing and selection
 		"""		
+		print("gett file called")
 		root.update()
-		path_ = filedialog.askopenfilename(multiple = True)
+		path_ = filedialog.askopenfilename()
 		root.update()
 		
 		if path_ != "": 
-			replace_entry(entry, path_)				
+			replace_entry(entry, path_)			
+
+		# Handle curly braces added to paths with spaces
+		current = entry.get()
+		if "{" in current or "}" in current:
+			print("hello", current.lstrip("{").rstrip("}"))
+			replace_entry(entry, current.lstrip("{").rstrip("}"))
 				
 	def get_dir(self, entry):
 		"""
@@ -1859,6 +1897,11 @@ class GUIClass():
 		entry.insert(0, path_)
 		if path_ != "":
 			entry.insert(len(path_), "/")
+
+		# Handle curly braces added to paths with spaces
+		current = entry.get()
+		if "{" in current or "}" in current:
+			replace_entry(entry, current.lstrip("{").rstrip("}"))
 			
 	def append_multi_file_stats(self):
 		"""
@@ -1915,15 +1958,15 @@ class GUIClass():
 		self.multi_in_air_tempers    = []
 		self.milti_in_full_day_count = 0
 	
-	def select_vertices(self):
+	def select_vertices(self, mod_plot=False):
 		"""
 			Generates special plot for the user to select their ideal vertex locations. This plot can be 
-			saved and later used for supervised parameter acquisition.
+			saved and later used for supervised parameter acquisition or manual vertex modification.
 		"""
 		days_list = []
 		nights_list = []
 		
-		if self.check_valid_plot_ops() and self.check_valid_main(check_output = False) and self.check_valid_adv():			
+		if self.check_valid_plot_ops() and self.check_valid_main(check_output=False) and self.check_valid_adv():			
 			try:
 				self.master_list = niq_misc.get_master_list(self, self.input_file_E.get())
 				self.master_array = niq_misc.get_master_arr(self, self.master_list)
@@ -1933,12 +1976,25 @@ class GUIClass():
 				days_list, nights_list = niq_misc.split_days(self)
 			except Exception:
 				messagebox.showerror(("Input File Error (Advanced tab)"), 
-				"Input file could not be processed. Try using the \"Check\" button in the main tab to identify the issue.")	
+				"Input file could not be processed.")	
 				traceback.print_exc()
 				return False
 			
-			niq_misc.generate_plot(self, self.master_array, days_list, self.mon_dims, select_mode = True)
-				
+			ori_verts = None
+
+			#Get original vertices if undergoing manual vertex editing
+			if mod_plot:
+				try:
+					ori_verts_ = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
+					# print("len oriverts = ", len(ori_verts))
+				except Exception:
+					messagebox.showerror(("Input File Error (Edit tab)"), 
+					"Original plot file could not be read.")	
+					traceback.print_exc()
+					return False
+
+			niq_misc.generate_plot(self, self.master_array, days_list, self.mon_dims, select_mode=True, ori_verts=ori_verts_)
+
 	def init_config(self):
 		"""
 			Initializes GUI from default_config.ini.  config_static.ini is used as a backup if anything goes wrong.
@@ -2061,15 +2117,16 @@ class GUIClass():
 			self.config.write(configFile_)
 	
 	# Check ensure valid parameters and execute processing
-	def trigger_run(self, root):
+	def trigger_run(self, root, rerun=False):
 		"""
 			Ensure everything is in order and if so, initiate processing of the input file(s).
 
 			Args:
 				root (tk root widget): base widget of GUI
+				rerun (Bool): indicates if this is a rerun off of user provided vertices
 		"""
 
-		# flag
+		# FLAG
 		try:
 			print("----------------------------------------------------------")
 			print("Running NestIQ")
@@ -2106,20 +2163,25 @@ class GUIClass():
 					
 				print("Active file:", in_file)
 
-				self.master_hmm = niq_hmm.HMM()
-				self.master_hmm.build_model_from_entries(self)
 				self.master_list = niq_misc.get_master_list(self, in_file)
 				self.master_array = niq_misc.get_master_arr(self, self.master_list)
-				self.master_hmm.normalize_params(self)
-				self.master_hmm.populate_hmm_entries(self)
 
-				# Adds state column to master_array of input file
-				self.master_array = self.master_hmm.decode(self.master_array)
-				
-				dur_thresh = int(self.dur_thresh_E.get())
-				self.master_array, self.bouts_dropped_locs = niq_misc.filter_by_dur(self.master_array, dur_thresh)
+				if not rerun:
+					self.master_hmm = niq_hmm.HMM()
+					self.master_hmm.build_model_from_entries(self)
+					self.master_hmm.normalize_params(self)
+					self.master_hmm.populate_hmm_entries(self)
 
-				# flag
+					# Adds state column to master_array of input file
+					self.master_array = self.master_hmm.decode(self.master_array)
+					
+					dur_thresh = int(self.dur_thresh_E.get())
+					self.master_array, self.bouts_dropped_locs = niq_misc.filter_by_dur(self.master_array, dur_thresh)
+				else:
+					custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
+					self.master_array = niq_misc.add_states(self, self.master_array, verts=custom_verts)
+
+				# FLAG
 				try: 
 					main(self)
 				except:

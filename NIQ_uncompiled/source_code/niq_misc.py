@@ -297,22 +297,23 @@ def get_master_arr(gui, master_list):
 
 	return master_array
 
-def get_verts_from_html(gui, in_file):
+def get_verts_from_html(gui, in_file, alt=False):
 	"""
 		Creates vertex objects from vertices placed by the user in the provided HTML file.
 
 		Args:
 			gui (GUIClass)
 			in_file (string): path to and name of HTML file containing user-provided vertex locations
+			alt (Bool): dictates if vertices are extracted from the table or alternative variable in HTML file
 	"""
-	
+
 	def get_data_points_from_html(gui, in_file):
 		"""
 			Extracts the corresponding data point for each point placed by the user in the HTML file.
 
-		Args:
-			gui (GUIClass)
-			in_file (string): path to and name of HTML file containing user-provided vertex locations
+			Args:
+				gui (GUIClass)
+				in_file (string): path to and name of HTML file containing user-provided vertex locations
 		"""
 
 		data_point_list = []
@@ -323,22 +324,41 @@ def get_verts_from_html(gui, in_file):
 			content = vertex_file.read()
 
 		soup = BeautifulSoup(content, "html.parser")
-		# Extract html behind table
-		table_widget = "bk-widget-box bk-layout-fixed"
-		table_content = soup.find("div", class_=table_widget)
 
-		# Extract leftmost column of data (data points)
-		hits = table_content.find_all("div", class_="slick-cell l1 r1")
-		for hit in hits:
+		if alt:
+			# Extract html behind script section containing vertex info
+			hit = soup.find("script", type="application/json").text
+			re_hit = re.search("\"x\":\[(.*)\],\"y\":\[", hit)
+			re_hit = re_hit.group(1).lstrip().rstrip()
+			hit_list = re_hit.split(",")
+		else:
+			# Extract html behind table
+			table_widget = "bk-widget-box bk-layout-fixed"
+			table_content = soup.find("div", class_=table_widget)
+
+			# Extract leftmost column of data (data points)
+			hits = table_content.find_all("div", class_="slick-cell l1 r1")
+			hit_list = [hit.find("span", style="text-align: left;").text for hit in hits]
+
+			# Get selected vertex if exists
+			try:
+				with open(in_file, "r") as raw_file:
+					bulk_content = raw_file.read()
+
+				temp_re = ("slick-cell l1 r1 selected\"><span style=\"text-align: left;\">(\d+)")
+				selected = re.search(temp_re, bulk_content).group(1)
+				hit_list.append(selected)
+			except:
+				pass
+
+		for hit in hit_list:
 			# Clean hits and append
-			data_point_raw = hit.find("span", style="text-align: left;").text
-			data_point = round(float(data_point_raw))
+			data_point = round(float(hit))
 			data_point = max(data_point, min_dp)
 			data_point = min(data_point, max_dp)
 			if data_point not in data_point_list:
 				data_point_list.append(data_point)
-
-		print("data points =", sorted(data_point_list))
+				
 		return sorted(data_point_list)
 
 	vertices = []
@@ -348,7 +368,7 @@ def get_verts_from_html(gui, in_file):
 		# Search for gap between index value and corresponding datapoint
 		if int(gui.master_list[i][gui.data_point_col]) == int(vertex_data_points[0]):
 			# Delta is discrepency between index and data point number
-			delta = (vertex_data_points[0] - i)
+			delta = (vertex_data_points[0] - i) - 1
 			break
 			
 	first_vert_temper = gui.master_list[vertex_data_points[0] - delta][gui.egg_temper_col]
@@ -451,7 +471,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 			days (BlockGroup): contains every day object and information about the group as a whole
 			nights (BlockGroup): contains every night object and information about the group as a whole
 			day_night_pairs (BlockGroup): contains every day/night pair object and information about the group as a whole
-			master_block (block): block build from the entire input file
+			master_block (block): block built from the entire input file
 	"""
 
 	all_egg_tempers, all_air_tempers = [], []
@@ -776,7 +796,7 @@ def smooth_col(radius, col):
 
 	return smoothed_arr
 
-def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False):
+def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False, ori_verts = None):
 	"""
 		Uses the Bokeh module to generate an interactive plot for the current input file.
 
@@ -784,6 +804,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False):
 			gui (GUIClass):
 			master_array (numpy array): contains all of the critical information for plot creation
 			days_list (list): simply used to place vertical day delimiting line
+			mon_dims (tuple): x and y dimensions of main display
 			select_mode (bool): generates a modified plot that allows for vertex placement
 	"""
 
@@ -823,13 +844,14 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False):
 			search_ = re.search(("[^\\\\|/]*(\\\\|/)"), quary).group(0)[::-1]
 			plot_name = search_[1:-5] if ".html" in search_ else search_[1:]
 
+
+	# Set plot axes
 	y_min = float("inf")
 	y_max = float("-inf")
 
-	if not (select_mode and gui.air_valid): # Prevents incorrect vertex selection axes
-		if gui.plot_egg_BV.get():
-			y_min = min(y_min, min(master_array[:, 1]))
-			y_max = max(y_max, max(master_array[:, 1]))
+	if gui.plot_egg_BV.get():
+		y_min = min(y_min, min(master_array[:, 1]))
+		y_max = max(y_max, max(master_array[:, 1]))
 
 	if gui.plot_air_BV.get() and gui.air_valid:
 		y_min = min(y_min, min(master_array[:, 2]))
@@ -862,6 +884,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False):
 
 	plot.grid.visible = False if not gui.show_grid_BV.get() else True
 	
+	#FLAG
 	if select_mode:
 		color_ = "gray"
 		alpha_ = 1
@@ -884,24 +907,25 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False):
 									color = gui.air_line_color.get(), line_alpha = 1, legend = "Air temperature"
 								   )
 
-	if gui.plot_egg_BV.get() and not select_mode:
+	if gui.plot_egg_BV.get():
 		if gui.smooth_status_IV.get():
 			egg_arr = smooth_col(radius, master_array[:, 1]).flatten()
 		else:
 			egg_arr = master_array[:, 1]
 
 		# Update legend
-		legend_ = "On-bout (egg)" if gui.plot_delta_BV.get() else "On-bout"
-		plot.circle(
-					master_array[0, 0], egg_arr[0], size = float(gui.on_point_size_E.get()), 
-					color = gui.on_point_color.get(), legend = legend_
-				   )
+		if not select_mode:
+			legend_ = "On-bout (egg)" if gui.plot_delta_BV.get() else "On-bout"
+			plot.circle(
+						master_array[0, 0], egg_arr[0], size = float(gui.on_point_size_E.get()), 
+						color = gui.on_point_color.get(), legend = legend_
+					)
 
-		legend_ = "Off-bout (egg)" if gui.plot_delta_BV.get() else "Off-bout"
-		plot.circle(
-					master_array[0, 0], egg_arr[0], size = float(gui.on_point_size_E.get()), 
-					color = gui.off_point_color.get(), legend = legend_
-				   )
+			legend_ = "Off-bout (egg)" if gui.plot_delta_BV.get() else "Off-bout"
+			plot.circle(
+						master_array[0, 0], egg_arr[0], size = float(gui.on_point_size_E.get()), 
+						color = gui.off_point_color.get(), legend = legend_
+					)
 
 		# Multi-color bout-connecting lines
 		# Will be officially added later
@@ -947,7 +971,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False):
 					color = color_,	alpha = alpha_
 					)	
 
-	if gui.plot_delta_BV.get() or select_mode:
+	if gui.plot_delta_BV.get():
 		delta_col = 4 if gui.smooth_status_IV.get() else 3
 		if float(gui.bout_line_width_E.get()) > 0:
 			plot.line(
@@ -956,7 +980,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False):
 						color = gui.bout_line_color.get()
 					 )
 
-		if not select_mode and gui.plot_egg_BV.get():
+		if gui.plot_egg_BV.get():
 			# Add legend values
 			plot.triangle(
 						  master_array[0, 0], master_array[0, delta_col], size = float(gui.on_point_size_E.get()), 
@@ -999,16 +1023,33 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False):
 						color = color_, alpha = alpha_
 					   )	
 	
+	#-------------------------------------------------------------------------------------------
 	# Generate table with vertex information
-	data = {"x": [], "y": []}
+	if select_mode:
+		height_ = 10000	
+		data = {"x": [], "y": []}
+
+		# Plot original vertices if provided
+		if ori_verts:
+			# FLAG Always plots as egg_temper even when plot shows egg - air
+			data = {"x": [vert.index for vert in ori_verts], "y": [vert.egg_temper for vert in ori_verts]}
+	else:
+		# Append vertex info to table
+		verts = get_verts_from_master_arr(master_array)
+		data = {"x": [vert.index for vert in verts], "y": [vert.egg_temper for vert in verts]}
+		height_ = (len(verts) * 30)
 
 	src = ColumnDataSource(data)
 	columns = [
 				TableColumn(field = "x", title = "Data Point"),
-				TableColumn(field = "y", title = "Temperature")
-			  ]
-			
-	data_table = DataTable(source = src, columns = columns, width = 500, height = 20000)
+				TableColumn(field = "y", title = "Egg Temperature")
+			]
+	
+	# FLAG shoud make height dynamic
+	data_table = DataTable(source=src, columns=columns, width=500, height=100000)
+
+	#-------------------------------------------------------------------------------------------
+
 
 	if select_mode:
 		# Plot vertices as large circles in select mode
@@ -1162,3 +1203,44 @@ def get_datetime(gui, line):
 def list_to_gen(list_):
 	for item in list_:
 		yield item
+
+
+# FLAG largely redundant with function in niq_hmm
+def add_states(self, master_array, verts = None, results_arr = None):
+		"""
+			Adds column 6 to master array: state (0 or 1).
+
+			Args:
+				master_array (numpy array)
+				verts (list):
+				results_arr (numpy array):
+		"""
+
+		# Appends state values based on vertex locations
+		if verts is not None:
+			
+			start = verts[0].index
+			stop = verts[-1].index
+			state_arr = np.zeros((master_array.shape[0], 1), dtype = float)
+			state_arr.fill(1)
+
+			state = 0 # Assume off-bout start -- is corrected by "swap_params_by_state" if necessary
+			prev_index = verts[0].index
+			row = prev_index
+			for cur_vert in verts[1:]:
+				cur_index = cur_vert.index
+				for _ in range(prev_index, cur_index):				
+					state_arr[row] = [state]
+					row += 1
+
+				prev_index = cur_index
+				state = 0 if state else 1
+
+			master_array = np.hstack((master_array, state_arr))
+
+		# If results are provided, simply append states to master_array
+		if results_arr is not None:
+			master_array = np.hstack((master_array, results_arr.reshape(results_arr.shape[0], 1)))
+			
+		
+		return master_array
