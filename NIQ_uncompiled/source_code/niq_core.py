@@ -1028,44 +1028,69 @@ class GUIClass():
 
 	# Flag
 	def test_stats(self, root):
+
+		# Code from people better at python than me
+		"""
+			with open('old.csv', 'r') as t1, open('new.csv', 'r') as t2:
+				fileone = t1.readlines()
+				filetwo = t2.readlines()
+
+			with open('update.csv', 'w') as outFile:
+				for line in filetwo:
+					if line not in fileone:
+						outFile.write(line)
+		"""
+
+
 		# Load config file
-		self.load_config(config_file_ = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/testing/stat_testing_config.ini")
-		# Get run get stats for reduced input file
+		self.load_config(config_file_ = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/test_config.ini")
+
+		# Load testing input file
 		self.input_file_E.delete(0, "end")
-		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/testing/stat_testing_in.csv")
+		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/test_input.csv")
 
 		
-
+		# Set up output
 		self.stats_file_E.delete(0, "end")
 		self.stats_file_E.insert(0, "stat_testing_out.csv")
-
-		outPath = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/testing/"
+		outPath = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/"
 		os.chdir(outPath)
 
+		# Run analysis
 		self.trigger_run(root)
 
-		# Compare primary stat line for reference vs newly generated stats
-		with open ("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/testing/stat_reference.csv", "r") as ref_file:
-			ref_lines = ref_file.readlines()
-			ref_line = ref_lines[2]
-			ref_split = ref_line.split(",")
+		# Declare paths
+		ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/stats_unrestricted.csv"
+		test_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stat_testing_out.csv"
 
-		with open ("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/testing/stat_testing_out.csv", "r") as test_file:
-			test_lines = test_file.readlines()
-			test_line = test_lines[2]
-			test_split = test_line.split(",")
+		# Create dictionaries with stat label as key and stat as value
+		stat_dicts = list()
+		with open(ref_stats_path, "r") as ref_file, open(test_stats_path, "r") as test_file:
+			for file_ in (ref_file, test_file):
+				lines = file_.readlines()
+				label_line = lines[1].strip().split(",")
+				val_line = lines[2].strip().split(",")
+				stats_dict.appned({key:val for key, val in zip(label_line, val_line)})
 
-		perfect = True
-		for index, (test_item, ref_item) in enumerate(zip(test_split[2:], ref_split[2:])):
-			same = (float(ref_item) == float(test_item))
-			print(index, ":", same)
-			if not same: 
-				print("ref =", ref_item)
-				print("test =", test_item)
-				perfect = False
+		# Compare stat values
+		mismatches = [key for key in stat_dicts[0] if stat_dicts[0][key] != stat_dicts[1][key]]
 
-		print("PASSED") if perfect else print("FAILED")
-		
+		# Set up text coloring
+		from colorama import init 	
+		from termcolor import colored 
+		init() 
+
+		# Notify user of mismatched values if any
+		if not mismatches:
+			print(colored("--------------------------PASSED--------------------------", "green"))
+		else:
+			print(colored("--------------------------FAILED--------------------------", "red"))
+			for key in mismatches:
+				print(
+						colored(key, "yellow") + ": test value of " + colored(stat_dicts[1][key], "yellow") +
+						" did not match reference " + colored(stat_dicts[0][key], "yellow") 
+					 )
+
 	def help(self):
 		"""
 			Launches user manual.
