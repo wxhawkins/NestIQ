@@ -19,7 +19,6 @@ from niq_misc import get_novel_name, replace_entry
 import niq_classes
 import niq_hmm
 
-
 root = tk.Tk()
 
 STANDARD_FONT = font.Font(size = 10)
@@ -1047,7 +1046,8 @@ class GUIClass():
 
 		# Load testing input file
 		self.input_file_E.delete(0, "end")
-		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/test_input.csv")
+		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/test_input.csv")
+		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/test_input_long.csv")
 
 		
 		# Set up output
@@ -1060,7 +1060,8 @@ class GUIClass():
 		self.trigger_run(root)
 
 		# Declare paths
-		ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/stats_unrestricted.csv"
+		# ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/ref_stats_unrestricted.csv"
+		ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/ref_stats_unrestricted_long.csv"
 		test_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stat_testing_out.csv"
 
 		# Create dictionaries with stat label as key and stat as value
@@ -1069,8 +1070,9 @@ class GUIClass():
 			for file_ in (ref_file, test_file):
 				lines = file_.readlines()
 				label_line = lines[1].strip().split(",")
-				val_line = lines[2].strip().split(",")
-				stats_dict.appned({key:val for key, val in zip(label_line, val_line)})
+				# val_line = lines[2].strip().split(",") # For reduced input file
+				val_line = lines[10].strip().split(",")
+				stat_dicts.append({key:val for key, val in zip(label_line, val_line)})
 
 		# Compare stat values
 		mismatches = [key for key in stat_dicts[0] if stat_dicts[0][key] != stat_dicts[1][key]]

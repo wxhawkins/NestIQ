@@ -1,0 +1,5 @@
+*.html
+*.csv
+*.ini
+__pycache__/
+
