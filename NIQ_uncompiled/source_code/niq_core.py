@@ -4,6 +4,7 @@ import configparser
 import csv
 import re
 import statistics
+from random import randint
 
 import traceback
 import numpy as np
@@ -11,6 +12,8 @@ from shutil import copyfile
 import tkinter as tk
 from tkinter import filedialog, font, messagebox, ttk
 from PIL import Image, ImageTk
+import colorama
+from termcolor import colored 
 
 from bs4 import BeautifulSoup
 
@@ -749,7 +752,7 @@ class GUIClass():
 		root.bind("<Return>", lambda _ : self.trigger_run(root))
 		# Flag
 		root.bind("<`>", lambda _ : self.test_run(root))
-		root.bind("<Control-`>", lambda _ : self.test_stats(root))
+		root.bind("<Control-`>", lambda _ : self.master_test(root))
 			
 		self.valid = True
 		while self.valid and not self.run:
@@ -767,14 +770,15 @@ class GUIClass():
 		root.update()
 		time.sleep(0.01)
 		
-	def save_config(self):
+	def save_config(self, out_file=None):
 		"""
 			Prompts user to provide a save file name and location then generates a configuration file from
 			the current GUI settings and statuses.
 
 		"""
 
-		out_file = filedialog.asksaveasfilename()
+		if out_file is None:
+			out_file = filedialog.asksaveasfilename()
 		
 		if not re.search("\.ini", out_file):
 			out_file = (out_file + ".ini")
@@ -1006,12 +1010,11 @@ class GUIClass():
 
 		return True
 		
-	# Flag
 	def test_run(self, root):
 		
 		# In file
 		self.input_file_E.delete(0, "end")
-		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/GitHub/NestIQ/NIQ_uncompiled/input_files/example_input.csv")
+		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.csv")
 
 		# Ori plot
 		# self.ori_plot_E.delete(0, "end")
@@ -1024,74 +1027,169 @@ class GUIClass():
 		self.mod_plot_E.delete(0, "end")
 		self.mod_plot_E.insert(0, "C:/Users/wxhaw/Downloads/NIQ_testing/mod_plot_1.html")
 
-
-	# Flag
-	def test_stats(self, root):
-
-		# Code from people better at python than me
-		"""
-			with open('old.csv', 'r') as t1, open('new.csv', 'r') as t2:
-				fileone = t1.readlines()
-				filetwo = t2.readlines()
-
-			with open('update.csv', 'w') as outFile:
-				for line in filetwo:
-					if line not in fileone:
-						outFile.write(line)
-		"""
-
-
+	def master_test(self, root):
+		# Initialization
 		# Load config file
-		self.load_config(config_file_ = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/test_config.ini")
+		ref_config_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/test_config.ini"
+		self.load_config(config_file_ = ref_config_path)
 
 		# Load testing input file
 		self.input_file_E.delete(0, "end")
-		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/test_input.csv")
-		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/test_input_long.csv")
+		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input.csv")
+		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.csv")
 
 		
 		# Set up output
 		self.stats_file_E.delete(0, "end")
 		self.stats_file_E.insert(0, "stat_testing_out.csv")
-		outPath = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/"
-		os.chdir(outPath)
-
-		# Run analysis
-		self.trigger_run(root)
-
+		out_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/temp_output/"
+		self.out_path_E.delete(0, "end")
+		self.out_path_E.insert(0, out_path)
+		
+		# ---------------------------------Statistics----------------------------------------
 		# Declare paths
-		# ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/ref_stats_unrestricted.csv"
-		ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/static/ref_stats_unrestricted_long.csv"
-		test_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stat_testing_out.csv"
-
-		# Create dictionaries with stat label as key and stat as value
-		stat_dicts = list()
-		with open(ref_stats_path, "r") as ref_file, open(test_stats_path, "r") as test_file:
-			for file_ in (ref_file, test_file):
-				lines = file_.readlines()
-				label_line = lines[1].strip().split(",")
-				# val_line = lines[2].strip().split(",") # For reduced input file
-				val_line = lines[10].strip().split(",")
-				stat_dicts.append({key:val for key, val in zip(label_line, val_line)})
-
-		# Compare stat values
-		mismatches = [key for key in stat_dicts[0] if stat_dicts[0][key] != stat_dicts[1][key]]
+		# ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_unrestricted.csv"
+		unres_ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_unrestricted_long.csv"
+		res_ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_restricted_long.csv"
+		test_stat_root = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/temp_output/"
+		test_stats_path = test_stat_root + "stat_testing_out.csv"
 
 		# Set up text coloring
-		from colorama import init 	
-		from termcolor import colored 
-		init() 
+		colorama.init() 
 
-		# Notify user of mismatched values if any
+
+		for i, test_type in enumerate(("unrestricted", "restricted")):
+		# for test_type in ("restricted"):
+			rand_key = str(randint(1000000, 10000000))
+			print(f"\n\nTesting statistics ({test_type})")
+			print(f"Key = {rand_key}")
+
+			if test_type == "restricted":
+				self.restrict_search_CB.select()
+
+			# Run statistical analysis
+			self.trigger_run(root)
+
+			ref_stats_path = res_ref_stats_path if test_type == "restricted" else unres_ref_stats_path
+
+			# Create dictionaries with stat label as key and stat as value
+			stat_dicts = list()
+			with open(ref_stats_path, "r") as ref_file, open(test_stats_path, "r") as test_file:
+				for file_ in (ref_file, test_file):
+					lines = file_.readlines()
+					label_line = lines[1].strip().split(",")
+					# val_line = lines[2].strip().split(",") # For reduced input file
+					val_line = lines[10].strip().split(",")
+					stat_dicts.append({key:val for key, val in zip(label_line, val_line)})
+
+			# Compare stat values
+			mismatches = [key for key in stat_dicts[0] if stat_dicts[0][key] != stat_dicts[1][key]]
+
+
+			# Notify user of mismatched values if any
+			if not mismatches:
+				print(colored("--------------------------STATS PASSED--------------------------", "green"))
+			else:
+				print(colored("--------------------------STATS FAILED--------------------------", "red"))
+				for key in mismatches:
+					print(
+							colored(key, "yellow") + ": test value of " + colored(stat_dicts[1][key], "yellow") +
+							" did not match reference " + colored(stat_dicts[0][key], "yellow") 
+						)
+
+			# Reanme output files to avoid override clashes
+			if i == 0:
+				os.rename(test_stat_root + "plot.html", test_stat_root + rand_key + ".html")
+			else:
+				os.rename(test_stat_root + "plot(1).html", test_stat_root + rand_key + ".html")
+			os.rename(test_stats_path, test_stat_root + rand_key + ".csv")
+
+		# ---------------------------------Unsupervised learning--------------------------------------
+		print(f"\n\nTesting unsupervised learning")
+
+		self.load_config(config_file_ = ref_config_path)
+		self.unsupervised_learning()
+		unsup_test_path = test_stat_root + "unsup_test_config.ini"
+		unsup_ref_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/unsup_ref_config.ini"
+		self.save_config(out_file=unsup_test_path)
+
+		with open(unsup_ref_path, 'r') as ref, open(unsup_test_path, 'r') as test:
+				ref_lines = ref.readlines()
+				test_lines = test.readlines()
+
+
+		# for line in filetwo:
+		# 	if line not in fileone:
+		# 		mismatches.append(line)
+
+		# Search for config discrepencies
+		mismatches = []
+		for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
+			if test_line.strip() != ref_line.strip():
+				try:
+					ref_val = float(re.search((r"(\d+)(\.?)(\d+)?"), ref_line).group(0))
+					test_val = float(re.search((r"(\d+)(\.?)(\d+)?"), test_line).group(0))
+					print(f"ref val = {ref_val}")
+					print(f"test val = {test_val}")
+					if ref_val != test_val:
+						mismatches.append(test_line)
+				except:
+					mismatches.append(test_line)
+
 		if not mismatches:
-			print(colored("--------------------------PASSED--------------------------", "green"))
+			print(colored("--------------------------UNSUP PASSED--------------------------", "green"))
 		else:
-			print(colored("--------------------------FAILED--------------------------", "red"))
-			for key in mismatches:
-				print(
-						colored(key, "yellow") + ": test value of " + colored(stat_dicts[1][key], "yellow") +
-						" did not match reference " + colored(stat_dicts[0][key], "yellow") 
-					 )
+			print(colored("--------------------------UNSUP FAILED--------------------------", "red"))
+			for line in mismatches:
+				print(colored(line, "yellow"))
+
+		# ---------------------------------Supervised learning----------------------------------------
+		print(f"\n\nTesting supervised learning")
+
+		vertex_file_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/plots/vertex_selection.html"
+
+		# Attempt to make vertex selection plot
+		try:
+			self.select_vertices()
+		except:
+			print(colored("--------------------VERTEX SELECTION PLOT FAILED--------------------", "red"))
+			traceback.print_exc()
+
+		self.vertex_file_E.delete(0, "end")
+		self.vertex_file_E.insert(0, vertex_file_path)
+		
+		self.load_config(config_file_ = ref_config_path)
+		self.supervised_learning()
+		sup_test_path = test_stat_root + "sup_test_config.ini"
+		sup_ref_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/sup_ref_config.ini"
+		self.save_config(out_file=sup_test_path)
+
+		with open(sup_ref_path, 'r') as ref, open(sup_test_path, 'r') as test:
+				ref_lines = ref.readlines()
+				test_lines = test.readlines()
+
+		# Search for config discrepencies
+		mismatches = []
+		for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
+			if test_line.strip() != ref_line.strip():
+				try:
+					ref_val = float(re.search((r"(\d+)(\.?)(\d+)?"), ref_line).group(0))
+					test_val = float(re.search((r"(\d+)(\.?)(\d+)?"), test_line).group(0))
+					print(f"ref val = {ref_val}")
+					print(f"test val = {test_val}")
+					if ref_val != test_val:
+						mismatches.append(test_line)
+				except:
+					mismatches.append(test_line)
+
+		if not mismatches:
+			print(colored("--------------------------SUP PASSED--------------------------", "green"))
+		else:
+			print(colored("--------------------------SUP FAILED--------------------------", "red"))
+			for line in mismatches:
+				print(colored(line, "yellow"))
+
+		print(colored("-----------------------TESTING COMPLETED--------------------", "blue"))
 
 	def help(self):
 		"""
@@ -1850,7 +1948,6 @@ class GUIClass():
 			interval =  (cur_datetime - ref_datetime).seconds / 60
 
 		self.time_interval = interval
-		print("interval =", interval)
 
 		return True
 
@@ -1992,6 +2089,7 @@ class GUIClass():
 		"""
 		days_list = []
 		nights_list = []
+		ori_verts_ = None
 		
 		if self.check_valid_plot_ops() and self.check_valid_main(check_output=False) and self.check_valid_adv():			
 			try:
