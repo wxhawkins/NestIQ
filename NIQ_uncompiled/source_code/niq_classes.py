@@ -340,7 +340,7 @@ class BlockGroup:
 		self.time_below_temper = 0
 		self.bouts_dropped     = 0
 		
-	def get_stats(self, gui, append = True):
+	def get_stats(self, gui, append=True):
 		bulk_off_durs    = []
 		bulk_off_decs    = []
 		bulk_off_tempers = []

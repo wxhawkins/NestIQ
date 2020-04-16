@@ -24,9 +24,9 @@ import niq_hmm
 
 root = tk.Tk()
 
-STANDARD_FONT = font.Font(size = 10)
-HELP_FONT = font.Font(size = 8)
-HEADER_FONT = font.Font(size = 12, weight = "bold")
+STANDARD_FONT = font.Font(size=10)
+HELP_FONT = font.Font(size=8)
+HEADER_FONT = font.Font(size=12, weight="bold")
 SUBHEADER_FONT = "Helvetica 10 bold"
 TITLE_FONT = ("Helvetica", 18)
 
@@ -73,15 +73,15 @@ class GUIClass():
 		# Configure root
 		root.wm_title("NestIQ")
 		root.geometry("370x720")
-		root.configure(background = "white")
+		root.configure(background="white")
 		
 		# Create 1 x 30 grid
 		for row in range(30):
-			root.rowconfigure(row, weight = 1)
+			root.rowconfigure(row, weight=1)
 			
-		root.columnconfigure(0, weight = 1)
+		root.columnconfigure(0, weight=1)
 		nb = ttk.Notebook(root)
-		nb.grid(row = 1, rowspan = 28, columnspan = 1, sticky = "NESW")
+		nb.grid(row=1, rowspan=28, columnspan=1, sticky="NESW")
 
 		tab1 = ttk.Frame(nb)
 		tab2 = ttk.Frame(nb)
@@ -89,19 +89,19 @@ class GUIClass():
 		tab4 = ttk.Frame(nb)
 		tab5 = ttk.Frame(nb)
 
-		nb.add(tab1, text = "Main")
-		nb.add(tab2, text = "Advanced")
-		nb.add(tab3, text = "Plot Options")
-		nb.add(tab4, text = "Stats Options")
-		nb.add(tab5, text = "Edit")
+		nb.add(tab1, text="Main")
+		nb.add(tab2, text="Advanced")
+		nb.add(tab3, text="Plot Options")
+		nb.add(tab4, text="Stats Options")
+		nb.add(tab5, text="Edit")
 		
 		# ----------------------------------------------- Main tab ---------------------------------------------------
 		# ----- Header -----
-		title_background = tk.Label(tab1, text = "", bg = "red4")
-		title_background.grid(row = 0, sticky = "NSEW")
+		title_background = tk.Label(tab1, text="", bg="red4")
+		title_background.grid(row=0, sticky="NSEW")
 		
-		title_L = tk.Label(tab1, text = "NestIQ", fg = "white", bg = "red4", font = TITLE_FONT)
-		title_L.grid(row = 0, sticky = "NSW", padx = 10, pady = 5)
+		title_L = tk.Label(tab1, text="NestIQ", fg="white", bg="red4", font=TITLE_FONT)
+		title_L.grid(row=0, sticky="NSW", padx=10, pady=5)
 				
 		help_B = tk.Button(tab1, text = "Help", command = self.help)
 		help_B.grid(row = 0, sticky = "NW", padx = 335)
@@ -119,10 +119,10 @@ class GUIClass():
 
 
 		# ----- Output path -----
-		output_path_L = tk.Label(tab1, text = "Output path:", font = STANDARD_FONT)
-		output_path_L.grid(row = 5, sticky = "W", padx = 10, pady = (15, 20))
-		self.out_path_E = tk.Entry(tab1, width = 25)
-		self.out_path_E.grid(row = 5, sticky = "W", padx = 94, pady = (15, 20))
+		output_path_L = tk.Label(tab1, text="Output path:", font = STANDARD_FONT)
+		output_path_L.grid(row=5, sticky="W", padx=10, pady=(15, 20))
+		self.out_path_E = tk.Entry(tab1, width=25)
+		self.out_path_E.grid(row=5, sticky="W", padx=94, pady=(15, 20))
 		self.out_path_B = tk.Button(tab1, text = "Browse Directory", command = (lambda : self.get_dir(self.out_path_E)))
 		self.out_path_B.grid(row = 5, sticky = "W", padx = 255, pady = (15, 20))
 		self.out_path_B.configure(background = "white")
@@ -787,7 +787,7 @@ class GUIClass():
 		copyfile(os.path.join(self.core_dir, "misc_files", "config_static.ini"), out_file)
 		self.update_config(out_file)
 
-	def load_config(self, program_startup = False, config_file_ = None):
+	def load_config(self, program_startup=False, config_file_=None):
 		"""
 			Updates all GUI settings and statuses according to a configuration file. If this file is not immediately 
 			provided to the function, the user is prompted to select a file from a dialog box.
@@ -943,16 +943,16 @@ class GUIClass():
 				True if file passes all tests, else displays error message and returns False
 		"""
 
+		niq_misc.remove_curly(self.vertex_file_E)
 		vertex_file = self.vertex_file_E.get()
+		
 		if vertex_file == "":
 			messagebox.showerror("Vertex File Error", "Please provide a vertex file.")
 			return False
 		
 		if not os.path.exists(vertex_file):
-			# Check for curly brace addition (sometimes added for paths with spaces)
-			if vertex_file[0] != "{":
-				messagebox.showerror("Vertex Selection Error", "Provided vertex selection file not found.")
-				return False
+			messagebox.showerror("Vertex Selection Error", "Provided vertex selection file not found.")
+			return False
 			
 			if not os.path.exists(vertex_file[1:(len(vertex_file) - 1)]):
 				messagebox.showerror("Vertex Selection Error", "Provided vertex selection file not found.")
@@ -1085,7 +1085,6 @@ class GUIClass():
 			# Compare stat values
 			mismatches = [key for key in stat_dicts[0] if stat_dicts[0][key] != stat_dicts[1][key]]
 
-
 			# Notify user of mismatched values if any
 			if not mismatches:
 				print(colored("--------------------------STATS PASSED--------------------------", "green"))
@@ -1152,7 +1151,7 @@ class GUIClass():
 		try:
 			self.select_vertices()
 		except:
-			print(colored("--------------------VERTEX SELECTION PLOT FAILED--------------------", "red"))
+			print(colored("-----------------VERTEX SELECTION PLOT FAILED------------------", "red"))
 			traceback.print_exc()
 
 		self.vertex_file_E.delete(0, "end")
@@ -1183,13 +1182,13 @@ class GUIClass():
 					mismatches.append(test_line)
 
 		if not mismatches:
-			print(colored("--------------------------SUP PASSED--------------------------", "green"))
+			print(colored("---------------------------SUP PASSED---------------------------", "green"))
 		else:
-			print(colored("--------------------------SUP FAILED--------------------------", "red"))
+			print(colored("---------------------------SUP FAILED---------------------------", "red"))
 			for line in mismatches:
 				print(colored(line, "yellow"))
 
-		print(colored("-----------------------TESTING COMPLETED--------------------", "blue"))
+		print(colored("------------------------TESTING COMPLETED-----------------------", "blue"))
 
 	def help(self):
 		"""
@@ -1258,184 +1257,15 @@ class GUIClass():
 				if re.search(input_root_stats_re, self.stats_file_E.get()):
 					get_novel_name(self.stats_file_E, (self.input_root + "Stats(NUM).csv"))
 
-	def check_valid_main(self, first_in = True, check_output = True):
+	def check_valid_main(self, first_in=True, check_output=True):
 		"""
 			Checks for valid configuration of all parameters housed on the Main tab.  This includes extensive
 			review of the input file provided.
 
 			Args:
 				first_in (bool): False if current file is second or later in a queue of multiple input files
-				check_output (bool): if Flase, output file names are not examined
+				check_output (bool): if False, output file names are not examined
 		"""
-
-		def check_input_file_generator(self):
-			"""
-				Checks several aspects of the input file to ensure it is compatable with all downstream processing.
-				Also displays warnings for less severe format violations.
-			"""
-
-			in_file = self.input_file_E.get().lstrip("{").rstrip("}")
-
-			datetime_valid = True
-
-			print_file_name = ("For file: " + os.path.normpath(in_file) + "\n\n")
-
-			if in_file == "":
-				messagebox.showerror("Input error (Main tab)", "No input file provided.")
-				return False
-		
-			try:
-				if not os.path.exists(in_file):	
-					# Check for curly brace addition (sometimes done for paths with spaces)
-					if in_file[0] == "{":
-						if os.path.exists(in_file[1:(len(in_file) - 1)]):
-							replace_entry(self.input_file_E, (in_file[1:(len(in_file) - 1)]))
-							in_file = self.input_file_E.get()
-						else: raise ValueError
-					else: raise ValueError
-			except ValueError:
-				messagebox.showerror("Input File Error", 
-				"".join((print_file_name, "File with provided path could not be found.")))
-				return False
-				
-			if in_file[-4:] != ".csv":
-				messagebox.showerror("Input File Error", 
-				"".join((print_file_name, "Input file must end in \".csv\" (comma separated value file format).")))
-				return False
-
-			# Flag
-			try:
-				with open(in_file, "r") as csv_file:
-					csv_reader = csv.reader(csv_file)
-					sample = ""
-					# Test if fist line is blank and generate sample to give to CSV sniffer
-					for i in range(10):
-						row = next(csv_reader)
-						has_header = True if i == 0 and row[0] == "" else False
-						for cell in row[:3]:
-							sample += "".join(cell)
-							sample += ","
-						sample += "\n"
-						
-					has_header = has_header or csv.Sniffer().has_header(sample)
-
-					# Get data time interval
-					csv_file.seek(0)
-					csv_reader = csv.reader(csv_file)
-					prev_line = next(csv_reader)
-					if has_header:
-						prev_line = next(csv_reader)
-
-					if not (self.get_data_time_interval(csv_reader, prev_line)):
-						return False 
-
-					# Reset generator and remove header
-					csv_file.seek(0)
-					csv_reader = csv.reader(csv_file)
-					prev_line = next(csv_reader)
-					if has_header:
-						prev_line = next(csv_reader)
-					
-					if len(prev_line) < 3:
-						self.air_valid = False
-
-					if not niq_misc.get_datetime(self, prev_line):
-						return False
-
-					interval_clock = 0 if self.time_interval >= 1 else round(1 / self.time_interval)
-					interval_time = 1
-					start_found = False
-					
-					for line_num, line in enumerate(csv_reader):
-						line.remove("")
-						# Check if data points are continuous and sequential
-						if not line_num == 0:
-							try:
-								if not int(line[self.data_point_col]) == (int(prev_line[self.data_point_col]) + 1):
-									raise ValueError
-							except:
-								print("line = ", line)
-								messagebox.showerror("Data Point Error", 
-								"".join((print_file_name + "Error near data point " + str(prev_line[self.data_point_col]) + 
-								". Data point number is not sequential with regrad to previous data point.")))
-								return False
-						
-						prev_datetime = niq_misc.get_datetime(self, prev_line)
-						cur_datetime = niq_misc.get_datetime(self, line)
-						datetime_diff = (cur_datetime - prev_datetime).seconds / 60
-
-						if datetime_diff == 0 or datetime_diff == self.time_interval:
-							start_found = True
-
-						if datetime_valid and start_found:
-							if cur_datetime == False:
-								return False 
-								
-							if datetime_diff != self.time_interval:
-								if not interval_clock > 0:
-									datetime_valid = False
-								else:
-									if datetime_diff == 0:
-										interval_time += 1
-									elif datetime_diff != 1:
-										datetime_valid = False
-									else:
-										if interval_time == interval_clock:
-											interval_time = 1
-										else:
-											datetime_valid = False
-
-							if not datetime_valid:
-								if self.show_warns_BV.get():
-									messagebox.showwarning("Date/time Warning",
-									"".join((print_file_name + "Discontinuous date/time found for data point " + line[self.data_point_col] +
-									". The program will continue, but this could cause inacurate statistical output.")))
-
-						if line[self.egg_temper_col] == "":
-							if self.show_warns_BV.get():
-								messagebox.showwarning("Egg Temperature Warning", 
-								"".join((print_file_name + "No egg temperature detected for data point " + line[self.data_point_col] + 
-								".  If left, the program will populate this cell with the temperature above it.")))
-						else:
-							try: float(line[self.egg_temper_col])
-							except:
-								messagebox.showerror("Temperature Error",
-								"".join((print_file_name + "Invalid temperature given for data point " + line[self.data_point_col] + ".")))
-								return False
-						
-						if self.air_valid:
-							try:
-								if line[self.air_temper_col] == "":
-									self.air_valid = False
-									if self.show_warns_BV.get():
-										messagebox.showwarning("Air Temperature Warning", 
-										"".join((print_file_name + "No air temperature detected for data point " + line[self.data_point_col] + 
-										". Air temperatures will not be plotted or included in statistical output.")))
-								else:
-									try: float(line[self.air_temper_col])
-									except:
-										self.air_valid = False
-										if self.show_warns_BV.get():
-											messagebox.showwarning("Air Temperature Warning", 
-											"".join((print_file_name + "Invalid air temperature detected for data point " + line[self.data_point_col] + 
-											". Air temperatures will not be plotted or included in statistical output.")))
-							except IndexError:
-								self.air_valid = False
-
-						prev_line = line
-
-					return True
-				
-			# flag
-			except Exception as e:
-				print(e)
-				print_file_name = ("File: " + os.path.basename(os.path.normpath(in_file)) + " \n\n")
-				messagebox.showerror("Unknown Error",
-				"".join((print_file_name + "There was an unidentifiable error with the provided input file. " +
-				"This is sometimes the result of \"extra\" cells in the input file.\n\n" +
-				"Please reference the NestIQ manual for details regarding proper input file format." +
-				" This can be accessed by clicking \"Help\" in the top right.")))
-				return False
 
 		def check_input_file(self):
 			"""
@@ -1443,10 +1273,10 @@ class GUIClass():
 				Also displays warnings for less severe format violations.
 			"""
 
-			in_file = self.input_file_E.get().lstrip("{").rstrip("}")
+			in_file = self.input_file_E.get()
 			datetime_valid = True
 
-			print_file_name = ("For file: " + os.path.normpath(in_file) + "\n\n")
+			file_name_appendage = ("For file: " + os.path.normpath(in_file) + "\n\n")
 
 			if in_file == "":
 				messagebox.showerror("Input error (Main tab)", "No input file provided.")
@@ -1454,24 +1284,17 @@ class GUIClass():
 		
 			try:
 				if not os.path.exists(in_file):	
-					# Check for curly brace addition (sometimes done for paths with spaces)
-					if in_file[0] == "{":
-						if os.path.exists(in_file[1:(len(in_file) - 1)]):
-							replace_entry(self.input_file_E, (in_file[1:(len(in_file) - 1)]))
-							in_file = self.input_file_E.get()
-						else: raise ValueError
-					else: raise ValueError
+					raise ValueError
 			except ValueError:
 				messagebox.showerror("Input File Error", 
-				"".join((print_file_name, "File with provided path could not be found.")))
+				"".join((file_name_appendage, "File with provided path could not be found.")))
 				return False
 				
-			if in_file[-4:] != ".csv":
+			if not in_file.endswith(".csv"):
 				messagebox.showerror("Input File Error", 
-				"".join((print_file_name, "Input file must end in \".csv\" (comma separated value file format).")))
+				"".join((file_name_appendage, "Input file must end in \".csv\" (comma separated value file format).")))
 				return False
 
-			# Flag
 			try:
 				with open(in_file, "r") as csv_file:
 					csv_lines = csv_file.readlines()
@@ -1480,11 +1303,11 @@ class GUIClass():
 					pop_indices = []
 					# Remove lines not conforming to expected format (such as headers)	
 					for i, cur_line in enumerate(master_list[:-1]):
-						# print("line = ", master_list[i])
-						if any(( 
-								re.search("\D", master_list[i][self.data_point_col]),
-								not re.search("\d", master_list[i][self.data_point_col])
-							)):
+						# Cells in data point column must contain only numbers
+						if any(
+									(re.search("\D", master_list[i][self.data_point_col]),
+									not re.search("\d", master_list[i][self.data_point_col]))
+							  ):
 							
 							pop_indices.append(i)
 						
@@ -1516,7 +1339,7 @@ class GUIClass():
 								raise ValueError
 						except:
 							messagebox.showerror("Data Point Error", 
-							"".join((print_file_name + "Error after data point " + str(prev_line[self.data_point_col]) + 
+							"".join((file_name_appendage + "Error after data point " + str(prev_line[self.data_point_col]) + 
 							". Data point number is not sequential with regard to previous data point.")))
 							return False
 						
@@ -1548,10 +1371,10 @@ class GUIClass():
 							if not datetime_valid:
 								if self.show_warns_BV.get():
 									messagebox.showwarning("Date/time Warning",
-									"".join((print_file_name + "Discontinuous date/time found for data point " + line[self.data_point_col] +
+									"".join((file_name_appendage + "Discontinuous date/time found for data point " + line[self.data_point_col] +
 									". The program will continue, but this could cause inaccurate statistical output.")))
 
-
+						# Check egg temperatures column
 						try:
 							float(line[self.egg_temper_col])
 
@@ -1560,16 +1383,17 @@ class GUIClass():
 						
 						except:
 							messagebox.showerror("Temperature Error",
-							"".join((print_file_name + "Invalid temperature given for data point " + line[self.data_point_col] + ".")))
+							"".join((file_name_appendage + "Invalid temperature given for data point " + line[self.data_point_col] + ".")))
 							return False
 						
+						# Check air temperatures column if appropriate
 						if self.air_valid:
 							try:
 								if line[self.air_temper_col] == "":
 									self.air_valid = False
 									if self.show_warns_BV.get():
 										messagebox.showwarning("Air Temperature Warning", 
-										"".join((print_file_name + "No air temperature detected for data point " + line[self.data_point_col] + 
+										"".join((file_name_appendage + "No air temperature detected for data point " + line[self.data_point_col] + 
 										". Air temperatures will not be plotted or included in statistical output.")))
 								else:
 									try: float(line[self.air_temper_col])
@@ -1577,7 +1401,7 @@ class GUIClass():
 										self.air_valid = False
 										if self.show_warns_BV.get():
 											messagebox.showwarning("Air Temperature Warning", 
-											"".join((print_file_name + "Invalid air temperature detected for data point " + line[self.data_point_col] + 
+											"".join((file_name_appendage + "Invalid air temperature detected for data point " + line[self.data_point_col] + 
 											". Air temperatures will not be plotted or included in statistical output.")))
 							except IndexError:
 								self.air_valid = False
@@ -1586,12 +1410,11 @@ class GUIClass():
 
 					return True
 				
-			# flag
 			except Exception as e:
 				print(e)
-				print_file_name = ("File: " + os.path.basename(os.path.normpath(in_file)) + " \n\n")
+				file_name_appendage = ("File: " + os.path.basename(os.path.normpath(in_file)) + " \n\n")
 				messagebox.showerror("Unknown Error",
-				"".join((print_file_name + "There was an unidentifiable error with the provided input file. " +
+				"".join((file_name_appendage + "There was an unidentifiable error with the provided input file. " +
 				"This is sometimes the result of \"extra\" cells in the input file.\n\n" +
 				"Please reference the NestIQ manual for details regarding proper input file format." +
 				" This can be accessed by clicking \"Help\" in the top right.")))
@@ -1617,9 +1440,8 @@ class GUIClass():
 						
 			# Check if plot file already exists and if so, ask to override
 			if entry == gui.plot_file_E:
-				if not re.search("(.html$)", gui.plot_file_E.get()):
-					new_name = (gui.plot_file_E.get() + ".html")
-					replace_entry(gui.plot_file_E, new_name)
+				if not gui.plot_file_E.get().endswith(".html"):
+					replace_entry(gui.plot_file_E, (gui.plot_file_E.get() + ".html"))
 
 				if os.path.exists(entry.get()):
 					if messagebox.askyesno("Override?", ("The file \"" + entry.get() + "\" already exists.  Do you want to override?")):
@@ -1632,13 +1454,12 @@ class GUIClass():
 						
 			# Check if output or compile statistics file already exists and if so, ask to override
 			if entry == gui.stats_file_E or entry == gui.multi_in_stats_file_E:
-				if not re.search("(.csv$)", gui.stats_file_E.get()):
+				if not gui.stats_file_E.get().endswith(".csv"):
 					new_name = (gui.stats_file_E.get() + ".csv")
 					replace_entry(gui.stats_file_E, new_name)
 
-				if not re.search("(.csv$)", gui.multi_in_stats_file_E.get()):
-					new_name = (gui.multi_in_stats_file_E.get() + ".csv")
-					replace_entry(gui.multi_in_stats_file_E, new_name)
+				if not gui.multi_in_stats_file_E.get().endswith(".csv"):
+					replace_entry(gui.multi_in_stats_file_E, (gui.multi_in_stats_file_E.get() + ".csv"))
 
 				if os.path.exists(entry.get()) or os.path.exists(entry.get() + ".csv"):
 					if not messagebox.askyesno("Override?", ("The file \"" + entry.get() + "\" already exists.  Do you want to override?")):
@@ -1697,17 +1518,21 @@ class GUIClass():
 
 			return True
 
-		# Check output
+		niq_misc.remove_curly(self.input_file_E, self.out_path_E, self.plot_file_E, self.stats_file_E)
+
+		# Check output directory
 		try:
 			os.chdir(self.out_path_E.get())
 		except:
 			messagebox.showerror("Output Path Error", 
 			"Provided output path could not be found. Ensure the path is to a directory not a file (path should end with a slash).")
 			return False
-			
+		
+		# Check time entry boxes
 		if not check_time(self.day_start_E.get(), "day") or not check_time(self.night_start_E.get(), "night"):
 			return False
 			
+		# Check data smoothing box
 		try:
 			if not float(self.smoothing_radius_E.get()).is_integer():
 				raise ValueError
@@ -1719,6 +1544,7 @@ class GUIClass():
 				messagebox.showerror("Data Smoothing Radius Error", "Data smoothing radius must be an integer.")
 				return False
 		
+		# Check duration threshold box
 		try:
 			if int(float(self.dur_thresh_E.get())) < 0:
 				messagebox.showerror("Duration Threshold Error", "Duration threshold cannot be less than zero.")
@@ -1744,7 +1570,65 @@ class GUIClass():
 					return False
 
 		return True
-	
+
+	def check_valid_adv(self):	
+		"""
+			Checks for valid configuration of all parameters housed on the Advanced tab.  
+		"""
+		def try_autofill():
+			"""
+				Checks if all Markov model parameter boxes are empty and runs unsupervised learning if so.
+			"""
+
+			for entry in (  self.init_off_E, self.init_on_E, self.off_off_trans_E,
+							self.off_on_trans_E, self.on_on_trans_E, self.on_off_trans_E,
+							self.off_mean_E, self.on_mean_E,
+							self.off_stdev_E, self.on_stdev_E
+						):
+				if entry.get() != "":
+					return False
+			
+			self.unsupervised_learning(auto_run=True)
+
+			return True
+
+		try:
+			entries = (	
+							self.init_off_E, self.init_on_E, self.off_off_trans_E,
+							self.off_on_trans_E, self.on_on_trans_E, self.on_off_trans_E
+					  )
+
+			for entry in entries:
+				if float(entry.get()) < 0:
+					raise ValueError("Probability less than 0 provided.")
+		except:
+			if self.UL_default_BV.get():
+				if try_autofill():
+					return True
+
+			messagebox.showerror("Parameter Error (Advanced tab)",
+								"Probabilities must be real numbers greater than 0.")
+
+			return False
+
+		try:
+			(float(mean) for mean in (self.off_mean_E.get(), self.on_mean_E.get()))
+
+		except TypeError:
+			messagebox.showerror("Parameter Error (Advanced tab)",
+								"Distribution means must be real numbers.")
+			return False
+		try:
+			for stdev in (self.off_stdev_E.get(), self.on_stdev_E.get()):
+				if float(stdev) <= 0:
+					raise ValueError("Standard deviation less than 0 provided.")
+		except:
+			messagebox.showerror("Parameter Error (Advanced tab)",
+								"Distribution standard deviations must be real numbers greater than 0.")
+			return False
+		
+		return True
+
 	def check_valid_plot_ops(self):
 		"""
 			Checks for valid configuration of all parameters housed on the Plot Options tab.  
@@ -1849,59 +1733,32 @@ class GUIClass():
 		return True
 
 
-	def check_valid_adv(self):	
+	def check_valid_edit_ops(self, rerun=True):
 		"""
-			Checks for valid configuration of all parameters housed on the Advanced tab.  
+			Checks for valid configuration of all parameters housed on the Edit tab.  
+
+			Args:
+				rerun (Bool): Indicates if checking should be performed for modified plot path as well.
 		"""
-		def try_autofill():
-			"""
-				Checks if all Markov model parameter boxes are empty and runs unsupervised learning if so.
-			"""
+		niq_misc.remove_curly(self.ori_plot_E, self.mod_plot_E)
 
-			for entry in (  self.init_off_E, self.init_on_E, self.off_off_trans_E,
-							self.off_on_trans_E, self.on_on_trans_E, self.on_off_trans_E,
-							self.off_mean_E, self.on_mean_E,
-							self.off_stdev_E, self.on_stdev_E
-						):
-				if entry.get() != "":
-					return False
-			
-			self.unsupervised_learning(auto_run = True)
+		paths_dict = {"Original Plot": self.ori_plot_E.get(), "Modified Plot": self.mod_plot_E.get()}
 
-			return True
+		# Do not check modified plot path if not performing full rerun
+		if not rerun:
+			del paths_dict["Modified Plot"]
 
-		try:
-			for entry in (	self.init_off_E, self.init_on_E, self.off_off_trans_E,
-							self.off_on_trans_E, self.on_on_trans_E, self.on_off_trans_E
-						 ):
-				if float(entry.get()) < 0:
-					raise ValueError("Probability less than 0 provided.")
-		except:
-			if self.UL_default_BV.get():
-				if try_autofill():
-					return True
+		for name, path in paths_dict.items():
+			try:
+				if not os.path.exists(path):	
+					raise ValueError
+			except ValueError:
+				messagebox.showerror(
+										f"{name} File Error (Edit tab)", 
+										"".join((path, "File with provided path could not be found."))
+									)
+				return False
 
-			messagebox.showerror("Parameter Error (Advanced tab)",
-								"Probabilities must be real numbers greater than 0.")
-
-			return False
-
-		try:
-			(float(mean) for mean in (self.off_mean_E.get(), self.on_mean_E.get()))
-
-		except TypeError:
-			messagebox.showerror("Parameter Error (Advanced tab)",
-								"Distribution means must be real numbers.")
-			return False
-		try:
-			for stdev in (self.off_stdev_E.get(), self.on_stdev_E.get()):
-				if float(stdev) <= 0:
-					raise ValueError("Standard deviation less than 0 provided.")
-		except:
-			messagebox.showerror("Parameter Error (Advanced tab)",
-								"Distribution standard deviations must be real numbers greater than 0.")
-			return False
-		
 		return True
 	
 	def get_data_time_interval(self, reader, first_line):
@@ -1991,7 +1848,6 @@ class GUIClass():
 		"""
 			Handles plot file browsing and selection
 		"""		
-		print("gett file called")
 		root.update()
 		path_ = filedialog.askopenfilename()
 		root.update()
@@ -1999,11 +1855,7 @@ class GUIClass():
 		if path_ != "": 
 			replace_entry(entry, path_)			
 
-		# Handle curly braces added to paths with spaces
-		current = entry.get()
-		if "{" in current or "}" in current:
-			print("hello", current.lstrip("{").rstrip("}"))
-			replace_entry(entry, current.lstrip("{").rstrip("}"))
+		niq_misc.remove_curly(entry)
 				
 	def get_dir(self, entry):
 		"""
@@ -2022,10 +1874,7 @@ class GUIClass():
 		if path_ != "":
 			entry.insert(len(path_), "/")
 
-		# Handle curly braces added to paths with spaces
-		current = entry.get()
-		if "{" in current or "}" in current:
-			replace_entry(entry, current.lstrip("{").rstrip("}"))
+		niq_misc.remove_curly(entry)
 			
 	def append_multi_file_stats(self):
 		"""
@@ -2036,25 +1885,25 @@ class GUIClass():
 			# Used to indictate scope of certain statistics
 			qualifier = "(D)," if self.restrict_search_BV.get() else "(DN),"
 		
-			print("Cumulative Summary", file = compiled_stats_file)
+			print("Cumulative Summary", file=compiled_stats_file)
 			
-			print("Off-Bout Count", qualifier, str(len(self.multi_file_off_durs)), file = compiled_stats_file)
-			print("Mean Off Dur", qualifier, str(round(statistics.mean(self.multi_file_off_durs), 2)), file = compiled_stats_file)
-			print("Off Dur StDev", qualifier, str(round(statistics.stdev(self.multi_file_off_durs), 2)), file = compiled_stats_file)
-			print("Mean Off Temp Drop", qualifier, str(round(statistics.mean(self.multi_file_off_decs), 3)), file = compiled_stats_file)
-			print("Off Drop StDev", qualifier, str(round(statistics.stdev(self.multi_file_off_decs), 3)), file = compiled_stats_file)
+			print("Off-Bout Count", qualifier, str(len(self.multi_file_off_durs)), file=compiled_stats_file)
+			print("Mean Off Dur", qualifier, str(round(statistics.mean(self.multi_file_off_durs), 2)), file=compiled_stats_file)
+			print("Off Dur StDev", qualifier, str(round(statistics.stdev(self.multi_file_off_durs), 2)), file=compiled_stats_file)
+			print("Mean Off Temp Drop", qualifier, str(round(statistics.mean(self.multi_file_off_decs), 3)), file=compiled_stats_file)
+			print("Off Drop StDev", qualifier, str(round(statistics.stdev(self.multi_file_off_decs), 3)), file=compiled_stats_file)
 			
-			print("On-Bout Count", qualifier, str(len(self.multi_file_on_durs)), file = compiled_stats_file)
-			print("Mean On Dur", qualifier, str(round(statistics.mean(self.multi_file_on_durs), 2)), file = compiled_stats_file)
-			print("On Dur StDev", qualifier, str(round(statistics.stdev(self.multi_file_on_durs), 2)), file = compiled_stats_file)
-			print("Mean On Temp Rise", qualifier, str(round(statistics.mean(self.milti_in_on_incs), 3)), file = compiled_stats_file)
-			print("On Rise StDev", qualifier, str(round(statistics.stdev(self.milti_in_on_incs), 3)), file = compiled_stats_file)
+			print("On-Bout Count", qualifier, str(len(self.multi_file_on_durs)), file=compiled_stats_file)
+			print("Mean On Dur", qualifier, str(round(statistics.mean(self.multi_file_on_durs), 2)), file=compiled_stats_file)
+			print("On Dur StDev", qualifier, str(round(statistics.stdev(self.multi_file_on_durs), 2)), file=compiled_stats_file)
+			print("Mean On Temp Rise", qualifier, str(round(statistics.mean(self.milti_in_on_incs), 3)), file=compiled_stats_file)
+			print("On Rise StDev", qualifier, str(round(statistics.stdev(self.milti_in_on_incs), 3)), file=compiled_stats_file)
 			
-			print("Full Day Count,", str(self.milti_in_full_day_count), file = compiled_stats_file)
-			print("Mean Egg Temp,", str(round(statistics.mean((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file = compiled_stats_file)
-			print("Egg Temp StDev,", str(round(statistics.stdev((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file = compiled_stats_file)
-			print("Mean Daytime Egg Temp,", str(round(statistics.mean(self.multi_in_day_tempers), 3)), file = compiled_stats_file)
-			print("Day Egg Temp StDev,", str(round(statistics.stdev(self.multi_in_day_tempers), 3)), file = compiled_stats_file)
+			print("Full Day Count,", str(self.milti_in_full_day_count), file=compiled_stats_file)
+			print("Mean Egg Temp,", str(round(statistics.mean((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
+			print("Egg Temp StDev,", str(round(statistics.stdev((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
+			print("Mean Daytime Egg Temp,", str(round(statistics.mean(self.multi_in_day_tempers), 3)), file=compiled_stats_file)
+			print("Day Egg Temp StDev,", str(round(statistics.stdev(self.multi_in_day_tempers), 3)), file=compiled_stats_file)
 			print("Mean Nighttime Egg Temp,", str(round(statistics.mean(self.multi_in_night_tempers), 3)), file = compiled_stats_file)
 			print("Night Egg Temp StDev,", str(round(statistics.stdev(self.multi_in_night_tempers), 3)), file = compiled_stats_file)
 			print("Min Egg Temp,", str(min(self.multi_in_day_tempers + self.multi_in_night_tempers)), file = compiled_stats_file)
@@ -2109,9 +1958,10 @@ class GUIClass():
 
 			#Get original vertices if undergoing manual vertex editing
 			if mod_plot:
+				if not self.check_valid_edit_ops(rerun=False):
+					return False
 				try:
 					ori_verts_ = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
-					# print("len oriverts = ", len(ori_verts))
 				except Exception:
 					messagebox.showerror(("Input File Error (Edit tab)"), 
 					"Original plot file could not be read.")	
@@ -2132,7 +1982,7 @@ class GUIClass():
 					
 		self.config.read(os.path.join(self.core_dir, "config_files", "default_config.ini"))
 
-	def update_config(self, config_file = None):
+	def update_config(self, config_file=None):
 		"""
 			Generates a configuration file from the current GUI parameters. If no file name if provided,
 			this function saves to default_config.ini, resetting the default parameters for NestIQ.
@@ -2278,16 +2128,20 @@ class GUIClass():
 					self.run_B.config(bg = "gray", fg = "white", width = 15, height = 1)
 
 				# Check if all inputs are valid
-				if not (self.check_valid_main(check_output = (file_num == 1)) and 
-						self.check_valid_adv() and
-						self.check_valid_plot_ops() and
-						self.check_valid_stat_ops()
+				edit_tab_check = self.check_valid_edit_ops() if rerun else True
+				if not (
+							self.check_valid_main(check_output=(file_num == 1)) and 
+							self.check_valid_adv() and
+							self.check_valid_plot_ops() and
+							self.check_valid_stat_ops() and
+							edit_tab_check
 					   ):
 					successful = False
 					break
 					
 				print("Active file:", in_file)
 
+				self.input_pd = niq_misc.get_master_df(self, in_file)
 				self.master_list = niq_misc.get_master_list(self, in_file)
 				self.master_array = niq_misc.get_master_arr(self, self.master_list)
 
@@ -2322,14 +2176,14 @@ class GUIClass():
 			if re.search(("[^\{\}]"), "".join(self.master_input)):
 				replace_entry(self.input_file_E, self.master_input)
 
-			replace_entry(self.input_file_E, self.input_file_E.get().lstrip("{").rstrip("}"))
+			niq_misc.remove_curly(self.input_file_E)
 
 			self.master_input = tuple()
 
 			self.run_B["text"] = "Run"
 			self.run_B.config(bg = "red4", fg = "white", width = 10, height = 1)
 			self.run = False
-			print("Done")
+			print(colored("Done", "green"))
 
 		except Exception:
 			traceback.print_exc()
@@ -2361,7 +2215,7 @@ class GUIClass():
 
 		return master_array	
 
-	def unsupervised_learning(self, auto_run = False):
+	def unsupervised_learning(self, auto_run=False):
 		"""
 			Prepares master array from input data, runs the baum welch algorithm, and populates the GUI with
 			resulting parameters.
@@ -2371,7 +2225,7 @@ class GUIClass():
 		"""
 
 		self.run_B["text"] = "Learning..."
-		self.run_B.config(bg = "gray", fg = "white", width = 10, height = 1)
+		self.run_B.config(bg="gray", fg = "white", width = 10, height = 1)
 		root.update()
 
 		input_ = niq_misc.extract_in_files(self.input_file_E.get())

@@ -1,0 +1,6 @@
+*.pyc
+*bokeh*
+NIQ_uncompiled/source_code/__pycache__/niq_classes.cpython-36.pyc
+NIQ_uncompiled/source_code/__pycache__/niq_hmm.cpython-36.pyc
+NIQ_uncompiled/source_code/__pycache__/niq_misc.cpython-36.pyc
+*.pyc

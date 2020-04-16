@@ -6,6 +6,7 @@ import datetime
 import time
 
 import numpy as np
+import pandas as pd
 from bokeh.io import reset_output
 from bokeh.layouts import column, widgetbox
 from bokeh.models import HoverTool, PointDrawTool, Span
@@ -60,7 +61,7 @@ def check_time_in_daytime(day_start, night_start, time):
 	
 	return True
 	
-def split_days(gui, modifier = 0):
+def split_days(gui, modifier=0):
 	"""
 		Splits the entire data set into individual day and night objects based on user-provided day and
 		night start times.
@@ -206,25 +207,65 @@ def get_day_dur(day_start, night_start):
 	night_float = float(night.group(1)) + (float(night.group(3)) / 60)
 	
 	return ((night_float - day_float) * 60)	
-		
-def get_master_list(gui, source_file):
+
+def get_master_df(gui, source_path):
+	width = 4 if gui.air_valid else 3
+	input_df = pd.read_csv(source_path)
+	
+	# Remove any "extra" columns
+	input_df = input_df.iloc[:, :width]
+
+	# Rename columns
+	old_col_names = list(input_df.columns)
+	col_names = ["data_point", "date_time", "egg_temper", "air_temper"][:width]
+	col_rename_dict = {old:new for old, new in zip(old_col_names, col_names)}
+	input_df.rename(columns=col_rename_dict, inplace=True)
+
+	# Set any data_point, egg_temper or air_temper cells with non-number values to NaN
+	numeric_cols = col_names[0:1] + col_names[2:]
+	for col in numeric_cols:
+		input_df.loc[input_df[col].apply(lambda x: re.search("[^\d\.]", str(x)) is not None), col] = np.NaN
+
+	# Set any cell not containing at least one number to Nan
+	for col in col_names:
+		input_df.loc[input_df[col].apply(lambda x: re.search("\d", str(x)) is None), col] = np.nan
+
+	# Delete any rows containing NaN value
+	input_df.dropna(inplace=True)
+
+	# Convert column object types
+	input_df["data_point"] = input_df["data_point"].astype(int)
+	input_df["egg_temper"] = input_df["egg_temper"].astype(float)
+	if gui.air_valid:
+		input_df["air_temper"] = input_df["air_temper"].astype(float)
+
+	# Reassign data_point column to be continuous
+	start = int(input_df["data_point"].iloc[0])
+	new_col = range(start, input_df.shape[0] + 1)
+	input_df["data_point"] = new_col
+
+	# Set indices to data_point column
+	input_df.set_index("data_point", inplace=True)
+
+	print(input_df)
+
+def get_master_list(gui, source_path):
 	"""
 		Creates 2D list from input CSV.  Also performs some gap filling and trimming of unnecessary lines.
 
 		Args:
 			gui (GUIClass)
-			source_file (string): path to and name of input CSV file
+			source_path (string): path to and name of input CSV file
 	"""
 
 	pop_indices = []
 	
-	with open(source_file, "r") as input_csv:
+	with open(source_path, "r") as input_csv:
 		csv_lines = input_csv.readlines()
 	
 	master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
 		
 	for i, cur_line in enumerate(master_list[:-1]):
-		# print("line = ", master_list[i])
 		if any(( 
 				re.search("\D", master_list[i][gui.data_point_col]),
 				not re.search("\d", master_list[i][gui.data_point_col])
@@ -697,7 +738,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 	with open(gui.stats_file_E.get(), "a") as stats_file:
 		print("\n\n", "Individual Bout Stats", file = stats_file)
 		print("Date,Bout Type,Start Time,End Time,Start Data Point,End Data Point,Duration (min)," +
-			   "Egg Temp Change,Start Egg Temp,End Egg Temp,Mean Egg Temp,", end = "", file = stats_file)
+			"Egg Temp Change,Start Egg Temp,End Egg Temp,Mean Egg Temp,", end = "", file = stats_file)
 
 		if gui.air_valid:
 			print("Start Air Temp, End Air Temp, Mean Air Temp", end = "", file = stats_file)
@@ -719,15 +760,15 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 						print("On" + ",", end = "", file = stats_file)
 						
 					print(extract_time(gui.master_list[bout.start][gui.date_time_col]) + "," + 
-						   extract_time(gui.master_list[bout.stop][gui.date_time_col]) + ",", end = "", file = stats_file)
-						   
+						extract_time(gui.master_list[bout.stop][gui.date_time_col]) + ",", end = "", file = stats_file)
+						
 					print(gui.master_list[bout.start][gui.data_point_col] + "," + 
-						   gui.master_list[bout.stop][gui.data_point_col] + ",", end = "", file = stats_file)
+						gui.master_list[bout.stop][gui.data_point_col] + ",", end = "", file = stats_file)
 
 					print(str(bout.dur) + "," + str(bout.temper_change) + ",", end = "", file = stats_file)
 					print(gui.master_list[bout.start][gui.egg_temper_col].strip() + "," + 
-						   gui.master_list[bout.stop][gui.egg_temper_col].strip() + "," + 
-						   str(bout.mean_egg_temper) + ",", end = "", file = stats_file)
+						gui.master_list[bout.stop][gui.egg_temper_col].strip() + "," + 
+						str(bout.mean_egg_temper) + ",", end = "", file = stats_file)
 					
 					if gui.air_valid:
 						print(gui.master_list[bout.start][gui.air_temper_col].strip() + "," + gui.master_list[bout.stop][gui.air_temper_col].strip() + "," + str(bout.mean_air_temper) + ",", end = "", file = stats_file)
@@ -766,7 +807,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 							gui.master_list[bout.start][gui.air_temper_col].strip() + "," +
 							gui.master_list[bout.stop][gui.air_temper_col].strip() + "," + 
 							str(bout.mean_air_temper) + ",", end = "", file = stats_file
-						 )
+						)
 									
 				print("", file = stats_file)
 									
@@ -778,7 +819,7 @@ def smooth_col(radius, col):
 
 		Args:
 			radius (int): number of values to include in rolling mean 
-						  (e.g. radius = 1 means average values i, i-1 and i+1)
+						(e.g. radius = 1 means average values i, i-1 and i+1)
 	"""
 
 	if radius <= 0: 
@@ -796,7 +837,7 @@ def smooth_col(radius, col):
 
 	return smoothed_arr
 
-def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False, ori_verts = None):
+def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori_verts=None):
 	"""
 		Uses the Bokeh module to generate an interactive plot for the current input file.
 
@@ -905,7 +946,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False, o
 		air_temper_line = plot.line(
 									master_array[:, 0], air_arr, line_width = float(gui.air_line_width_E.get()), 
 									color = gui.air_line_color.get(), line_alpha = 1, legend = "Air temperature"
-								   )
+								)
 
 	if gui.plot_egg_BV.get():
 		if gui.smooth_status_IV.get():
@@ -963,7 +1004,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False, o
 						master_array[:, 0], egg_arr, 
 						line_width = float(gui.bout_line_width_E.get()), 
 						color = gui.bout_line_color.get()
-					 )
+					)
 
 		plot.circle(
 					master_array[:, 0], egg_arr, 
@@ -978,50 +1019,50 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False, o
 						master_array[:, 0], master_array[:, delta_col], 
 						line_width = float(gui.bout_line_width_E.get()), 
 						color = gui.bout_line_color.get()
-					 )
+					)
 
 		if gui.plot_egg_BV.get():
 			# Add legend values
 			plot.triangle(
-						  master_array[0, 0], master_array[0, delta_col], size = float(gui.on_point_size_E.get()), 
-						  color = gui.on_point_color.get(), legend = "On-bout (egg - air)"
-						 )
+						master_array[0, 0], master_array[0, delta_col], size = float(gui.on_point_size_E.get()), 
+						color = gui.on_point_color.get(), legend = "On-bout (egg - air)"
+						)
 
 			plot.triangle(
-						  master_array[0, 0], master_array[0, delta_col], size = float(gui.on_point_size_E.get()), 
-						  color = gui.off_point_color.get(), legend = "Off-bout (egg - air)"
-						 )
+						master_array[0, 0], master_array[0, delta_col], size = float(gui.on_point_size_E.get()), 
+						color = gui.off_point_color.get(), legend = "Off-bout (egg - air)"
+						)
 
 			plot.triangle(
-						  master_array[:, 0], master_array[:, delta_col],
-						  size = float(gui.on_point_size_E.get()), 
-						  color = color_, alpha = alpha_
-						 )
+						master_array[:, 0], master_array[:, delta_col],
+						size = float(gui.on_point_size_E.get()), 
+						color = color_, alpha = alpha_
+						)
 		else:
 			# Add legend values
 			if select_mode:
 				plot.circle(master_array[0, 0], master_array[0, delta_col], 
 							size = float(gui.on_point_size_E.get()), 
 							color = "gray", legend = "Temperature reading"
-						   )
+						)
 			else:
 				plot.circle(
 							master_array[0, 0], master_array[0, delta_col], 
 							size = float(gui.on_point_size_E.get()), 
 							color = gui.on_point_color.get(), legend = "On-bout"
-						   )
+						)
 
 				plot.circle(
 							master_array[0, 0], master_array[0, delta_col], 
 							size = float(gui.on_point_size_E.get()), 
 							color = gui.off_point_color.get(), legend = "Off-bout"
-						   )
+						)
 
 			plot.circle(
 						master_array[:, 0], master_array[:, delta_col], 
 						size = float(gui.on_point_size_E.get()), 
 						color = color_, alpha = alpha_
-					   )	
+					)	
 	
 	#-------------------------------------------------------------------------------------------
 	# Generate table with vertex information
@@ -1056,7 +1097,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode = False, o
 		renderer = plot.circle(
 								"x", "y", size = float(gui.on_point_size_E.get()), color = "red", 
 								fill_alpha = 0.8, legend = "Incubation State Change", source = src
-							  )
+							)
 		
 		draw_tool = PointDrawTool(renderers = [renderer], empty_value = 1)
 		plot.add_tools(draw_tool)
@@ -1206,7 +1247,7 @@ def list_to_gen(list_):
 
 
 # FLAG largely redundant with function in niq_hmm
-def add_states(self, master_array, verts = None, results_arr = None):
+def add_states(self, master_array, verts=None, results_arr=None):
 		"""
 			Adds column 6 to master array: state (0 or 1).
 
@@ -1241,6 +1282,16 @@ def add_states(self, master_array, verts = None, results_arr = None):
 		# If results are provided, simply append states to master_array
 		if results_arr is not None:
 			master_array = np.hstack((master_array, results_arr.reshape(results_arr.shape[0], 1)))
-			
 		
 		return master_array
+
+def remove_curly(*entries):
+	"""
+		Removes curly braces from entry box contents. These are often added for paths containing spaces.
+
+		Args:
+			entries (tk.Entry)
+	"""
+
+	for entry in entries:
+		replace_entry(entry, entry.get().lstrip("{").rstrip("}"))

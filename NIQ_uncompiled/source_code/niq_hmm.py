@@ -176,7 +176,7 @@ class HMM(object):
         master_array = self.add_states(master_array, results_arr = np.array(results))
         return master_array
 
-    def add_states(self, master_array, verts = None, results_arr = None):
+    def add_states(self, master_array, verts=None, results_arr=None):
         """
             Adds column 6 to master array: state (0 or 1).
 
@@ -221,7 +221,7 @@ class HMM(object):
                 master_array (numpy array)
         """
 
-        def get_cumu_prob(self, state, val, mean = None, stdev = None, pseudocount = 1e-12):
+        def get_cumu_prob(self, state, val, mean=None, stdev=None, pseudocount=1e-12):
             """
                 Gets the cumulative probability for a temperature change occurring in a given state.
 
