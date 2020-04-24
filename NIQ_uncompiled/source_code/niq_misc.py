@@ -4,6 +4,7 @@ import re
 import statistics
 import datetime
 import time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,7 @@ def extract_time(date_time_cell):
 		Pulls time out of cell containing date and time (MM/DD/YYYY HH:MM)
 
 		Args:
-			date_time_cell (string): input file cell containing the date and time string to be extracted from
+			date_time_cell (str): input file cell containing the date and time string to be extracted from
 	"""
 
 	return re.search("(\d+:\d+)", date_time_cell).group(1)
@@ -32,7 +33,7 @@ def extract_date(date_time_cell):
 		Pulls date out of cell containing date and time (MM/DD/YYYY HH:MM)
 
 		Args:
-			date_time_cell (string): input file cell containing the date and time string to be extracted from
+			date_time_cell (str): input file cell containing the date and time string to be extracted from
 	"""
 
 	return re.search("(\d+\/\d+\/\d+)", date_time_cell).group(1)
@@ -42,9 +43,9 @@ def check_time_in_daytime(day_start, night_start, time):
 		Checks if a given time is inside of user-provided daytime period.
 
 		Args:
-			day_start (string): time considered the start of daytime
-			night_start (string): time considered the end of daytime
-			time (string): time being analyzed
+			day_start (str): time considered the start of daytime
+			night_start (str): time considered the end of daytime
+			time (str): time being analyzed
 	"""
 
 	day = re.search("(\d+)(:)(\d+)", day_start)
@@ -77,7 +78,7 @@ def split_days(gui, modifier=0):
 			searched for. 
 
 			Args:
-				ori_time (string): original time (prior to modification)
+				ori_time (str): original time (prior to modification)
 		"""
 
 		if modifier == 0:
@@ -196,8 +197,8 @@ def get_day_dur(day_start, night_start):
 		Finds the duration of the daytime period specified by the user.
 
 		Args:
-			day_start (string): start of daytime period
-			night_start (string): end of daytime period
+			day_start (str): start of daytime period
+			night_start (str): end of daytime period
 	"""
 
 	day = re.search("(\d+)(:)(\d+)", day_start)
@@ -247,7 +248,7 @@ def get_master_df(gui, source_path):
 	# Set indices to data_point column
 	input_df.set_index("data_point", inplace=True)
 
-	print(input_df)
+	# print(input_df)
 
 def get_master_list(gui, source_path):
 	"""
@@ -255,7 +256,7 @@ def get_master_list(gui, source_path):
 
 		Args:
 			gui (GUIClass)
-			source_path (string): path to and name of input CSV file
+			source_path (str): path to and name of input CSV file
 	"""
 
 	pop_indices = []
@@ -344,7 +345,7 @@ def get_verts_from_html(gui, in_file, alt=False):
 
 		Args:
 			gui (GUIClass)
-			in_file (string): path to and name of HTML file containing user-provided vertex locations
+			in_file (str): path to and name of HTML file containing user-provided vertex locations
 			alt (Bool): dictates if vertices are extracted from the table or alternative variable in HTML file
 	"""
 
@@ -354,7 +355,7 @@ def get_verts_from_html(gui, in_file, alt=False):
 
 			Args:
 				gui (GUIClass)
-				in_file (string): path to and name of HTML file containing user-provided vertex locations
+				in_file (str): path to and name of HTML file containing user-provided vertex locations
 		"""
 
 		data_point_list = []
@@ -1170,34 +1171,43 @@ def filter_by_dur(master_array, dur_thresh):
 			
 	return master_array, bouts_dropped_locs
 
-def get_novel_name(entry, core_name):
+def get_unique_path(file_name, dir_path=Path.cwd(), ext=""):
 	"""
-		Incriments an identificaiton number until a nonexistant file name is found.
+		Incriments an identificaiton number until a unique file name is found.
 
 		Args:
 			entry (tk.Entry): entry box being updated
-			core_name (string): base file name to be used, "NUM" must be present in the string
-								as this is where the identification number is placed.
+			file_name (str): base or "stem" of path to be returned
+			dir_path (str or pathlib.Path): path to parent directory
+			ext (str): file extension
 	"""
 
-	num_loc = core_name.find("NUM")
-	if num_loc == -1:
-		return
-		
-	before_num = core_name[:num_loc]
-	after_num = core_name[num_loc + 3:]
+	counter = 0
+	file_path = Path(dir_path) / file_name
 
-	i = 1
-	while os.path.exists(entry.get()):
-		replace_entry(entry, (before_num + str(i) + after_num))
-		i += 1
+	# Adds appropriate extension if not already present
+	file_path = file_path.parent / (file_path.stem + ext)
+	stem = file_path.stem
+	
+	# Adds trailing number until unique path is found
+	while file_path.exists():
+		counter += 1
+		file_path = file_path.parent / (stem + "_" + str(counter).zfill(3) + file_path.suffix)
+
+	return file_path.name
+
+
+def set_unique_path(entry, file_name, dir_path=Path.cwd(), ext=""):
+	unique_path = get_unique_path(file_name, dir_path, ext)
+	replace_entry(entry, unique_path)
+
 
 def extract_in_files(in_file_string):
 	"""
 		Parses sting of paths for individual input files.
 
 		Args:
-			in_file_string (string): collection of paths
+			in_file_string (str): collection of paths
 	"""
 
 	split_list = in_file_string.split(".csv")
@@ -1212,7 +1222,7 @@ def get_datetime(gui, line):
 		Creates datetime object from date/time cell in the input file.
 
 		Args:
-			line (string): text from date/time cell
+			line (str): text from date/time cell
 	"""
 
 	print_file_name = ("File: " + os.path.basename(os.path.normpath(gui.input_file_E.get())) + " \n\n")

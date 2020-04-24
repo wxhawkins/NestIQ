@@ -4,6 +4,7 @@ import configparser
 import csv
 import re
 import statistics
+from pathlib import Path
 from random import randint
 
 import traceback
@@ -18,7 +19,7 @@ from termcolor import colored
 from bs4 import BeautifulSoup
 
 import niq_misc
-from niq_misc import get_novel_name, replace_entry
+from niq_misc import set_unique_path, replace_entry
 import niq_classes
 import niq_hmm
 
@@ -44,7 +45,7 @@ class GUIClass():
 			
 		# Initialize column identities -- currently static
 		self.data_point_col = 0
-		self.date_time_col = 1
+		self.date_time_col  = 1
 		self.egg_temper_col = 2
 		self.air_temper_col = 3
 
@@ -134,9 +135,8 @@ class GUIClass():
 		self.plot_CB.grid(row = 8, sticky = "W", padx = 10)
 		self.plot_file_L = tk.Label(tab1, text = "File name:", font = STANDARD_FONT)
 		self.plot_file_E = tk.Entry(tab1, width = 24)
-		self.plot_file_E.insert(0, "plot.html")
 		self.plot_B = tk.Button(tab1, text = "Browse Directory", command = (lambda : self.get_dir(self.plot_file_E)))
-		get_novel_name(self.plot_file_E, "plot(NUM).html")
+		set_unique_path(self.plot_file_E, "niq_plot", self.out_path_E.get(), ".html")
 			
 		self.plot_CB.select()
 		self.plot_file_L.grid(row = 9, sticky = "W", padx = 32)
@@ -150,9 +150,8 @@ class GUIClass():
 		self.stats_CB.grid(row = 10, sticky = "NW", padx = 10, pady = (10, 0))
 		self.stats_file_L = tk.Label(tab1, text = "File name:", font = STANDARD_FONT)
 		self.stats_file_E = tk.Entry(tab1, width = 24)
-		self.stats_file_E.insert(0, "stats.csv")
 		self.stats_B = tk.Button(tab1, text = "Browse Directory", command = (lambda : self.get_dir(self.stats_file_E)))
-		get_novel_name(self.stats_file_E, "stats(NUM).csv")
+		set_unique_path(self.stats_file_E, "niq_stats", self.out_path_E.get(), ".csv")
 
 		self.stats_CB.select()
 		self.stats_file_L.grid(row = 11, sticky = "W", padx = 32)
@@ -1030,42 +1029,45 @@ class GUIClass():
 	def master_test(self, root):
 		# Initialization
 		# Load config file
-		ref_config_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/test_config.ini"
+		ref_config_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/test_config.ini")
 		self.load_config(config_file_ = ref_config_path)
 
 		# Load testing input file
 		self.input_file_E.delete(0, "end")
 		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input.csv")
-		self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.csv")
+		self.input_file_E.insert(0, Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.csv"))
 
 		
 		# Set up output
-		self.stats_file_E.delete(0, "end")
-		self.stats_file_E.insert(0, "stat_testing_out.csv")
-		out_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/temp_output/"
+		rand_key = str(randint(1000000, 10000000))
+		out_dir_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/temp_output/")
 		self.out_path_E.delete(0, "end")
-		self.out_path_E.insert(0, out_path)
+		self.out_path_E.insert(0, out_dir_path)
 		
 		# ---------------------------------Statistics----------------------------------------
 		# Declare paths
-		# ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_unrestricted.csv"
-		unres_ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_unrestricted_long.csv"
-		res_ref_stats_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_restricted_long.csv"
-		test_stat_root = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/temp_output/"
-		test_stats_path = test_stat_root + "stat_testing_out.csv"
+		unres_ref_stats_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_unrestricted_long.csv")
+		res_ref_stats_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_restricted_long.csv")
+		test_stat_dir = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/temp_output/")
 
 		# Set up text coloring
-		colorama.init() 
+		colorama.init()
 
+		print(f"Key = {rand_key}")
 
-		for i, test_type in enumerate(("unrestricted", "restricted")):
-		# for test_type in ("restricted"):
-			rand_key = str(randint(1000000, 10000000))
+		for test_type in ("unrestricted", "restricted"):
 			print(f"\n\nTesting statistics ({test_type})")
-			print(f"Key = {rand_key}")
 
 			if test_type == "restricted":
 				self.restrict_search_CB.select()
+			else:
+				self.restrict_search_CB.deselect()
+			
+			# Set up output file names
+			test_stats_path = f"{rand_key}_{test_type}.csv"
+			test_plot_path = f"{rand_key}_{test_type}.html"
+			replace_entry(self.stats_file_E, test_stats_path)
+			replace_entry(self.plot_file_E, test_plot_path)
 
 			# Run statistical analysis
 			self.trigger_run(root)
@@ -1087,39 +1089,27 @@ class GUIClass():
 
 			# Notify user of mismatched values if any
 			if not mismatches:
-				print(colored("--------------------------STATS PASSED--------------------------", "green"))
+				print(colored(f"{test_type.upper()} STATS PASSED".center(100, "-"), "green"))
 			else:
-				print(colored("--------------------------STATS FAILED--------------------------", "red"))
+				print(colored(f"{test_type.upper()} STATS FAILED".center(100, "-"), "red"))
 				for key in mismatches:
 					print(
 							colored(key, "yellow") + ": test value of " + colored(stat_dicts[1][key], "yellow") +
 							" did not match reference " + colored(stat_dicts[0][key], "yellow") 
 						)
 
-			# Reanme output files to avoid override clashes
-			if i == 0:
-				os.rename(test_stat_root + "plot.html", test_stat_root + rand_key + ".html")
-			else:
-				os.rename(test_stat_root + "plot(1).html", test_stat_root + rand_key + ".html")
-			os.rename(test_stats_path, test_stat_root + rand_key + ".csv")
-
 		# ---------------------------------Unsupervised learning--------------------------------------
 		print(f"\n\nTesting unsupervised learning")
 
 		self.load_config(config_file_ = ref_config_path)
 		self.unsupervised_learning()
-		unsup_test_path = test_stat_root + "unsup_test_config.ini"
+		unsup_test_path = test_stat_dir / "unsup_test_config.ini"
 		unsup_ref_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/unsup_ref_config.ini"
-		self.save_config(out_file=unsup_test_path)
+		self.save_config(out_file=str(unsup_test_path))
 
 		with open(unsup_ref_path, 'r') as ref, open(unsup_test_path, 'r') as test:
 				ref_lines = ref.readlines()
 				test_lines = test.readlines()
-
-
-		# for line in filetwo:
-		# 	if line not in fileone:
-		# 		mismatches.append(line)
 
 		# Search for config discrepencies
 		mismatches = []
@@ -1128,17 +1118,15 @@ class GUIClass():
 				try:
 					ref_val = float(re.search((r"(\d+)(\.?)(\d+)?"), ref_line).group(0))
 					test_val = float(re.search((r"(\d+)(\.?)(\d+)?"), test_line).group(0))
-					print(f"ref val = {ref_val}")
-					print(f"test val = {test_val}")
 					if ref_val != test_val:
 						mismatches.append(test_line)
 				except:
 					mismatches.append(test_line)
 
 		if not mismatches:
-			print(colored("--------------------------UNSUP PASSED--------------------------", "green"))
+			print(colored("UNSUP PASSED".center(100, "-"), "green"))
 		else:
-			print(colored("--------------------------UNSUP FAILED--------------------------", "red"))
+			print(colored("UNSUP FAILED".center(100, "-"), "red"))
 			for line in mismatches:
 				print(colored(line, "yellow"))
 
@@ -1151,7 +1139,7 @@ class GUIClass():
 		try:
 			self.select_vertices()
 		except:
-			print(colored("-----------------VERTEX SELECTION PLOT FAILED------------------", "red"))
+			print(colored("VERTEX SELECTION PLOT FAILED".center(100, "-"), "red"))
 			traceback.print_exc()
 
 		self.vertex_file_E.delete(0, "end")
@@ -1159,9 +1147,9 @@ class GUIClass():
 		
 		self.load_config(config_file_ = ref_config_path)
 		self.supervised_learning()
-		sup_test_path = test_stat_root + "sup_test_config.ini"
+		sup_test_path = test_stat_dir / "sup_test_config.ini"
 		sup_ref_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/sup_ref_config.ini"
-		self.save_config(out_file=sup_test_path)
+		self.save_config(out_file=str(sup_test_path))
 
 		with open(sup_ref_path, 'r') as ref, open(sup_test_path, 'r') as test:
 				ref_lines = ref.readlines()
@@ -1182,13 +1170,13 @@ class GUIClass():
 					mismatches.append(test_line)
 
 		if not mismatches:
-			print(colored("---------------------------SUP PASSED---------------------------", "green"))
+			print(colored("SUP PASSED".center(100, "-"), "green"))
 		else:
-			print(colored("---------------------------SUP FAILED---------------------------", "red"))
+			print(colored("SUP FAILED".center(100, "-"), "red"))
 			for line in mismatches:
 				print(colored(line, "yellow"))
 
-		print(colored("------------------------TESTING COMPLETED-----------------------", "blue"))
+		print(colored("TESTING COMPLETED".center(100, "-"), "blue"))
 
 	def help(self):
 		"""
@@ -1220,42 +1208,24 @@ class GUIClass():
 
 		self.time_interval = self.config.get("Main Settings", "data_time_interval")
 		
-		temp_re = re.search((".*\."), os.path.basename(os.path.normpath(in_file)))
-		self.input_root = temp_re.group(0)[:-1] if temp_re else temp_re.group(0)[:-1]
+		temp_re = re.search((r".*\."), os.path.basename(os.path.normpath(in_file)))
+		self.input_root = temp_re.group(0)[:-1]
 				
-		replace_entry(self.plot_file_E, (self.input_root + "plot.html"))
-		niq_misc.get_novel_name(self.plot_file_E, (self.input_root + "plot(NUM).html"))
+		set_unique_path(self.plot_file_E, (self.input_root+"_plot"), self.out_path_E.get(), ".html")
+		set_unique_path(self.stats_file_E, (self.input_root+"_stats"), self.out_path_E.get(), ".csv")
 
-		replace_entry(self.stats_file_E, (self.input_root + "stats.csv"))
-		niq_misc.get_novel_name(self.stats_file_E, (self.input_root + "stats(NUM).csv"))
-		
+
 	def update_default_outs(self):
 		"""
 			Updates default output file names to unique values.
 		"""
 
-		# Initialize regular expresssions
-		plot_re = ("plot(\((\d)\))?\.html")
-		stats_re = ("stats(\((\d)\))?\.csv")
+		_plot_name = (self.input_root + "_plot") if self.input_root else "niq_plot"
+		set_unique_path(self.plot_file_E, _plot_name, self.out_path_E.get(), ".html")
 
-		if self.input_root:
-			input_root_plot_re = (self.input_root + "Plot(\((\d)\))?\.html")
-			input_root_stats_re = (self.input_root + "Stats(\((\d)\))?\.csv")
+		_stat_name = (self.input_root + "_stats") if self.input_root else "niq_stats"
+		set_unique_path(self.stats_file_E, _stat_name, self.out_path_E.get(), ".csv")
 
-		if os.path.exists(self.plot_file_E.get()):
-			if re.search(plot_re, self.plot_file_E.get()):
-				get_novel_name(self.plot_file_E, "plot(NUM).html")
-			elif self.input_root:		
-				if re.search(input_root_plot_re, self.plot_file_E.get()):
-					get_novel_name(self.plot_file_E, (self.input_root + "Plot(NUM).html"))
-
-		if os.path.exists(self.stats_file_E.get()):
-			if re.search(stats_re, self.stats_file_E.get()):
-				get_novel_name(self.stats_file_E, "stats(NUM).csv")
-					
-			elif self.input_root:		
-				if re.search(input_root_stats_re, self.stats_file_E.get()):
-					get_novel_name(self.stats_file_E, (self.input_root + "Stats(NUM).csv"))
 
 	def check_valid_main(self, first_in=True, check_output=True):
 		"""
@@ -1834,11 +1804,8 @@ class GUIClass():
 				self.input_root = os.path.basename(os.path.normpath(self.master_input[0]))
 					
 			# Update default names
-			replace_entry(self.plot_file_E, (self.input_root + "plot.html"))		
-			get_novel_name(self.plot_file_E, (self.input_root + "plot(NUM).html"))
-			replace_entry(self.stats_file_E, (self.input_root + "Stats.csv"))
-			get_novel_name(self.stats_file_E, (self.input_root + "Stats(NUM).csv"))
-
+			set_unique_path(self.plot_file_E, (self.input_root+"_plot"), self.out_path_E.get(), ".html")
+			set_unique_path(self.stats_file_E, (self.input_root+"_stats"), self.out_path_E.get(), ".csv")
 		else:
 			entry.insert(0, self.master_input)
 			replace_entry(self.plot_file_E, "------------------")
@@ -1847,7 +1814,8 @@ class GUIClass():
 	def get_plot_file(self, entry):	
 		"""
 			Handles plot file browsing and selection
-		"""		
+		"""
+
 		root.update()
 		path_ = filedialog.askopenfilename()
 		root.update()
@@ -2103,7 +2071,7 @@ class GUIClass():
 
 		# FLAG
 		try:
-			print("----------------------------------------------------------")
+			print("-" * 100)
 			print("Running NestIQ")
 
 			self.run, valid_run, successful = True, True, True
@@ -2173,7 +2141,7 @@ class GUIClass():
 			if all((successful, self.multi_in_stats_BV.get(), len(self.master_input) > 1)):
 				self.append_multi_file_stats()	
 
-			if re.search(("[^\{\}]"), "".join(self.master_input)):
+			if re.search((r"[^\{\}]"), "".join(self.master_input)):
 				replace_entry(self.input_file_E, self.master_input)
 
 			niq_misc.remove_curly(self.input_file_E)
@@ -2232,6 +2200,10 @@ class GUIClass():
 		if len(input_) > 1:
 			messagebox.showerror(("Unsupervised Learning Error"), 
 			"Multiple input files provided. Unsupervised learning currently only supports single input files.")	
+
+			self.run_B["text"] = "Run"
+			self.run_B.config(bg = "red4", fg = "white", width = 10, height = 1)
+			self.run = False	
 			return False
 
 		# If auto_run, check_valid_main will be called in trigger_run
@@ -2264,6 +2236,7 @@ class GUIClass():
 		if len(input_) > 1:
 			messagebox.showerror(("Supervised Learning Error"), 
 			"Multiple input files provided. Please provide the single input file used to generate the vertex selection file.")	
+	
 			return False
 
 		self.master_hmm = niq_hmm.HMM()
