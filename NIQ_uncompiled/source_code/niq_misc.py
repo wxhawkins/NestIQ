@@ -26,7 +26,7 @@ def extract_time(date_time_cell):
 			date_time_cell (str): input file cell containing the date and time string to be extracted from
 	"""
 
-	return re.search("(\d+:\d+)", date_time_cell).group(1)
+	return re.search(r"(\d+:\d+)", date_time_cell).group(1)
 	
 def extract_date(date_time_cell):
 	"""
@@ -36,7 +36,7 @@ def extract_date(date_time_cell):
 			date_time_cell (str): input file cell containing the date and time string to be extracted from
 	"""
 
-	return re.search("(\d+\/\d+\/\d+)", date_time_cell).group(1)
+	return re.search(r"(\d+\/\d+\/\d+)", date_time_cell).group(1)
 	
 def check_time_in_daytime(day_start, night_start, time):
 	"""
@@ -48,13 +48,13 @@ def check_time_in_daytime(day_start, night_start, time):
 			time (str): time being analyzed
 	"""
 
-	day = re.search("(\d+)(:)(\d+)", day_start)
+	day = re.search(r"(\d+)(:)(\d+)", day_start)
 	day_float = float(day.group(1)) + (float(day.group(3)) / 60)
 
-	night = re.search("(\d+)(:)(\d+)", night_start)
+	night = re.search(r"(\d+)(:)(\d+)", night_start)
 	night_float = float(night.group(1)) + (float(night.group(3)) / 60)
 	
-	cur_time = re.search("(\d+)(:)(\d+)", time)
+	cur_time = re.search(r"(\d+)(:)(\d+)", time)
 	cur_time_float = float(cur_time.group(1)) + (float(cur_time.group(3)) / 60)
 	
 	if (cur_time_float > night_float) or (cur_time_float < day_float):
@@ -85,7 +85,7 @@ def split_days(gui, modifier=0):
 			new_time = ori_time
 		else:
 			# Convert string time value to datetime format
-			search = re.search("((\d+):(\d+))", ori_time)
+			search = re.search(r"((\d+):(\d+))", ori_time)
 			hour = int(search.group(2))
 			minute = int(search.group(3))
 			time = datetime.datetime(1, 1, 1, hour, minute, 0)
@@ -201,10 +201,10 @@ def get_day_dur(day_start, night_start):
 			night_start (str): end of daytime period
 	"""
 
-	day = re.search("(\d+)(:)(\d+)", day_start)
+	day = re.search(r"(\d+)(:)(\d+)", day_start)
 	day_float = float(day.group(1)) + (float(day.group(3)) / 60)
 	
-	night = re.search("(\d+)(:)(\d+)", night_start)
+	night = re.search(r"(\d+)(:)(\d+)", night_start)
 	night_float = float(night.group(1)) + (float(night.group(3)) / 60)
 	
 	return ((night_float - day_float) * 60)	
@@ -225,11 +225,11 @@ def get_master_df(gui, source_path):
 	# Set any data_point, egg_temper or air_temper cells with non-number values to NaN
 	numeric_cols = col_names[0:1] + col_names[2:]
 	for col in numeric_cols:
-		input_df.loc[input_df[col].apply(lambda x: re.search("[^\d\.]", str(x)) is not None), col] = np.NaN
+		input_df.loc[input_df[col].apply(lambda x: re.search(r"[^\d\.]", str(x)) is not None), col] = np.NaN
 
 	# Set any cell not containing at least one number to Nan
 	for col in col_names:
-		input_df.loc[input_df[col].apply(lambda x: re.search("\d", str(x)) is None), col] = np.nan
+		input_df.loc[input_df[col].apply(lambda x: re.search(r"\d", str(x)) is None), col] = np.nan
 
 	# Delete any rows containing NaN value
 	input_df.dropna(inplace=True)
@@ -249,6 +249,7 @@ def get_master_df(gui, source_path):
 	input_df.set_index("data_point", inplace=True)
 
 	# print(input_df)
+	return False
 
 def get_master_list(gui, source_path):
 	"""
@@ -266,10 +267,10 @@ def get_master_list(gui, source_path):
 	
 	master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
 		
-	for i, cur_line in enumerate(master_list[:-1]):
+	for i in range(len(master_list[:-1])):
 		if any(( 
-				re.search("\D", master_list[i][gui.data_point_col]),
-				not re.search("\d", master_list[i][gui.data_point_col])
+				re.search(r"\D", master_list[i][gui.data_point_col]),
+				not re.search(r"\d", master_list[i][gui.data_point_col])
 				)):
 			
 			pop_indices.append(i)
@@ -285,7 +286,7 @@ def get_master_list(gui, source_path):
 	del master_list[-1]
 	
 	# Clear formatting characters if present
-	digit_search = re.search("\d+", master_list[0][gui.data_point_col])
+	digit_search = re.search(r"\d+", master_list[0][gui.data_point_col])
 	master_list[0][gui.data_point_col] = digit_search.group(0)
 	
 	return master_list	
@@ -322,7 +323,7 @@ def get_master_arr(gui, master_list):
 		master_array = np.hstack((master_array, delta_temps))
 	except IndexError:
 		gui.air_valid = False
-		return get_master_arr(master_list)
+		return get_master_arr(gui, master_list)
 
 	radius = int(gui.smoothing_radius_E.get())
 	master_array = np.hstack((master_array, smooth_col(radius, delta_temps)))
@@ -370,7 +371,7 @@ def get_verts_from_html(gui, in_file, alt=False):
 		if alt:
 			# Extract html behind script section containing vertex info
 			hit = soup.find("script", type="application/json").text
-			re_hit = re.search("\"x\":\[(.*)\],\"y\":\[", hit)
+			re_hit = re.search(r"\"x\":\[(.*)\],\"y\":\[", hit)
 			re_hit = re_hit.group(1).lstrip().rstrip()
 			hit_list = re_hit.split(",")
 		else:
@@ -387,7 +388,7 @@ def get_verts_from_html(gui, in_file, alt=False):
 				with open(in_file, "r") as raw_file:
 					bulk_content = raw_file.read()
 
-				temp_re = ("slick-cell l1 r1 selected\"><span style=\"text-align: left;\">(\d+)")
+				temp_re = re.compile(r"slick-cell l1 r1 selected\"><span style=\"text-align: left;\">(\d+)")
 				selected = re.search(temp_re, bulk_content).group(1)
 				hit_list.append(selected)
 			except:
@@ -548,6 +549,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 		
 			# Print input file name first (remove path)
 			if out_file == gui.multi_in_stats_file_E.get():
+				input()
 				print(os.path.basename(os.path.normpath(gui.inFile)), file = stat_summary_file)
 			else:
 				print("Day and Cumulative Stats", file = stat_summary_file)
@@ -856,7 +858,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori
 	if not select_mode:
 		output_file(gui.plot_file_E.get())
 	else:
-		output_file(os.path.join(gui.core_dir, "misc_files", "temp_plot.html"))
+		output_file(gui.master_dir_path / "misc_files" / "temp_plot.html")
 	
 	# Set plot dimensions
 	if not gui.manual_plot_dims.get():
@@ -879,8 +881,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori
 		plot_name = gui.plot_title_E.get()
 	else:
 		if select_mode:
-			plot_name_search = re.search((".*\."), os.path.basename(os.path.normpath(gui.input_file_E.get())))
-			plot_name = plot_name_search.group(0)[:-1] if plot_name_search else "Vertex Selection Plot"
+			plot_name = Path(gui.input_file_E.get()).stem
 		else:
 			quary = (gui.plot_file_E.get()[::-1] + "\\")
 			search_ = re.search(("[^\\\\|/]*(\\\\|/)"), quary).group(0)[::-1]
@@ -937,6 +938,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori
 		alpha_ = np.vectorize(alpha_key.get)(master_array[:, 6])
 
 	radius = int(gui.smoothing_radius_E.get())
+
 	if gui.air_valid and (gui.plot_air_BV.get() or select_mode):
 		if gui.smooth_status_IV.get():
 			air_arr = smooth_col(radius, master_array[:, 2]).flatten()
@@ -944,10 +946,10 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori
 			air_arr = master_array[:, 2]
 
 		# Plot air temperatures
-		air_temper_line = plot.line(
-									master_array[:, 0], air_arr, line_width = float(gui.air_line_width_E.get()), 
-									color = gui.air_line_color.get(), line_alpha = 1, legend = "Air temperature"
-								)
+		plot.line(
+					master_array[:, 0], air_arr, line_width = float(gui.air_line_width_E.get()), 
+					color = gui.air_line_color.get(), line_alpha = 1, legend = "Air temperature"
+				)
 
 	if gui.plot_egg_BV.get():
 		if gui.smooth_status_IV.get():
@@ -1068,7 +1070,6 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori
 	#-------------------------------------------------------------------------------------------
 	# Generate table with vertex information
 	if select_mode:
-		height_ = 10000	
 		data = {"x": [], "y": []}
 
 		# Plot original vertices if provided
@@ -1079,7 +1080,6 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori
 		# Append vertex info to table
 		verts = get_verts_from_master_arr(master_array)
 		data = {"x": [vert.index for vert in verts], "y": [vert.egg_temper for vert in verts]}
-		height_ = (len(verts) * 30)
 
 	src = ColumnDataSource(data)
 	columns = [
@@ -1228,12 +1228,13 @@ def get_datetime(gui, line):
 	print_file_name = ("File: " + os.path.basename(os.path.normpath(gui.input_file_E.get())) + " \n\n")
 
 	try:
-		time_search = re.search("(\d+):(\d+)", line[gui.date_time_col])
-		date_search = re.search("(\d+)\/(\d+)\/(\d+)", line[gui.date_time_col])
+		time_search = re.search(r"(\d+):(\d+)", line[gui.date_time_col])
+		date_search = re.search(r"(\d+)\/(\d+)\/(\d+)", line[gui.date_time_col])
 
 		if not time_search:
 			messagebox.showerror("Time Format Error", 
 			(print_file_name + "No time found for data point " + line[gui.data_point_col] + ".  Time should be in HH:MM format."))
+			print(line)
 			return False
 		
 		if not date_search:
@@ -1269,9 +1270,6 @@ def add_states(self, master_array, verts=None, results_arr=None):
 
 		# Appends state values based on vertex locations
 		if verts is not None:
-			
-			start = verts[0].index
-			stop = verts[-1].index
 			state_arr = np.zeros((master_array.shape[0], 1), dtype = float)
 			state_arr.fill(1)
 

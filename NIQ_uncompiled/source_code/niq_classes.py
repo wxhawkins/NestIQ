@@ -160,7 +160,7 @@ class Block:
 		on_incs     = []
 		on_tempers  = []
 	
-		self.date = re.search("(\d+/\d+/\d+)", gui.master_list[self.start][gui.date_time_col]).group(0)
+		self.date = re.search(r"(\d+/\d+/\d+)", gui.master_list[self.start][gui.date_time_col]).group(0)
 		
 		# Compile every temperature for this block
 		for line in gui.master_list[self.start:self.stop + 1]:

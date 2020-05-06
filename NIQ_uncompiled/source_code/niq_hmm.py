@@ -60,8 +60,9 @@ class HMM(object):
             self._emissions[0]["stdev"] = model.covars_[0][0][0]
             self._emissions[1]["stdev"] = model.covars_[1][0][0]
 
+        print("RUNNING MODEL")
         model = hmm.GaussianHMM(n_components = 2, tol = 1e-100, n_iter = 1000, algorithm = "baum_welch")
-        
+        print("FINISHED MODEL")
         # Provide inital values
         model.startprob_ = np.array([0.5, 0.5])
         model.transmat_ = np.array([[0.98, 0.02],
@@ -329,27 +330,26 @@ class HMM(object):
         self._emissions[0]["stdev"] = float(gui.off_stdev_E.get())
         self._emissions[1]["stdev"] = float(gui.on_stdev_E.get())
 
-    def populate_hmm_entries(model, gui):
+    def populate_hmm_entries(self, gui):
         """
             Fills out GUI entry boxes based on model attributes.
 
             Args:
-                model (HMM)
                 gui (GUIClass)
         """
 
-        if model._dur_thresh is not None:
-            replace_entry(gui.dur_thresh_E, int(model._dur_thresh))
+        if self._dur_thresh is not None:
+            replace_entry(gui.dur_thresh_E, int(self._dur_thresh))
             
-        replace_entry(gui.init_off_E, round(model._initial[0], 7))
-        replace_entry(gui.init_on_E, round(model._initial[1], 7))
+        replace_entry(gui.init_off_E, round(self._initial[0], 7))
+        replace_entry(gui.init_on_E, round(self._initial[1], 7))
 
-        replace_entry(gui.off_off_trans_E, round(model._trans_probs[0][0], 7))
-        replace_entry(gui.off_on_trans_E, round(model._trans_probs[0][1], 7))
-        replace_entry(gui.on_off_trans_E, round(model._trans_probs[1][0], 7))
-        replace_entry(gui.on_on_trans_E, round(model._trans_probs[1][1], 7))
+        replace_entry(gui.off_off_trans_E, round(self._trans_probs[0][0], 7))
+        replace_entry(gui.off_on_trans_E, round(self._trans_probs[0][1], 7))
+        replace_entry(gui.on_off_trans_E, round(self._trans_probs[1][0], 7))
+        replace_entry(gui.on_on_trans_E, round(self._trans_probs[1][1], 7))
 
-        replace_entry(gui.off_mean_E, round(model._emissions[0]["mean"], 7))
-        replace_entry(gui.on_mean_E, round(model._emissions[1]["mean"], 7))
-        replace_entry(gui.off_stdev_E, round(model._emissions[0]["stdev"], 7))
-        replace_entry(gui.on_stdev_E, round(model._emissions[1]["stdev"], 7))
+        replace_entry(gui.off_mean_E, round(self._emissions[0]["mean"], 7))
+        replace_entry(gui.on_mean_E, round(self._emissions[1]["mean"], 7))
+        replace_entry(gui.off_stdev_E, round(self._emissions[0]["stdev"], 7))
+        replace_entry(gui.on_stdev_E, round(self._emissions[1]["stdev"], 7))

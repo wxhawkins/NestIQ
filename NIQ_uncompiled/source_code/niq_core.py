@@ -40,7 +40,7 @@ class GUIClass():
 
 	def __init__(self):
 		# Store core working directory path
-		self.core_dir = os.path.normpath(os.getcwd() + os.sep + os.pardir)
+		self.master_dir_path = Path.cwd().parent
 		self.init_config()
 			
 		# Initialize column identities -- currently static
@@ -779,21 +779,21 @@ class GUIClass():
 		if out_file is None:
 			out_file = filedialog.asksaveasfilename()
 		
-		if not re.search("\.ini", out_file):
+		if not re.search(r"\.ini", out_file):
 			out_file = (out_file + ".ini")
 		
 		# Copy over config_static as template
-		copyfile(os.path.join(self.core_dir, "misc_files", "config_static.ini"), out_file)
+		copyfile(self.master_dir_path / "misc_files" / "config_static.ini", out_file)
 		self.update_config(out_file)
 
-	def load_config(self, program_startup=False, config_file_=None):
+	def load_config(self, program_startup=False, config_file_=Path("")):
 		"""
 			Updates all GUI settings and statuses according to a configuration file. If this file is not immediately 
 			provided to the function, the user is prompted to select a file from a dialog box.
 
 			Args:
 				program_startup (bool): True if is the initial call used populate GUI upon program startup 
-				config_file_ (string): Path to configuration file to be loaded
+				config_file_ (pathlib.Path): Path to configuration file to be loaded
 
 		"""
 
@@ -802,7 +802,7 @@ class GUIClass():
 		
 			if config_file == "": return False 
 		
-			if not os.path.exists(config_file):
+			if not config_file.exists():
 				messagebox.showerror(("Config File Loading Error"), 
 				"Configuration file could not be found.")
 				return False
@@ -910,10 +910,13 @@ class GUIClass():
 				traceback.print_exc()
 
 				# If an error is encountered, try loading "config_static.ini"
-				copyfile(os.path.join(self.core_dir, "misc_files", "config_static.ini"), 
-						os.path.join(self.core_dir, "config_files", "default_config.ini"))
+				copyfile(
+					self.master_dir_path / "misc_files" / "config_static.ini",
+					self.master_dir_path / "misc_files" / "default_config.ini"
+					)
+				
 					
-				self.config.read(os.path.join(self.core_dir, "config_files", "default_config.ini"))
+				self.config.read(self.master_dir_path / "config_files" / "default_config.ini")
 				self.load_config(program_startup = True)
 			else:
 				messagebox.showerror(("Config File Loading Error"), 
@@ -943,67 +946,48 @@ class GUIClass():
 		"""
 
 		niq_misc.remove_curly(self.vertex_file_E)
-		vertex_file = self.vertex_file_E.get()
+		vertex_path = Path(self.vertex_file_E.get())
 		
-		if vertex_file == "":
+		if vertex_path.name == "":
 			messagebox.showerror("Vertex File Error", "Please provide a vertex file.")
 			return False
 		
-		if not os.path.exists(vertex_file):
+		if not vertex_path.exists():
 			messagebox.showerror("Vertex Selection Error", "Provided vertex selection file not found.")
 			return False
-			
-			if not os.path.exists(vertex_file[1:(len(vertex_file) - 1)]):
-				messagebox.showerror("Vertex Selection Error", "Provided vertex selection file not found.")
-				return False
-
-			replace_entry(self.vertex_file_E, (vertex_file[1:(len(vertex_file) - 1)]))
-			vertex_file = self.vertex_file_E.get()
-				
-		if vertex_file[-5:] != ".html":
-			messagebox.showerror("Vertex Selection Error", "Vertex selection file must end in \".html\".")
+							
+		if str(vertex_path)[-5:] != ".html":
+			messagebox.showerror("Vertex Selection Error", r'Vertex selection file must have ".html" extension.')
 			return False		
 
-		try:
-			with open(vertex_file, "r") as original_file:
-				original_lines = original_file.readlines()
-		except FileNotFoundError:
-			messagebox.showerror(("Vertex File Error"), 
-			"Vertex file could not be found with the given path.")	
-			return False
 		
+		with open(vertex_path, "r") as original_file:
+			original_lines = original_file.readlines()
+
 		# Remove extra table data lines if present
+		cleaned_content = str()
 		found = False
-		with open("temp_file", "w") as temp_file:
-			for line in original_lines:
-				if line.find("<div class") != -1:
-					if not found:
-						found = True
-						temp_file.write(line)
-				# Retain all non-table data containing lines
-				else:
-					temp_file.write(line)				
-		
-		with open("temp_file", "r") as temp_file:
-			cleaned_file = temp_file.read()
-			
-		os.remove("temp_file")
+		for line in original_lines:
+			if "<div class" in line:
+				found = True
+			if found:
+				cleaned_content += line
 		
 		# Get datapoints
-		tokens = re.finditer(">([\d\.-]+)</span>", cleaned_file)
-		counter = 0
+		tokens = re.finditer(r">([\d\.-]+)</span>", cleaned_content)
 
 		try:
 			# Every other value in tokens will be temperature and so is ignored
 			for counter, match in enumerate(tokens):
+				token_num = counter
 				if not (counter % 2) == 0:
-					data_point_ = round(float(match.group(1)))
+					round(float(match.group(1)))
 		except:
 			messagebox.showerror(("Vertex File Error"), 
 			"Vertex file is unreadable. Please try another.")
 			return False
 
-		if counter < 2:
+		if token_num < 2:
 			messagebox.showerror(("Vertex File Error"), "No vertices detected in vertex file.")
 			return False
 
@@ -1182,7 +1166,8 @@ class GUIClass():
 		"""
 			Launches user manual.
 		"""
-		subprocess.Popen(os.path.join(self.core_dir, "NIQ_manual.pdf"), shell = True)
+
+		subprocess.Popen(self.master_dir_path / "NIQ_manual.pdf", shell = True)
 		
 	def toggle_col(self, column, command):
 		"""
@@ -1195,7 +1180,7 @@ class GUIClass():
 		for option in column:
 			option.select() if command == "select" else option.deselect()
 	
-	def update_multi_in_default_outs(self, in_file):
+	def update_multi_in_default_outs(self, in_file_path):
 		"""
 			Automatically updates input and output file entry boxes before each run if multiple files
 			are being processed.
@@ -1204,12 +1189,10 @@ class GUIClass():
 				in_file (string): path to file currently being proceessed
 		"""
 
-		replace_entry(self.input_file_E, in_file)
+		replace_entry(self.input_file_E, in_file_path)
 
 		self.time_interval = self.config.get("Main Settings", "data_time_interval")
-		
-		temp_re = re.search((r".*\."), os.path.basename(os.path.normpath(in_file)))
-		self.input_root = temp_re.group(0)[:-1]
+		self.input_root = Path(in_file_path).stem
 				
 		set_unique_path(self.plot_file_E, (self.input_root+"_plot"), self.out_path_E.get(), ".html")
 		set_unique_path(self.stats_file_E, (self.input_root+"_stats"), self.out_path_E.get(), ".csv")
@@ -1243,42 +1226,35 @@ class GUIClass():
 				Also displays warnings for less severe format violations.
 			"""
 
-			in_file = self.input_file_E.get()
+			in_file_path = Path(self.input_file_E.get())
 			datetime_valid = True
 
-			file_name_appendage = ("For file: " + os.path.normpath(in_file) + "\n\n")
+			file_name_appendage = (f"For file: {in_file_path.name} \n\n")
 
-			if in_file == "":
+			if in_file_path.name == "":
 				messagebox.showerror("Input error (Main tab)", "No input file provided.")
 				return False
 		
-			try:
-				if not os.path.exists(in_file):	
-					raise ValueError
-			except ValueError:
+			if not in_file_path.exists():	
 				messagebox.showerror("Input File Error", 
 				"".join((file_name_appendage, "File with provided path could not be found.")))
 				return False
 				
-			if not in_file.endswith(".csv"):
+			if in_file_path.suffix != ".csv":
 				messagebox.showerror("Input File Error", 
-				"".join((file_name_appendage, "Input file must end in \".csv\" (comma separated value file format).")))
+				f"{file_name_appendage} Input file must end in \".csv\" extension (comma separated value file format).")
 				return False
 
 			try:
-				with open(in_file, "r") as csv_file:
+				with open(in_file_path, "r") as csv_file:
 					csv_lines = csv_file.readlines()
 					master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
 
 					pop_indices = []
 					# Remove lines not conforming to expected format (such as headers)	
-					for i, cur_line in enumerate(master_list[:-1]):
+					for i in range(len(master_list[:-1])):
 						# Cells in data point column must contain only numbers
-						if any(
-									(re.search("\D", master_list[i][self.data_point_col]),
-									not re.search("\d", master_list[i][self.data_point_col]))
-							  ):
-							
+						if not str(master_list[i][self.data_point_col]).isnumeric():
 							pop_indices.append(i)
 						
 					for pop_count, index in enumerate(pop_indices):
@@ -1300,7 +1276,7 @@ class GUIClass():
 					interval_time = 1
 					start_found = False
 					
-					for line_num, line in enumerate(master_list[1:]):
+					for line in master_list[1:]:
 						line = line[:4] if self.air_valid else line[:3]
 
 						# Check if data points are continuous and sequential
@@ -1382,7 +1358,7 @@ class GUIClass():
 				
 			except Exception as e:
 				print(e)
-				file_name_appendage = ("File: " + os.path.basename(os.path.normpath(in_file)) + " \n\n")
+				traceback.print_exc(file=sys.stdout)
 				messagebox.showerror("Unknown Error",
 				"".join((file_name_appendage + "There was an unidentifiable error with the provided input file. " +
 				"This is sometimes the result of \"extra\" cells in the input file.\n\n" +
@@ -1400,59 +1376,37 @@ class GUIClass():
 					title (string): how to reference the current entry box if error messeage is triggered
 			"""
 
-			if entry.get().strip() == "":
+			if entry.get() == "":
 				messagebox.showerror((title + " Error"), "File name is empty.") 
 				return False
+
+			# Add extension if not present
+			if entry == gui.plot_file_E:
+				ext = ".html"
+			elif entry == gui.stats_file_E or entry == gui.multi_in_stats_file_E:
+				ext = ".csv"
+
+			entry_path = Path(entry.get()).with_suffix(ext)
 			
-			if entry.get()[-1] == "/" or entry.get()[-1] == "\\":
+			if entry_path.is_dir():
 				messagebox.showerror((title + " Error"), "Directory provided but no file name.")
 				return False
-						
+
 			# Check if plot file already exists and if so, ask to override
-			if entry == gui.plot_file_E:
-				if not gui.plot_file_E.get().endswith(".html"):
-					replace_entry(gui.plot_file_E, (gui.plot_file_E.get() + ".html"))
-
-				if os.path.exists(entry.get()):
-					if messagebox.askyesno("Override?", ("The file \"" + entry.get() + "\" already exists.  Do you want to override?")):
-						try: 
-							os.remove(entry.get())
-						except: 
-							os.remove(entry.get() + ".html")
-					else: 
-						return False
-						
-			# Check if output or compile statistics file already exists and if so, ask to override
-			if entry == gui.stats_file_E or entry == gui.multi_in_stats_file_E:
-				if not gui.stats_file_E.get().endswith(".csv"):
-					new_name = (gui.stats_file_E.get() + ".csv")
-					replace_entry(gui.stats_file_E, new_name)
-
-				if not gui.multi_in_stats_file_E.get().endswith(".csv"):
-					replace_entry(gui.multi_in_stats_file_E, (gui.multi_in_stats_file_E.get() + ".csv"))
-
-				if os.path.exists(entry.get()) or os.path.exists(entry.get() + ".csv"):
-					if not messagebox.askyesno("Override?", ("The file \"" + entry.get() + "\" already exists.  Do you want to override?")):
-						return False
-					try: 
-						os.remove(entry.get())
-					except:
-						try: 
-							os.remove(entry.get() + ".csv")
-						except:
-							messagebox.showerror(("Override Error"), ("Could not override file.  Please close \"" + entry.get() + "\" if open and try again."))
-							return False
-			
-			if not os.path.exists(entry.get()):
-				try:
-					with open(entry.get(), "a+") as _:
-						pass
-				except:
-					messagebox.showerror((title + " Error"), "Invalid directory/file name.")
+			if entry_path.exists():
+				if messagebox.askyesno("Override?", ("The file \"" + entry.get() + "\" already exists.  Do you want to override?")):
+					entry_path.unlink()
+				else:
 					return False
+						
+			try:
+				with open(entry.get(), "a+") as _:
+					pass
+			except:
+				messagebox.showerror((title + " Error"), "Failed to open file.")
+				return False
 					
-				os.remove(entry.get())
-			
+			replace_entry(entry, entry_path.name)
 			return True
 			
 		def check_time(time, DN):
@@ -1464,7 +1418,7 @@ class GUIClass():
 					DN (string): "day" or "night" depending on entry box being analyzed
 			"""
 
-			time_re = re.search("(\d+)(:)(\d+)", time)
+			time_re = re.search(r"(\d+)(:)(\d+)", time)
 			show_default_error = False
 
 			# If time found, store hour and minute values
@@ -1712,21 +1666,19 @@ class GUIClass():
 		"""
 		niq_misc.remove_curly(self.ori_plot_E, self.mod_plot_E)
 
-		paths_dict = {"Original Plot": self.ori_plot_E.get(), "Modified Plot": self.mod_plot_E.get()}
+		paths_dict = {"Original Plot": Path(self.ori_plot_E.get()), "Modified Plot": Path(self.mod_plot_E.get())}
 
 		# Do not check modified plot path if not performing full rerun
 		if not rerun:
 			del paths_dict["Modified Plot"]
 
 		for name, path in paths_dict.items():
-			try:
-				if not os.path.exists(path):	
-					raise ValueError
-			except ValueError:
+			if path.exists():	
 				messagebox.showerror(
-										f"{name} File Error (Edit tab)", 
-										"".join((path, "File with provided path could not be found."))
-									)
+					f"{name} File Error (Edit tab)", 
+					"".join((path, "File with provided path could not be found."))
+					)
+
 				return False
 
 		return True
@@ -1791,27 +1743,25 @@ class GUIClass():
 		root.update()
 		
 		if self.master_input == "":
-			self.master_input = ("",)	
-			return 
+			self.master_input = tuple("")
+			return
 
 		if len(self.master_input) == 1:
-			entry.insert(0, self.master_input[0])
-			
-			temp_re = re.search((".*\."), os.path.basename(os.path.normpath(self.master_input[0])))
-			if temp_re:
-				self.input_root = temp_re.group(0)[:-1]
-			else:
-				self.input_root = os.path.basename(os.path.normpath(self.master_input[0]))
+			path = Path(self.master_input[0])
+			entry.insert(0, path)
+			self.input_root = path.stem
 					
 			# Update default names
-			set_unique_path(self.plot_file_E, (self.input_root+"_plot"), self.out_path_E.get(), ".html")
-			set_unique_path(self.stats_file_E, (self.input_root+"_stats"), self.out_path_E.get(), ".csv")
+			set_unique_path(self.plot_file_E, (self.input_root + "_plot"), self.out_path_E.get(), ".html")
+			set_unique_path(self.stats_file_E, (self.input_root + "_stats"), self.out_path_E.get(), ".csv")
 		else:
 			entry.insert(0, self.master_input)
 			replace_entry(self.plot_file_E, "------------------")
 			replace_entry(self.stats_file_E, "------------------")
+		
+		niq_misc.remove_curly(entry)
 	
-	def get_plot_file(self, entry):	
+	def get_plot_file(self, entry):
 		"""
 			Handles plot file browsing and selection
 		"""
@@ -1820,7 +1770,7 @@ class GUIClass():
 		path_ = filedialog.askopenfilename()
 		root.update()
 		
-		if path_ != "": 
+		if path_ != "":
 			replace_entry(entry, path_)			
 
 		niq_misc.remove_curly(entry)
@@ -1905,7 +1855,6 @@ class GUIClass():
 			saved and later used for supervised parameter acquisition or manual vertex modification.
 		"""
 		days_list = []
-		nights_list = []
 		ori_verts_ = None
 		
 		if self.check_valid_plot_ops() and self.check_valid_main(check_output=False) and self.check_valid_adv():			
@@ -1914,15 +1863,15 @@ class GUIClass():
 				self.master_array = niq_misc.get_master_arr(self, self.master_list)
 				self.master_block = niq_classes.Block(self, 0, (len(self.master_list) - 1), False)
 				
-				# Get days_list and nights_list for plotting vertical lines
-				days_list, nights_list = niq_misc.split_days(self)
+				# Get days_list for plotting vertical lines
+				days_list = niq_misc.split_days(self)[0] # Indexing at end excludes nights_list
 			except Exception:
 				messagebox.showerror(("Input File Error (Advanced tab)"), 
 				"Input file could not be processed.")	
 				traceback.print_exc()
 				return False
 			
-			ori_verts = None
+			ori_verts_ = None
 
 			#Get original vertices if undergoing manual vertex editing
 			if mod_plot:
@@ -1938,17 +1887,21 @@ class GUIClass():
 
 			niq_misc.generate_plot(self, self.master_array, days_list, self.mon_dims, select_mode=True, ori_verts=ori_verts_)
 
+
 	def init_config(self):
 		"""
 			Initializes GUI from default_config.ini.  config_static.ini is used as a backup if anything goes wrong.
 		"""
 		self.config = configparser.RawConfigParser()
-		# (flag) dont forget to add this file
-		if not os.path.exists(os.path.join(self.core_dir, "config_files", "default_config.ini")):
-			copyfile(os.path.join(self.core_dir, "misc_files", "config_static.ini"), 
-					os.path.join(self.core_dir, "config_files", "default_config.ini"))
-					
-		self.config.read(os.path.join(self.core_dir, "config_files", "default_config.ini"))
+
+		config_default_path = Path(self.master_dir_path / "config_files" / "default_config.ini")
+		config_static_path = Path(self.master_dir_path / "misc_files" / "config_static.ini")
+
+		if not config_default_path.exists():
+			copyfile(config_static_path, config_default_path)
+
+		self.config.read(config_default_path)
+
 
 	def update_config(self, config_file=None):
 		"""
@@ -1960,7 +1913,7 @@ class GUIClass():
 		"""
 
 		if config_file is None:
-			config_file = os.path.join(self.core_dir, "config_files", "default_config.ini")
+			config_file = Path(self.master_dir_path / "config_files" / "default_config.ini")
 
 		self.config.set("Main Settings", "output_dir", self.out_path_E.get())
 		self.config.set("Main Settings", "show_warnings", self.show_warns_BV.get())
@@ -2074,7 +2027,7 @@ class GUIClass():
 			print("-" * 100)
 			print("Running NestIQ")
 
-			self.run, valid_run, successful = True, True, True
+			self.run, successful = True, True
 			self.reset_multi_file_var()
 
 			if len(self.master_input) == 0 or self.master_input == ("",):
@@ -2149,14 +2102,14 @@ class GUIClass():
 			self.master_input = tuple()
 
 			self.run_B["text"] = "Run"
-			self.run_B.config(bg = "red4", fg = "white", width = 10, height = 1)
+			self.run_B.config(bg="red4", fg="white", width=10, height=1)
 			self.run = False
 			print(colored("Done", "green"))
 
 		except Exception:
 			traceback.print_exc()
 			messagebox.showerror(("Unidentified Error"), "An unknown error has occerred." +
-			"Please report this error to NestIQHelp@gmail.com")
+			"Please report this error to wxhawkins@gmail.com")
 		
 	def close_niq(self, root):
 		"""
