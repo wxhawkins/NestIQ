@@ -208,8 +208,10 @@ def get_day_dur(day_start, night_start):
 	night_float = float(night.group(1)) + (float(night.group(3)) / 60)
 	
 	return ((night_float - day_float) * 60)	
+	
 
 def get_master_df(gui, source_path):
+
 	width = 4 if gui.air_valid else 3
 	input_df = pd.read_csv(source_path)
 	
@@ -225,7 +227,8 @@ def get_master_df(gui, source_path):
 	# Set any data_point, egg_temper or air_temper cells with non-number values to NaN
 	numeric_cols = col_names[0:1] + col_names[2:]
 	for col in numeric_cols:
-		input_df.loc[input_df[col].apply(lambda x: re.search(r"[^\d\.]", str(x)) is not None), col] = np.NaN
+		filt = input_df[col].str.isnumeric()
+		input_df.loc[~filt, col] = np.Nan
 
 	# Set any cell not containing at least one number to Nan
 	for col in col_names:
