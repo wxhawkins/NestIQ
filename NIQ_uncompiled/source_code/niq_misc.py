@@ -2,9 +2,9 @@ import datetime
 import os
 import re
 import statistics
-import datetime
 import time
 from pathlib import Path
+from tkinter import messagebox
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,6 @@ from bokeh.layouts import column, widgetbox
 from bokeh.models import HoverTool, PointDrawTool, Span
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.plotting import ColumnDataSource, figure, output_file, show
-from tkinter import messagebox
 from bs4 import BeautifulSoup
 
 import niq_classes
@@ -76,10 +75,10 @@ def split_days(gui, modifier=0):
 					modifier (int): amount in minutes to modify given times by
 	"""
 
-	def modify_time(ori_time):
+	def shift_time(ori_time):
 		"""
-				Slightly offsets the time from the input file to try to address skipping of critical times being 
-				searched for. 
+				Slightly offsets the time from the input file to try to address skipping of critical times being
+				searched for.
 
 				Args:
 						ori_time (str): original time (prior to modification)
@@ -105,8 +104,8 @@ def split_days(gui, modifier=0):
 	days_list, nights_list = [], []
 
 	reached_end = False
-	day_start = modify_time(gui.day_start_E.get())
-	night_start = modify_time(gui.night_start_E.get())
+	day_start = shift_time(gui.day_start_E.get())
+	night_start = shift_time(gui.night_start_E.get())
 	day_dur = get_day_dur(day_start, night_start)
 	night_dur = (1440 - day_dur)
 	day_interval = (1440 / gui.time_interval)
@@ -141,7 +140,7 @@ def split_days(gui, modifier=0):
 
 			break
 
-	# Check if data starts at night and process to achieve uniformity going into following while `
+	# Check if data starts at night and process to achieve uniformity going into following while loop
 	# Catch partial day at start of gui.master_list
 	if night_start_index < day_start_index:
 		days_list.append(niq_classes.Block(gui, 0, night_start_index - 1, True))
@@ -216,33 +215,61 @@ def get_day_dur(day_start, night_start):
 
 
 def get_master_df(gui, source_path):
+	first = time.time()
 
-	width = 4 if gui.air_valid else 3
+	def smooth_col(radius, col):
+		"""
+			Generates "smoothed" copy of input data by applying a rolling mean of the requested radius.
+
+			Args:
+				radius (int): number of values to include in rolling mean 
+							(e.g. radius = 1 means average values i, i-1 and i+1)
+				col (pd.Series): column data to be smoothed
+		"""
+
+		# Return original column if radius is less than 1
+		if radius <= 0:
+			return col
+
+		window = (radius * 2) + 1
+		return col.rolling(window, min_periods=1, center=True).mean()
+
+	def is_number(string):
+		try:
+			float(string)
+			return True
+		except ValueError:
+			return False
+
 	df = pd.read_csv(source_path)
 
+	# Fill air_temper column with 0's if none provided
+	if not gui.air_valid:
+		df.iloc[:, 3] = np.zeros(df.shape[0])
+
 	# Remove any "extra" columns
-	df = df.iloc[:, :width]
+	if len(df.columns) > 4:
+		for col in df.columns[3:]:
+			df.drop(columns=col, inplace=True)
 
 	# Rename columns
 	old_col_names = list(df.columns)
-	col_names = ["data_point", "date_time", "egg_temper", "air_temper"][:width]
+	col_names = ["data_point", "date_time", "egg_temper", "air_temper"]
 	col_rename_dict = {old: new for old, new in zip(old_col_names, col_names)}
 	df.rename(columns=col_rename_dict, inplace=True)
 
 	# Set any data_point, egg_temper or air_temper cells with non-number values to NaN
 	numeric_cols = col_names[0:1] + col_names[2:]
 	for col in numeric_cols:
-		filt = df[col].astype(int).astype(str).str.isnumeric()
+		filt = df[col].astype(str).apply(is_number)
 		df.loc[~filt, col] = np.NaN
 
-	# Set any cell not containing at least one number to NaN
-	for col in col_names:
-		df.loc[df[col].apply(lambda x: re.search(r"\d", str(x)) is None), col] = np.nan
 	# Delete any rows containing NaN value
 	df.dropna(inplace=True)
 
 	# Convert column object types
 	df["data_point"] = df["data_point"].astype(int)
+	df["date_time"] = df["date_time"].astype(str)
 	df["egg_temper"] = df["egg_temper"].astype(float)
 	if gui.air_valid:
 		df["air_temper"] = df["air_temper"].astype(float)
@@ -255,7 +282,22 @@ def get_master_df(gui, source_path):
 	# Set indices to data_point column
 	# df.set_index("data_point", inplace=True)
 
-	print(df)
+	# Add adjusted (egg - air temperature) temperatures column
+	df["adj_temper"] = df["egg_temper"] - df["air_temper"]
+
+	# Add smoothed, adjusted temperatures column
+	radius = int(gui.smoothing_radius_E.get())
+	df["smoothed_adj_temper"] = smooth_col(radius, df["adj_temper"])
+
+	print(df.head())
+	print(f"Master df func took {round(time.time() - first, 2)}")
+
+	# Add column storing difference in adjusted temperature from previous entry to current
+	df["delta_temper"] = np.zeros(df.shape[0])
+	df.iloc[1:, df.columns.get_loc("delta_temper")] = df["smoothed_adj_temper"].diff()
+	# Set first cell equal to second
+	df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
+
 	return df
 
 
@@ -316,6 +358,7 @@ def get_master_arr(gui, master_list):
 			Args:
 					master_list (list of lists): contains the information from the input file being analyzed
 	"""
+	arr_start = time.time()
 
 	master_array = np.array(master_list)
 	master_array = np.delete(master_array, 1, axis=1).astype(float)
@@ -347,6 +390,7 @@ def get_master_arr(gui, master_list):
 	emis_array[0] = emis_array[1]
 	master_array = np.hstack((master_array, emis_array))
 
+	print(f"Get array took {round(time.time() - arr_start, 2)}")
 	return master_array
 
 
@@ -758,7 +802,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 
 							print("", file=stat_summary_file)
 
-				gui.milti_in_full_day_count += full_day_counter
+				gui.multi_in_full_day_count += full_day_counter
 
 			multi_file_core = days if gui.restrict_search_BV.get() else master_block
 
@@ -890,15 +934,15 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 						print("On" + ",", end="", file=stats_file)
 
 					print(extract_time(gui.master_list[bout.start][gui.date_time_col]) + "," +
-                                            extract_time(gui.master_list[bout.stop][gui.date_time_col]) + ",", end="", file=stats_file)
+											extract_time(gui.master_list[bout.stop][gui.date_time_col]) + ",", end="", file=stats_file)
 
 					print(gui.master_list[bout.start][gui.data_point_col] + "," +
-                                            gui.master_list[bout.stop][gui.data_point_col] + ",", end="", file=stats_file)
+											gui.master_list[bout.stop][gui.data_point_col] + ",", end="", file=stats_file)
 
 					print(str(bout.dur) + "," + str(bout.temper_change) + ",", end="", file=stats_file)
 					print(gui.master_list[bout.start][gui.egg_temper_col].strip() + "," +
-                                            gui.master_list[bout.stop][gui.egg_temper_col].strip() + "," +
-                                            str(bout.mean_egg_temper) + ",", end="", file=stats_file)
+											gui.master_list[bout.stop][gui.egg_temper_col].strip() + "," +
+											str(bout.mean_egg_temper) + ",", end="", file=stats_file)
 
 					if gui.air_valid:
 						print(gui.master_list[bout.start][gui.air_temper_col].strip() + "," + gui.master_list[bout.stop]

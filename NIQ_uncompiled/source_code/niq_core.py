@@ -65,7 +65,7 @@ class GUIClass():
 		self.multi_in_day_tempers = []
 		self.multi_in_night_tempers = []
 		self.multi_in_air_tempers = []
-		self.milti_in_full_day_count = 0
+		self.multi_in_full_day_count = 0
 
 		self.master_input = tuple()
 		self.input_root = None
@@ -1377,6 +1377,12 @@ class GUIClass():
 				messagebox.showerror((title + " Error"), "File name is empty.")
 				return False
 
+			entry_path = Path(entry.get())
+
+			if entry_path.is_dir():
+				messagebox.showerror((title + " Error"), "Directory provided but no file name.")
+				return False
+
 			# Add extension if not present
 			if entry == gui.plot_file_E:
 				ext = ".html"
@@ -1385,12 +1391,8 @@ class GUIClass():
 
 			entry_path = Path(entry.get()).with_suffix(ext)
 
-			if entry_path.is_dir():
-				messagebox.showerror((title + " Error"), "Directory provided but no file name.")
-				return False
-
 			# Check if plot file already exists and if so, ask to override
-			if entry_path.exists():
+			if entry_path.exists() and self.show_warns_BV.get():
 				if messagebox.askyesno("Override?", ("The file \"" + entry.get() + "\" already exists.  Do you want to override?")):
 					entry_path.unlink()
 				else:
@@ -1403,7 +1405,7 @@ class GUIClass():
 				messagebox.showerror((title + " Error"), "Failed to open file.")
 				return False
 
-			replace_entry(entry, entry_path.name)
+			replace_entry(entry, entry_path)
 			return True
 
 		def check_time(time, DN):
@@ -1475,8 +1477,10 @@ class GUIClass():
 			messagebox.showerror("Duration Threshold Error", "Invalid duration threshold (could not convert to integer).")
 			return False
 
+		start = time.time()
 		if not check_input_file(self):
 			return False
+		print(f"Input file checking took {round(time.time() - start, 2)}")
 
 		if check_output:
 			if self.make_plot_BV.get():
@@ -1816,7 +1820,7 @@ class GUIClass():
 			print("Mean On Temp Rise", qualifier, str(round(statistics.mean(self.milti_in_on_incs), 3)), file=compiled_stats_file)
 			print("On Rise StDev", qualifier, str(round(statistics.stdev(self.milti_in_on_incs), 3)), file=compiled_stats_file)
 
-			print("Full Day Count,", str(self.milti_in_full_day_count), file=compiled_stats_file)
+			print("Full Day Count,", str(self.multi_in_full_day_count), file=compiled_stats_file)
 			print("Mean Egg Temp,", str(round(statistics.mean((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
 			print("Egg Temp StDev,", str(round(statistics.stdev((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
 			print("Mean Daytime Egg Temp,", str(round(statistics.mean(self.multi_in_day_tempers), 3)), file=compiled_stats_file)
@@ -1846,7 +1850,7 @@ class GUIClass():
 		self.multi_in_day_tempers = []
 		self.multi_in_night_tempers = []
 		self.multi_in_air_tempers = []
-		self.milti_in_full_day_count = 0
+		self.multi_in_full_day_count = 0
 
 	def select_vertices(self, mod_plot=False):
 		"""
@@ -1858,6 +1862,7 @@ class GUIClass():
 
 		if self.check_valid_plot_ops() and self.check_valid_main(check_output=False) and self.check_valid_adv():
 			try:
+				self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
 				self.master_list = niq_misc.get_master_list(self, self.input_file_E.get())
 				self.master_array = niq_misc.get_master_arr(self, self.master_list)
 				self.master_block = niq_classes.Block(self, 0, (len(self.master_list) - 1), False)
@@ -2019,7 +2024,8 @@ class GUIClass():
 										rerun (Bool): indicates if this is a rerun off of user provided vertices
 		"""
 
-		# FLAG
+		run_start = time.time()
+
 		try:
 			print("-" * 100)
 			print("Running NestIQ")
@@ -2059,7 +2065,7 @@ class GUIClass():
 					successful = False
 					break
 
-				print(f"Validation took {round(time.time() - start)} seconds")
+				print(f"Validation took {round(time.time() - start, 2)} seconds")
 
 				print("Active file:", in_file)
 
@@ -2111,6 +2117,8 @@ class GUIClass():
 			traceback.print_exc()
 			messagebox.showerror(("Unidentified Error"), "An unknown error has occerred." +
                             "Please report this error to wxhawkins@gmail.com")
+
+		print(f"Run took {round(time.time() - run_start, 2)}")
 
 	def close_niq(self):
 		"""
@@ -2172,6 +2180,7 @@ class GUIClass():
 				return False
 
 		self.master_hmm = niq_hmm.HMM()
+		self.master_df = niq_misc.get_master_df(self, input_[0])
 		self.master_list = niq_misc.get_master_list(self, input_[0])
 		self.master_array = niq_misc.get_master_arr(self, self.master_list)
 		emis_arr = self.master_array[:, 5]
@@ -2199,6 +2208,7 @@ class GUIClass():
 
 		if self.check_vertex_file():
 			in_file = self.input_file_E.get()
+			self.master_df = niq_misc.get_master_df(self, in_file)
 			self.master_list = niq_misc.get_master_list(self, in_file)
 			self.master_array = niq_misc.get_master_arr(self, self.master_list)
 

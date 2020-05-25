@@ -15,9 +15,9 @@ class Vertex:
 
     """
 
-    def __init__(self, index_, egg_temper, vert_type_):
+    def __init__(self, index_, egg_temper_, vert_type_):
         self.index = int(index_)
-        self.egg_temper = float(egg_temper)
+        self.egg_temper = float(egg_temper_)
         self.vert_type = vert_type_
 
 
@@ -40,7 +40,7 @@ class Bout:
         self.start = start_
         self.stop = stop_
         self.bout_type = bout_type_
-        self.dur = (gui.time_interval * (self.stop - self.start))
+        self.dur = (gui.time_interval * (stop_ - start_))
         self.mean_egg_temper = 0
         self.mean_air_temper = 0
         self.egg_tempers = []
@@ -60,8 +60,6 @@ class Bout:
             air_tempers.append(0)
 
         self.temper_change = ((float(gui.master_list[self.stop][gui.egg_temper_col]) - float(gui.master_list[self.start][gui.egg_temper_col])))
-
-# Discrete section of time such as daytime, nightime, or day/night pair (24hr period)
 
 
 class Block:
