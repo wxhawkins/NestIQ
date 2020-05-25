@@ -113,9 +113,10 @@ def split_days(gui, modifier=0):
 	night_start_index = -1
 
 	# Look for first day or night
-	for i in range(0, len(gui.master_list)):
+	for i in range(0, gui.master_df.shape[0]):
 		# If day_start found before night_start
 		if re.search(day_start, gui.master_list[i][gui.date_time_col]):
+			# if re.search(day_start, gui.master_df.loc[i, "date_time"]):
 			# Set start of first day to this index
 			day_start_index = i
 			# Set start of first night to day index + duration of daytime
@@ -298,7 +299,8 @@ def get_master_df(gui, source_path):
 	# Set first cell equal to second
 	df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
 
-	return df
+	print(df.iloc[:-2, :])
+	return df.iloc[:-2, :]
 
 
 def get_master_list(gui, source_path):
@@ -317,28 +319,22 @@ def get_master_list(gui, source_path):
 
 	master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
 
-	for i in range(len(master_list[:-1])):
+	for i in range(len(master_list)):
 		if any((
 			re.search(r"\D", master_list[i][gui.data_point_col]),
 			not re.search(r"\d", master_list[i][gui.data_point_col])
 		)):
-
 			pop_indices.append(i)
 
 	for pop_count, index in enumerate(pop_indices):
 		master_list.pop(index - pop_count)
-	master_list.pop(len(master_list) - 1)
 
 	# Remove extra columns
 	master_list = [row[0:4] for row in master_list] if gui.air_valid else [row[0:3] for row in master_list]
 
-	# Delete extra line created as a result of the above for loop
-	del master_list[-1]
-
 	# Clear formatting characters if present
 	digit_search = re.search(r"\d+", master_list[0][gui.data_point_col])
 	master_list[0][gui.data_point_col] = digit_search.group(0)
-
 	return master_list
 
 

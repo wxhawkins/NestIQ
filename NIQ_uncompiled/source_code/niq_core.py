@@ -2237,7 +2237,7 @@ def main(gui):
 		gui.master_array = gui.daytime_mod(nights_list, gui.master_array)
 
 	# Store all vertices in master block object for later allocation
-	master_block = niq_classes.Block(gui, 0, (len(gui.master_list) - 1), False)
+	master_block = niq_classes.Block(gui, 0, (gui.master_df.shape[0] - 1), False)
 	master_block.vertices = niq_misc.get_verts_from_master_arr(gui.master_array)
 
 	# Extract bouts based on vertex locations
