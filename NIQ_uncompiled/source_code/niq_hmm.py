@@ -7,6 +7,7 @@ from hmmlearn import hmm
 
 from niq_misc import replace_entry
 
+
 class HMM(object):
     """
         Houses parameters and functions pretaining to the hidden Markov model.
@@ -17,11 +18,11 @@ class HMM(object):
             _trans_probs (dict of dicts): state transition probabilities
             _emissions (dict of dicts): state emission probabilities
             _dur_thresh (int): minimum duration (in data points) for a bout to be kept
-    """ 
+    """
 
     def __init__(self):
         self._hidden_states = set([0, 1])
-        self._initial = np.array((2, 0), dtype = float)
+        self._initial = np.array((2, 0), dtype=float)
         self._trans_probs = {0: {}, 1: {}}
         self._emissions = {0: {}, 1: {}}
         self._dur_thresh = None
@@ -61,7 +62,7 @@ class HMM(object):
             self._emissions[1]["stdev"] = model.covars_[1][0][0]
 
         print("RUNNING MODEL")
-        model = hmm.GaussianHMM(n_components = 2, tol = 1e-100, n_iter = 1000, algorithm = "baum_welch")
+        model = hmm.GaussianHMM(n_components=2, tol=1e-100, n_iter=1000, algorithm="baum_welch")
         print("FINISHED MODEL")
         # Provide inital values
         model.startprob_ = np.array([0.5, 0.5])
@@ -99,7 +100,7 @@ class HMM(object):
             trans_probs[prev_state][int(state)] += 1
             prev_state = state
 
-        #Convert from counts to probabilites
+        # Convert from counts to probabilites
         for outer_state in self._hidden_states:
             dict_sum = sum(trans_probs[outer_state].values())
             for inner_state in self._hidden_states:
@@ -170,11 +171,11 @@ class HMM(object):
                 master_array (numpy array)
         """
 
-        #Run viterbi to get expected states for each input data point
+        # Run viterbi to get expected states for each input data point
         results = list(self.viterbi(master_array))
         results = list(map(int, results))
 
-        master_array = self.add_states(master_array, results_arr = np.array(results))
+        master_array = self.add_states(master_array, results_arr=np.array(results))
         return master_array
 
     def add_states(self, master_array, verts=None, results_arr=None):
@@ -192,14 +193,14 @@ class HMM(object):
             start = verts[0].index
             stop = verts[-1].index
             index_range = stop - start
-            state_arr = np.zeros((index_range, 1), dtype = float)
+            state_arr = np.zeros((index_range, 1), dtype=float)
 
             row = 0
-            state = 1 # Assume on-bout start -- is corrected by "swap_params_by_state" if necessary
+            state = 1  # Assume on-bout start -- is corrected by "swap_params_by_state" if necessary
             prev_index = verts[0].index
             for curVert in verts[1:]:
                 cur_index = curVert.index
-                for _ in range(prev_index, cur_index):				
+                for _ in range(prev_index, cur_index):
                     state_arr[row] = [state]
                     row += 1
 
@@ -211,7 +212,7 @@ class HMM(object):
         # If results are provided, simply append states to master_array
         if results_arr is not None:
             master_array = np.hstack((master_array, results_arr.reshape(results_arr.shape[0], 1)))
-        
+
         return master_array
 
     def viterbi(self, master_array):
@@ -244,7 +245,8 @@ class HMM(object):
             erf_val = math.erf(erf_input)
             main_prob = (0.5 * (1 + erf_val)) if state == 1 else (1 - (0.5 * (1 + erf_val)))
 
-            if main_prob == 0: main_prob = pseudocount
+            if main_prob == 0:
+                main_prob = pseudocount
             return main_prob
 
         def get_traceback(traceback, last_origin):
@@ -283,16 +285,16 @@ class HMM(object):
                 for cur_state in self._hidden_states:
                     cur_prob[cur_state] = previous[cur_state] + np.log10(self._trans_probs[cur_state][next_state])
 
-                origin = max(cur_prob, key = cur_prob.get)
+                origin = max(cur_prob, key=cur_prob.get)
                 next_prob[next_state] = np.log10(get_cumu_prob(self, next_state, row[5])) + cur_prob[origin]
                 tb[next_state] = origin
 
             return next_prob, tb
 
-        traceback = []	
+        traceback = []
         first_row = master_array[0]
 
-        #First set of probabilites are calculated differently
+        # First set of probabilites are calculated differently
         previous = {}
         previous[0] = np.log10(self._initial[0]) + np.log10(get_cumu_prob(self, 0, first_row[5]))
         previous[1] = np.log10(self._initial[1]) + np.log10(get_cumu_prob(self, 1, first_row[5]))
@@ -302,9 +304,9 @@ class HMM(object):
             previous = update_previous
             traceback.append(update_tb)
 
-        result = str(max(previous, key = previous.get))
+        result = str(max(previous, key=previous.get))
         result += get_traceback(traceback, result)
-        
+
         return result[::-1]
 
     def build_model_from_entries(self, gui):
@@ -340,7 +342,7 @@ class HMM(object):
 
         if self._dur_thresh is not None:
             replace_entry(gui.dur_thresh_E, int(self._dur_thresh))
-            
+
         replace_entry(gui.init_off_E, round(self._initial[0], 7))
         replace_entry(gui.init_on_E, round(self._initial[1], 7))
 
