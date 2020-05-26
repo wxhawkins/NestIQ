@@ -113,58 +113,58 @@ def split_days(gui, modifier=0):
 	night_start_index = -1
 
 	# Look for first day or night
-	for i in range(0, len(gui.master_list)):
+	for i in range(0, len(gui.master_df)):
 		# If day_start found before night_start
-		if re.search(day_start, gui.master_list[i][gui.date_time_col]):
+		if re.search(day_start, gui.master_df.loc[i, "date_time"]):
 			# Set start of first day to this index
 			day_start_index = i
 			# Set start of first night to day index + duration of daytime
 			night_start_index = (i + (day_dur / gui.time_interval))
-			# Check if this sets night_start_index past length of gui.master_list
-			if night_start_index > (len(gui.master_list) - 1):
+			# Check if this sets night_start_index past length of master DataFrame
+			if night_start_index > (len(gui.master_df) - 1):
 				reached_end = True
-				night_start_index = (len(gui.master_list) - 1)
+				night_start_index = (len(gui.master_df) - 1)
 				days_list.append(niq_classes.Block(gui, day_start_index, night_start_index - 1, True))
 
 			break
 		# If night_start found before day_start
-		elif re.search(night_start, gui.master_list[i][gui.date_time_col]):
+		elif re.search(night_start, gui.master_df.loc[i, "date_time"]):
 			# Set start of first night to this index
 			night_start_index = i
 			# Set start of first day to night index + duration of nighttime
 			day_start_index = (i + (night_dur / gui.time_interval))
-			# Check if this sets day_start_index past length of gui.master_list
-			if day_start_index > (len(gui.master_list) - 1):
+			# Check if this sets day_start_index past length of master DataFrame
+			if day_start_index > (len(gui.master_df) - 1):
 				reached_end = True
-				day_start_index = (len(gui.master_list) - 1)
+				day_start_index = (len(gui.master_df) - 1)
 
 			break
 
 	# Check if data starts at night and process to achieve uniformity going into following while loop
-	# Catch partial day at start of gui.master_list
+	# Catch partial day at start of master DataFrame
 	if night_start_index < day_start_index:
 		days_list.append(niq_classes.Block(gui, 0, night_start_index - 1, True))
 		nights_list.append(niq_classes.Block(gui, night_start_index, day_start_index - 1, reached_end))
 		night_start_index += day_interval
-	# Catch partial night at start of gui.master_list
+	# Catch partial night at start of master DataFrame
 	elif day_start_index < night_start_index:
 		nights_list.append(niq_classes.Block(gui, 0, day_start_index - 1, True))
 	# If neither day_start or night_start found, append partial day or night
 	elif day_start_index == night_start_index:
 		reached_end = True
-		if check_time_in_daytime(day_start, night_start, gui.master_list[0][gui.date_time_col]):
-			days_list.append(niq_classes.Block(gui, 0, (len(gui.master_list) - 1), True))
+		if check_time_in_daytime(day_start, night_start, gui.master_df.loc[i, "date_time"]):
+			days_list.append(niq_classes.Block(gui, 0, (len(gui.master_df) - 1), True))
 		else:
-			nights_list.append(niq_classes.Block(gui, 0, (len(gui.master_list) - 1), True))
+			nights_list.append(niq_classes.Block(gui, 0, (len(gui.master_df) - 1), True))
 
 	# Save each day and night as object
 	while not reached_end:
 		days_list.append(niq_classes.Block(gui, day_start_index, night_start_index - 1, False))
 		day_start_index += day_interval
 
-		# Make final night stop at end of gui.master_list
-		if day_start_index > len(gui.master_list):
-			day_start_index = (len(gui.master_list) - 1)
+		# Make final night stop at end of master DataFrame
+		if day_start_index > len(gui.master_df):
+			day_start_index = (len(gui.master_df) - 1)
 			nights_list.append(niq_classes.Block(gui, night_start_index, day_start_index - 1, True))
 			reached_end = True
 			break
@@ -172,9 +172,9 @@ def split_days(gui, modifier=0):
 			nights_list.append(niq_classes.Block(gui, night_start_index, day_start_index - 1, False))
 			night_start_index += day_interval
 
-		# Make final day stop at end of gui.master_list
-		if night_start_index > len(gui.master_list):
-			night_start_index = (len(gui.master_list) - 1)
+		# Make final day stop at end of master DataFrame
+		if night_start_index > len(gui.master_df):
+			night_start_index = (len(gui.master_df) - 1)
 			days_list.append(niq_classes.Block(gui, day_start_index, night_start_index - 1, True))
 			reached_end = True
 
@@ -452,15 +452,15 @@ def get_verts_from_html(gui, in_file, alt=False):
 	vertices = []
 
 	vertex_data_points = get_data_points_from_html(gui, in_file)
-	for i in range(len(gui.master_list)):
+	for i in range(len(gui.master_df)):
 		# Search for gap between index value and corresponding datapoint
-		if int(gui.master_list[i][gui.data_point_col]) == int(vertex_data_points[0]):
+		if int(gui.master_df.loc[i, "data_point"]) == int(vertex_data_points[0]):
 			# Delta is discrepency between index and data point number
 			delta = (vertex_data_points[0] - i) - 1
 			break
 
-	first_vert_temper = gui.master_list[vertex_data_points[0] - delta][gui.egg_temper_col]
-	second_vert_temper = gui.master_list[vertex_data_points[1] - delta][gui.egg_temper_col]
+	first_vert_temper = gui.master_df.loc[vertex_data_points[0] - delta, "egg_temper"]
+	second_vert_temper = gui.master_df.loc[vertex_data_points[1] - delta, "egg_temper"]
 
 	# Determine if first vertex is an offStart or onStart
 	vert_type = 0 if first_vert_temper > second_vert_temper else 1
@@ -468,7 +468,7 @@ def get_verts_from_html(gui, in_file, alt=False):
 	# (flag) may lead to some issues due to invalid assumption
 	for data_point in vertex_data_points:
 		index = (data_point - delta)
-		vertices.append(niq_classes.Vertex(index, gui.master_list[index][gui.egg_temper_col], vert_type))
+		vertices.append(niq_classes.Vertex(index, gui.master_df.loc[index, "egg_temper"], vert_type))
 		vert_type = abs(vert_type - 1)
 
 	return vertices
@@ -594,14 +594,10 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 	all_egg_tempers, all_air_tempers = [], []
 	master_time_above_temper, master_time_below_temper = 0, 0
 
-	# Compile all egg and air temperatures
 	if gui.get_stats_BV.get() or gui.multi_in_stats_BV.get():
-		for line in gui.master_list:
-			all_egg_tempers.append(float(line[gui.egg_temper_col]))
-			if gui.air_valid:
-				all_air_tempers.append(float(line[gui.air_temper_col]))
-			else:
-				all_air_tempers.append(0)
+		# Compile all egg and air temperatures
+		all_egg_tempers += gui.master_df.loc[:, "egg_temper"].astype(float).round(3).tolist()
+		all_air_tempers += gui.master_df.loc[:, "air_temper"].astype(float).round(3).tolist()
 
 		# Get time exceeding critical temperatures
 		for temper in all_egg_tempers:
@@ -949,20 +945,34 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 					else:
 						print("On" + ",", end="", file=stats_file)
 
-					print(extract_time(gui.master_list[bout.start][gui.date_time_col]) + "," +
-											extract_time(gui.master_list[bout.stop][gui.date_time_col]) + ",", end="", file=stats_file)
+					# print(extract_time(gui.master_list[bout.start][gui.date_time_col]) + "," +
+					# 						extract_time(gui.master_list[bout.stop][gui.date_time_col]) + ",", end="", file=stats_file)
 
-					print(gui.master_list[bout.start][gui.data_point_col] + "," +
-											gui.master_list[bout.stop][gui.data_point_col] + ",", end="", file=stats_file)
+					# print(gui.master_list[bout.start][gui.data_point_col] + "," +
+					# 						gui.master_list[bout.stop][gui.data_point_col] + ",", end="", file=stats_file)
+
+					# print(str(bout.dur) + "," + str(bout.temper_change) + ",", end="", file=stats_file)
+					# print(gui.master_list[bout.start][gui.egg_temper_col].strip() + "," +
+					# 						gui.master_list[bout.stop][gui.egg_temper_col].strip() + "," +
+					# 						str(bout.mean_egg_temper) + ",", end="", file=stats_file)
+
+					# if gui.air_valid:
+					# 	print(gui.master_list[bout.start][gui.air_temper_col].strip() + "," + gui.master_list[bout.stop]
+                    #                                 [gui.air_temper_col].strip() + "," + str(bout.mean_air_temper) + ",", end="", file=stats_file)
+
+					print(extract_time(gui.master_df.loc[bout.start, "date_time"]) + "," +
+											extract_time(gui.master_df.loc[bout.stop, "date_time"]) + ",", end="", file=stats_file)
+
+					print(gui.master_df.loc[bout.start, "data_point"] + "," + gui.master_df.loc[bout.stop, "data_point"] + ",", end="", file=stats_file)
 
 					print(str(bout.dur) + "," + str(bout.temper_change) + ",", end="", file=stats_file)
-					print(gui.master_list[bout.start][gui.egg_temper_col].strip() + "," +
-											gui.master_list[bout.stop][gui.egg_temper_col].strip() + "," +
+					print(gui.master_df.loc[bout.start, "egg_temper"] + "," +
+											gui.master_df.loc[bout.stop, "egg_temper"] + "," +
 											str(bout.mean_egg_temper) + ",", end="", file=stats_file)
 
 					if gui.air_valid:
-						print(gui.master_list[bout.start][gui.air_temper_col].strip() + "," + gui.master_list[bout.stop]
-                                                    [gui.air_temper_col].strip() + "," + str(bout.mean_air_temper) + ",", end="", file=stats_file)
+						print(gui.master_df.loc[bout.start, "air_temper"] + "," +
+                                                    gui.master_df.loc[bout.stop, "air_temper"] + "," + str(bout.mean_air_temper) + ",", end="", file=stats_file)
 
 					print("", file=stats_file)
 

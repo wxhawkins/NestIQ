@@ -61,9 +61,8 @@ class HMM(object):
             self._emissions[0]["stdev"] = model.covars_[0][0][0]
             self._emissions[1]["stdev"] = model.covars_[1][0][0]
 
-        print("RUNNING MODEL")
         model = hmm.GaussianHMM(n_components=2, tol=1e-100, n_iter=1000, algorithm="baum_welch")
-        print("FINISHED MODEL")
+
         # Provide inital values
         model.startprob_ = np.array([0.5, 0.5])
         model.transmat_ = np.array([[0.98, 0.02],

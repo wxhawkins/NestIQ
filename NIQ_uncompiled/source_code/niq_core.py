@@ -1018,9 +1018,38 @@ class GUIClass():
 
 	def master_test(self):
 		"""
-			Run automated tests for unrestricted plotting/statistics, restricted plotting/statistics, 
+			Run automated tests for unrestricted plotting/statistics, restricted plotting/statistics,
 			unsupervised learning and supervised learning.
 		"""
+		def compare_stats(key, ref_path, test_path):
+			"""
+				Compare two statistics files line by line and store discrepencies.
+
+				Args:
+					key (int): random number identifier for this test run
+					ref_path (pathlib.Path): Path to reference statistics file
+					test_path (pathlib.Path): Path to test statistics file
+			"""
+
+			mismatches = dict()
+
+			# Exctract important lines from files provided
+			with open(ref_path, "r") as ref_file, open(test_path, "r") as test_file:
+				ref_lines = ref_file.readlines()
+				labels = ref_lines[1].strip().split(",")
+				ref_vals = ref_lines[10].strip().split(",")
+				test_vals = test_file.readlines()[10].strip().split(",")
+
+			# Compare values
+			for i, label in enumerate(labels):
+				if ref_vals[i].strip() != test_vals[i].strip():
+					try:
+						if float(ref_vals[i]) != float(test_vals[i]):
+							mismatches[label] = (ref_vals[i], test_vals[i])
+					except ValueError:
+						mismatches[label] = (ref_vals[i], "None")
+
+			return mismatches
 
 		def compare_configs(ref_path, test_path):
 			"""
@@ -1032,52 +1061,53 @@ class GUIClass():
 
 			"""
 
-			with open(unsup_ref_path, 'r') as ref, open(unsup_test_path, 'r') as test:
-				ref_lines = ref.readlines()
-				test_lines = test.readlines()
+			with open(unsup_ref_path, 'r') as ref_file, open(unsup_test_path, 'r') as test_file:
+				ref_lines = ref_file.readlines()
+				test_lines = test_file.readlines()
 
 			mismatches = {}
 			for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
 				if test_line.strip() != ref_line.strip():
 					try:
 						# Get line label
-						key = re.search((r"[^=]*"), ref_line).group(0)
+						label = re.search((r"[^=]*"), ref_line).group(0)
 						# Get reference and test values
 						ref_val = re.search((r"=(.*)"), ref_line).group(1).strip()
 						test_val = re.search((r"=(.*)"), test_line).group(1).strip()
 						# Try converting and comparing as floats
 						try:
 							if float(ref_val) != float(test_val):
-								mismatches[key] = (ref_val, test_val)
+								mismatches[label] = (ref_val, test_val)
 						except:
 							if ref_val != test_val:
-								mismatches[key] = (ref_val, test_val)
+								mismatches[label] = (ref_val, test_val)
 					except:
-						mismatches[key] = (ref_val, "None")
+						mismatches[label] = (ref_val, "None")
 
 			return mismatches
 
 		# Initialization
+		test_dir_path = self.master_dir_path / "testing"
 		# Load config file
-		ref_config_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/test_config.ini")
+		ref_config_path = test_dir_path / "config" / "test_config.ini"
 		self.load_config(config_file_=ref_config_path)
 
 		# Load testing input file
 		self.input_file_E.delete(0, "end")
 		# self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input.csv")
-		self.input_file_E.insert(0, Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.csv"))
+		self.input_file_E.insert(0, (test_dir_path / "input" / "test_input_long.csv"))
 
 		# Set up output
 		rand_key = str(randint(1e6, 1e7))
-		out_dir_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/temp_output/")
+		out_dir_path = test_dir_path / "temp_output"
 		self.out_path_E.delete(0, "end")
 		self.out_path_E.insert(0, out_dir_path)
 
 		# ---------------------------------Statistics----------------------------------------
 		# Declare paths
-		unres_ref_stats_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_unrestricted_long.csv")
-		res_ref_stats_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/stats/ref_stats_restricted_long.csv")
-		test_stat_dir = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/temp_output/")
+		unres_ref_stats_path = test_dir_path / "stats" / "ref_stats_unrestricted_long.csv"
+		res_ref_stats_path = test_dir_path / "stats" / "ref_stats_restricted_long.csv"
+		test_stat_dir = test_dir_path / "temp_output"
 
 		# Set up text coloring
 		colorama.init()
@@ -1085,12 +1115,14 @@ class GUIClass():
 		print(f"Key = {rand_key}")
 
 		for test_type in ("unrestricted", "restricted"):
+			# Test unrestricted statistics
 			print(f"\n\nTesting statistics ({test_type})")
-
 			if test_type == "restricted":
 				self.restrict_search_CB.select()
 			else:
 				self.restrict_search_CB.deselect()
+
+			ref_path = res_ref_stats_path if test_type == "restricted" else unres_ref_stats_path
 
 			# Set up output file names
 			test_stats_path = f"{rand_key}_{test_type}.csv"
@@ -1101,32 +1133,17 @@ class GUIClass():
 			# Run statistical analysis
 			self.trigger_run()
 
-			ref_stats_path = res_ref_stats_path if test_type == "restricted" else unres_ref_stats_path
-
-			# Create dictionaries with stat label as key and stat as value
-			stat_dicts = list()
-
-			with open(ref_stats_path, "r") as ref_file, open(test_stats_path, "r") as test_file:
-				for file_ in (ref_file, test_file):
-					lines = file_.readlines()
-					label_line = lines[1].strip().split(",")
-					# val_line = lines[2].strip().split(",") # For reduced input file
-					val_line = lines[10].strip().split(",")
-					stat_dicts.append({key: val for key, val in zip(label_line, val_line)})
-
-			# Compare stat values
-			mismatches = [key for key in stat_dicts[0] if stat_dicts[0][key] != stat_dicts[1][key]]
+			# Look for discrepencies in output files
+			mismatches = compare_stats(rand_key, ref_path, test_stats_path)
 
 			# Notify user of mismatched values if any
 			if not mismatches:
 				print(colored(f"{test_type.upper()} STATS PASSED".center(100, "-"), "green"))
 			else:
 				print(colored(f"{test_type.upper()} STATS FAILED".center(100, "-"), "red"))
-				for key in mismatches:
-					print(
-						colored(key, "yellow") + ": test value of " + colored(stat_dicts[1][key], "yellow") +
-						" did not match reference " + colored(stat_dicts[0][key], "yellow")
-					)
+				for key, values in mismatches.items():
+					print(colored(key, "yellow") + ": test value of " + colored(str(values[1]), "yellow") +
+                                            " did not match reference " + colored(str(values[0]), "yellow"))
 
 		# ---------------------------------Unsupervised learning--------------------------------------
 		print(f"\n\nTesting unsupervised learning")
@@ -1134,7 +1151,7 @@ class GUIClass():
 		self.load_config(config_file_=ref_config_path)
 		self.unsupervised_learning()
 		unsup_test_path = test_stat_dir / "unsup_test_config.ini"
-		unsup_ref_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/unsup_ref_config.ini"
+		unsup_ref_path = test_dir_path / "config" / "unsup_ref_config.ini"
 		self.save_config(out_file=str(unsup_test_path))
 
 		# Search for config discrepencies
@@ -1151,7 +1168,7 @@ class GUIClass():
 		# ---------------------------------Supervised learning----------------------------------------
 		print(f"\n\nTesting supervised learning")
 
-		vertex_file_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/plots/vertex_selection.html"
+		vertex_file_path = test_dir_path / "plots" / "vertex_selection.html"
 
 		# Attempt to make vertex selection plot
 		try:
@@ -1166,7 +1183,7 @@ class GUIClass():
 		self.load_config(config_file_=ref_config_path)
 		self.supervised_learning()
 		sup_test_path = test_stat_dir / "sup_test_config.ini"
-		sup_ref_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/sup_ref_config.ini"
+		sup_ref_path = test_dir_path / "config" / "sup_ref_config.ini"
 		self.save_config(out_file=str(sup_test_path))
 
 		# Search for config discrepencies
