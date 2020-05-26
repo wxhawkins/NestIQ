@@ -336,7 +336,7 @@ def get_master_list(gui, source_path):
     return master_list
 
 
-def get_master_arr(gui, master_list):
+def get_master_arr(gui, df):
     """
 			Converts the 2D list containing input data to a 2D numpy array. The date/time column is not
 			tranfered. Additionally, delta temperature, smoothed delta temperature, and temperature
@@ -345,45 +345,18 @@ def get_master_arr(gui, master_list):
 					Column 0 = data point
 					Column 1 = egg temperature
 					Column 2 = air temperature (0s if not provided)
-					Column 3 = delta temperature (egg temper - air temper)
+					Column 3 = adjusted temperature (egg temper - air temper)
 					Column 4 = smoothed column 3 (just a copy if smoothing radius is 0)
 					Column 5 = temperature change from previous
 
 			Args:
-					master_list (list of lists): contains the information from the input file being analyzed
+					df (DataFrame): Contains all information for the array in DataFrame form
 	"""
 
-    master_array = np.array(master_list)
-    master_array = np.delete(master_array, 1, axis=1).astype(float)
-
-    # Fill column 3 with 0s if valid air temperatures not provided
-    if not gui.air_valid:
-        if master_array.shape[1] == 3:
-            master_array = np.delete(master_array, 2, axis=1)
-
-        master_array = np.hstack((master_array.astype(float), np.zeros((master_array.shape[0], 1), dtype=float)))
-
-    try:
-        delta_temps = (master_array[:, 1] - master_array[:, 2]).reshape(((master_array.shape[0], 1)))
-        master_array = np.hstack((master_array, delta_temps))
-    except IndexError:
-        gui.air_valid = False
-        return get_master_arr(gui, master_list)
-
-    radius = int(gui.smoothing_radius_E.get())
-    master_array = np.hstack((master_array, smooth_col(radius, delta_temps)))
-
-    index_range = len(master_list)
-    emis_array = np.zeros((index_range, 1))
-
-    for i in range(1, index_range):
-        delta = master_array[i, 4] - master_array[i - 1, 4]
-        emis_array[i] = delta
-
-    emis_array[0] = emis_array[1]
-    master_array = np.hstack((master_array, emis_array))
-
-    return master_array
+    # Ommit date_time column
+    reduced_df = df.loc[:, df.columns != "date_time"]
+    # Convert to numpy array
+    return reduced_df.to_numpy()
 
 
 def get_verts_from_html(gui, in_file, alt=False):

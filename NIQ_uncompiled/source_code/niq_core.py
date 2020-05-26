@@ -2029,8 +2029,7 @@ class GUIClass:
         if self.check_valid_plot_ops() and self.check_valid_main(check_output=False) and self.check_valid_adv():
             try:
                 self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
-                self.master_list = niq_misc.get_master_list(self, self.input_file_E.get())
-                self.master_array = niq_misc.get_master_arr(self, self.master_list)
+                self.master_array = niq_misc.get_master_arr(self, self.master_df)
                 self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
 
                 # Get days_list for plotting vertical lines
@@ -2231,8 +2230,7 @@ class GUIClass:
                 print("Active file:", in_file)
 
                 self.master_df = niq_misc.get_master_df(self, in_file)
-                self.master_list = niq_misc.get_master_list(self, in_file)
-                self.master_array = niq_misc.get_master_arr(self, self.master_list)
+                self.master_array = niq_misc.get_master_arr(self, self.master_df)
 
                 if not rerun:
                     self.master_hmm = niq_hmm.HMM()
@@ -2341,8 +2339,7 @@ class GUIClass:
 
         self.master_hmm = niq_hmm.HMM()
         self.master_df = niq_misc.get_master_df(self, input_[0])
-        self.master_list = niq_misc.get_master_list(self, input_[0])
-        self.master_array = niq_misc.get_master_arr(self, self.master_list)
+        self.master_array = niq_misc.get_master_arr(self, self.master_df)
         emis_arr = self.master_array[:, 5]
         emis_arr = emis_arr.reshape(-1, 1)
         self.master_hmm.baum_welch(emis_arr)
@@ -2370,8 +2367,7 @@ class GUIClass:
         if self.check_vertex_file():
             in_file = self.input_file_E.get()
             self.master_df = niq_misc.get_master_df(self, in_file)
-            self.master_list = niq_misc.get_master_list(self, in_file)
-            self.master_array = niq_misc.get_master_arr(self, self.master_list)
+            self.master_array = niq_misc.get_master_arr(self, self.master_df)
 
             training_verts = []
             training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
