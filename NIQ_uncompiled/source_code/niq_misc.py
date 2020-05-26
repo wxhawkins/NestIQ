@@ -113,10 +113,9 @@ def split_days(gui, modifier=0):
 	night_start_index = -1
 
 	# Look for first day or night
-	for i in range(0, gui.master_df.shape[0]):
+	for i in range(0, len(gui.master_list)):
 		# If day_start found before night_start
 		if re.search(day_start, gui.master_list[i][gui.date_time_col]):
-			# if re.search(day_start, gui.master_df.loc[i, "date_time"]):
 			# Set start of first day to this index
 			day_start_index = i
 			# Set start of first night to day index + duration of daytime
@@ -223,7 +222,7 @@ def get_master_df(gui, source_path):
 			Generates "smoothed" copy of input data by applying a rolling mean of the requested radius.
 
 			Args:
-				radius (int): number of values to include in rolling mean 
+				radius (int): number of values to include in rolling mean
 							(e.g. radius = 1 means average values i, i-1 and i+1)
 				col (pd.Series): column data to be smoothed
 		"""
@@ -299,8 +298,7 @@ def get_master_df(gui, source_path):
 	# Set first cell equal to second
 	df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
 
-	print(df.iloc[:-2, :])
-	return df.iloc[:-2, :]
+	return df
 
 
 def get_master_list(gui, source_path):
@@ -335,6 +333,10 @@ def get_master_list(gui, source_path):
 	# Clear formatting characters if present
 	digit_search = re.search(r"\d+", master_list[0][gui.data_point_col])
 	master_list[0][gui.data_point_col] = digit_search.group(0)
+
+	"""FLAG I found this function was unecessarily deleteing the last two rows.
+	I have now fixed this but still pass master_list[:-2] so as to not alter the report for testing purposes."""
+	# return master_list[:-2]
 	return master_list
 
 
@@ -518,18 +520,43 @@ def get_bouts(gui, block):
 					gui (GUIClass)
 					block (Block): custom class object holding vertex locations
 	"""
+	# Get minimum bout duration
+	dur_thresh = int(gui.dur_thresh_E.get())
 
+	# Return if insufficient number of vertices supplied
 	verts = block.vertices
 	if verts == None or len(verts) < 2:
 		return
 
+	if gui.count_partial_BV.get():
+		# Handle first bout
+		if verts[0].index > dur_thresh:
+			if verts[0].vert_type == 0:  # Start of off-bout
+				block.bouts.append(niq_classes.Bout(gui, block.start, verts[0].index, 1))
+				block.on_count += 1
+			elif verts[0].vert_type == 1:  # Start of on-bout
+				block.bouts.append(niq_classes.Bout(gui, block.start, verts[0].index, 0))
+				block.off_count += 1
+
+	# Acquire full bouts
 	for i, cur_vert in enumerate(verts[:-1]):
-		if cur_vert.vert_type == 0:
-			block.bouts.append(niq_classes.Bout(gui, cur_vert.index, verts[i + 1].index, 0))
+		cur_type = cur_vert.vert_type
+		block.bouts.append(niq_classes.Bout(gui, cur_vert.index, verts[i + 1].index, cur_type))
+
+		if cur_type == 0:
 			block.off_count += 1
-		elif cur_vert.vert_type == 1:
-			block.bouts.append(niq_classes.Bout(gui, cur_vert.index, verts[i + 1].index, 1))
+		elif cur_type == 1:
 			block.on_count += 1
+
+	if gui.count_partial_BV.get():
+		# Handle last bout
+		if (block.stop - verts[-1].index) > dur_thresh:
+			if verts[-1].vert_type == 0:  # Start of off-bout
+				block.bouts.append(niq_classes.Bout(gui, verts[-1].index, block.stop, 0))
+				block.off_count += 1
+			elif verts[-1].vert_type == 1:  # Start of on-bout
+				block.bouts.append(niq_classes.Bout(gui, verts[-1].index, block.stop, 1))
+				block.on_count += 1
 
 
 def get_day_night_pairs(gui, days_list, nights_list):
@@ -990,7 +1017,7 @@ def smooth_col(radius, col):
 			Generates "smoothed" copy of input data by applying a rolling mean of the requested radius.
 
 			Args:
-					radius (int): number of values to include in rolling mean 
+					radius (int): number of values to include in rolling mean
 											(e.g. radius = 1 means average values i, i-1 and i+1)
 	"""
 
@@ -1463,6 +1490,8 @@ def add_states(self, master_array, verts=None, results_arr=None):
 	if results_arr is not None:
 		master_array = np.hstack((master_array, results_arr.reshape(results_arr.shape[0], 1)))
 
+	print(master_array[:-10, :])
+	print("IN ADD STATES")
 	return master_array
 
 

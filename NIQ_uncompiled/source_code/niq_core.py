@@ -197,6 +197,10 @@ class GUIClass():
 		self.dur_thresh_E = tk.Entry(tab1, width=5)
 		self.dur_thresh_E.grid(row=24, sticky="W", padx=207)
 
+		self.count_partial_BV = tk.BooleanVar()
+		self.count_partial_CB = tk.Checkbutton(tab1, text="Count partial bouts", variable=self.count_partial_BV, font=STANDARD_FONT)
+		self.count_partial_CB.grid(row=25, sticky="W", padx=10, pady=10)
+
 		# Display and retract file entry boxes based on selection status
 		def main_tab_callback(*args):
 			if self.make_plot_BV.get():
@@ -780,41 +784,42 @@ class GUIClass():
 		if not re.search(r"\.ini", out_file):
 			out_file = (out_file + ".ini")
 
-		# Copy over config_static as template
-		copyfile(self.master_dir_path / "misc_files" / "config_static.ini", out_file)
+		# Copy over defualt_backup as template
+		copyfile(self.master_dir_path / "config_files" / "backup_config.ini", out_file)
 		self.update_config(out_file)
 
-	def load_config(self, program_startup=False, config_file_=Path("")):
+	def load_config(self, program_startup=False, config_file_=None):
 		"""
 						Updates all GUI settings and statuses according to a configuration file. If this file is not immediately
 						provided to the function, the user is prompted to select a file from a dialog box.
 
 						Args:
-										program_startup (bool): True if is the initial call used populate GUI upon program startup
+										program_startup (bool): True if is the initial call used to populate GUI upon program startup
 										config_file_ (pathlib.Path): Path to configuration file to be loaded
-
 		"""
 
+		# Load config button clicked
 		if not program_startup and config_file_ is None:
 			config_file = filedialog.askopenfilename()
 
 			if config_file == "":
 				return False
 
+			config_file = Path(config_file)
 			if not config_file.exists():
 				messagebox.showerror(("Config File Loading Error"),
                                     "Configuration file could not be found.")
 				return False
 
 			try:
-				self.config.read(config_file)
+				self.config.read(str(config_file))
 			except:
 				messagebox.showerror(("Config File Loading Error"),
                                     "Configuration file appears invalid.  Please try a differnt file.")
 
 		if config_file_ is not None:
 			config_file = config_file_
-			self.config.read(config_file)
+			self.config.read(str(config_file))
 
 		try:
 			replace_entry(self.out_path_E, self.config.get("Main Settings", "output_dir"))
@@ -823,6 +828,7 @@ class GUIClass():
 			self.time_interval = self.config.get("Main Settings", "data_time_interval")
 			self.show_warns_CB.select() if self.config.get("Main Settings", "show_warnings").lower() == "true" else self.show_warns_CB.deselect()
 			self.restrict_search_CB.select() if self.config.get("Main Settings", "restrict_bout_search").lower() == "true" else self.restrict_search_CB.deselect()
+			self.count_partial_CB.select() if self.config.get("Main Settings", "count_partial_bouts").lower() == "true" else self.count_partial_CB.deselect()
 			self.UL_default_CB.select() if self.config.get("Advanced Settings", "run_unsup_by_default").lower() == "true" else self.UL_default_CB.deselect()
 			replace_entry(self.day_start_E, self.config.get("Main Settings", "day_Start_Time"))
 			replace_entry(self.night_start_E, self.config.get("Main Settings", "night_Start_Time"))
@@ -907,16 +913,16 @@ class GUIClass():
 		except Exception:
 			if program_startup:
 				messagebox.showerror(("Config File Loading Error"),
-                                    "default_config.ini could not be read, reverting to static config file.")
+                                    "backup_config.ini could not be read, reverting to backup config file.")
 				traceback.print_exc()
 
-				# If an error is encountered, try loading "config_static.ini"
+				# If an error is encountered, try loading "backup_config.ini"
 				copyfile(
-					self.master_dir_path / "misc_files" / "config_static.ini",
-					self.master_dir_path / "misc_files" / "default_config.ini"
+					self.master_dir_path / "config_files" / "default_backup.ini",
+					self.master_dir_path / "config_files" / "backup_config.ini"
 				)
 
-				self.config.read(self.master_dir_path / "config_files" / "default_config.ini")
+				self.config.read(self.master_dir_path / "config_files" / "backup_config.ini")
 				self.load_config(program_startup=True)
 			else:
 				messagebox.showerror(("Config File Loading Error"),
@@ -1050,6 +1056,7 @@ class GUIClass():
 			test_plot_path = f"{rand_key}_{test_type}.html"
 			replace_entry(self.stats_file_E, test_stats_path)
 			replace_entry(self.plot_file_E, test_plot_path)
+
 			# Run statistical analysis
 			self.trigger_run()
 
@@ -1094,23 +1101,25 @@ class GUIClass():
 			test_lines = test.readlines()
 
 		# Search for config discrepencies
-		mismatches = []
+		mismatches = {}
 		for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
 			if test_line.strip() != ref_line.strip():
 				try:
+					key = re.search((r"(.*) ="), ref_line).group(1)
 					ref_val = float(re.search((r"(\d+)(\.?)(\d+)?"), ref_line).group(0))
 					test_val = float(re.search((r"(\d+)(\.?)(\d+)?"), test_line).group(0))
 					if ref_val != test_val:
-						mismatches.append(test_line)
+						mismatches[key] = (ref_val, test_val)
 				except:
-					mismatches.append(test_line)
+					mismatches[key] = (ref_val, "None")
 
 		if not mismatches:
 			print(colored("UNSUP PASSED".center(100, "-"), "green"))
 		else:
 			print(colored("UNSUP FAILED".center(100, "-"), "red"))
-			for line in mismatches:
-				print(colored(line, "yellow"))
+			for key, values in mismatches.items():
+				print(colored(key, "yellow") + ": test value of " + colored(str(values[1]), "yellow") +
+                                    " did not match reference " + colored(str(values[0]), "yellow"))
 
 		# ---------------------------------Supervised learning----------------------------------------
 		print(f"\n\nTesting supervised learning")
@@ -1893,35 +1902,36 @@ class GUIClass():
 
 	def init_config(self):
 		"""
-						Initializes GUI from default_config.ini.  config_static.ini is used as a backup if anything goes wrong.
+						Initializes GUI from backup_config.ini.  backup_config.ini is used as a backup if anything goes wrong.
 		"""
 		self.config = configparser.RawConfigParser()
 
-		config_default_path = Path(self.master_dir_path / "config_files" / "default_config.ini")
-		config_static_path = Path(self.master_dir_path / "misc_files" / "config_static.ini")
+		config_default_path = Path(self.master_dir_path / "config_files" / "backup_config.ini")
+		backup_config_path = Path(self.master_dir_path / "config_files" / "backup_config.ini")
 
 		if not config_default_path.exists():
-			copyfile(config_static_path, config_default_path)
+			copyfile(backup_config_path, config_default_path)
 
 		self.config.read(config_default_path)
 
 	def update_config(self, config_file=None):
 		"""
 						Generates a configuration file from the current GUI parameters. If no file name if provided,
-						this function saves to default_config.ini, resetting the default parameters for NestIQ.
+						this function saves to backup_config.ini, resetting the default parameters for NestIQ.
 
 						Args:
 										config_file (string): path to and name of file to be saved
 		"""
 
 		if config_file is None:
-			config_file = Path(self.master_dir_path / "config_files" / "default_config.ini")
+			config_file = Path(self.master_dir_path / "config_files" / "backup_config.ini")
 
 		self.config.set("Main Settings", "output_dir", self.out_path_E.get())
 		self.config.set("Main Settings", "show_warnings", self.show_warns_BV.get())
 		self.config.set("Main Settings", "day_start_time", self.day_start_E.get())
 		self.config.set("Main Settings", "night_start_time", self.night_start_E.get())
 		self.config.set("Main Settings", "restrict_bout_search", self.restrict_search_BV.get())
+		self.config.set("Main Settings", "count_partial_bouts", self.count_partial_BV.get())
 
 		self.config.set("Main Settings", "smoothing_radius", self.smoothing_radius_E.get())
 		self.config.set("Main Settings", "duration_threshold", self.dur_thresh_E.get())
@@ -2088,7 +2098,6 @@ class GUIClass():
 					custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
 					self.master_array = niq_misc.add_states(self, self.master_array, verts=custom_verts)
 
-				# FLAG
 				try:
 					main(self)
 				except:
@@ -2237,7 +2246,7 @@ def main(gui):
 		gui.master_array = gui.daytime_mod(nights_list, gui.master_array)
 
 	# Store all vertices in master block object for later allocation
-	master_block = niq_classes.Block(gui, 0, (gui.master_df.shape[0] - 1), False)
+	master_block = niq_classes.Block(gui, 0, (len(gui.master_list) - 1), False)
 	master_block.vertices = niq_misc.get_verts_from_master_arr(gui.master_array)
 
 	# Extract bouts based on vertex locations
