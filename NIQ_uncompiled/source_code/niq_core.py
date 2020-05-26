@@ -999,6 +999,7 @@ class GUIClass():
 		return True
 
 	def test_run(self):
+		""" Load GUI entry boxes with test files. """
 
 		# In file
 		self.input_file_E.delete(0, "end")
@@ -1016,6 +1017,46 @@ class GUIClass():
 		self.mod_plot_E.insert(0, "C:/Users/wxhaw/Downloads/NIQ_testing/mod_plot_1.html")
 
 	def master_test(self):
+		"""
+			Run automated tests for unrestricted plotting/statistics, restricted plotting/statistics, 
+			unsupervised learning and supervised learning.
+		"""
+
+		def compare_configs(ref_path, test_path):
+			"""
+				Compare two configuration files line by line and store discrepencies.
+
+				Args:
+						ref_path (pathlib.Path): Path to reference configuration file
+						test_path (pathlib.Path): Path to test configuration file
+
+			"""
+
+			with open(unsup_ref_path, 'r') as ref, open(unsup_test_path, 'r') as test:
+				ref_lines = ref.readlines()
+				test_lines = test.readlines()
+
+			mismatches = {}
+			for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
+				if test_line.strip() != ref_line.strip():
+					try:
+						# Get line label
+						key = re.search((r"[^=]*"), ref_line).group(0)
+						# Get reference and test values
+						ref_val = re.search((r"=(.*)"), ref_line).group(1).strip()
+						test_val = re.search((r"=(.*)"), test_line).group(1).strip()
+						# Try converting and comparing as floats
+						try:
+							if float(ref_val) != float(test_val):
+								mismatches[key] = (ref_val, test_val)
+						except:
+							if ref_val != test_val:
+								mismatches[key] = (ref_val, test_val)
+					except:
+						mismatches[key] = (ref_val, "None")
+
+			return mismatches
+
 		# Initialization
 		# Load config file
 		ref_config_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/test_config.ini")
@@ -1027,7 +1068,7 @@ class GUIClass():
 		self.input_file_E.insert(0, Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.csv"))
 
 		# Set up output
-		rand_key = str(randint(1000000, 10000000))
+		rand_key = str(randint(1e6, 1e7))
 		out_dir_path = Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/temp_output/")
 		self.out_path_E.delete(0, "end")
 		self.out_path_E.insert(0, out_dir_path)
@@ -1096,22 +1137,8 @@ class GUIClass():
 		unsup_ref_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/unsup_ref_config.ini"
 		self.save_config(out_file=str(unsup_test_path))
 
-		with open(unsup_ref_path, 'r') as ref, open(unsup_test_path, 'r') as test:
-			ref_lines = ref.readlines()
-			test_lines = test.readlines()
-
 		# Search for config discrepencies
-		mismatches = {}
-		for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
-			if test_line.strip() != ref_line.strip():
-				try:
-					key = re.search((r"(.*) ="), ref_line).group(1)
-					ref_val = float(re.search((r"(\d+)(\.?)(\d+)?"), ref_line).group(0))
-					test_val = float(re.search((r"(\d+)(\.?)(\d+)?"), test_line).group(0))
-					if ref_val != test_val:
-						mismatches[key] = (ref_val, test_val)
-				except:
-					mismatches[key] = (ref_val, "None")
+		mismatches = compare_configs(unsup_ref_path, unsup_test_path)
 
 		if not mismatches:
 			print(colored("UNSUP PASSED".center(100, "-"), "green"))
@@ -1142,30 +1169,16 @@ class GUIClass():
 		sup_ref_path = "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/config/sup_ref_config.ini"
 		self.save_config(out_file=str(sup_test_path))
 
-		with open(sup_ref_path, 'r') as ref, open(sup_test_path, 'r') as test:
-			ref_lines = ref.readlines()
-			test_lines = test.readlines()
-
 		# Search for config discrepencies
-		mismatches = []
-		for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
-			if test_line.strip() != ref_line.strip():
-				try:
-					ref_val = float(re.search((r"(\d+)(\.?)(\d+)?"), ref_line).group(0))
-					test_val = float(re.search((r"(\d+)(\.?)(\d+)?"), test_line).group(0))
-					print(f"ref val = {ref_val}")
-					print(f"test val = {test_val}")
-					if ref_val != test_val:
-						mismatches.append(test_line)
-				except:
-					mismatches.append(test_line)
+		mismatches = compare_configs(sup_ref_path, sup_test_path)
 
 		if not mismatches:
 			print(colored("SUP PASSED".center(100, "-"), "green"))
 		else:
 			print(colored("SUP FAILED".center(100, "-"), "red"))
-			for line in mismatches:
-				print(colored(line, "yellow"))
+			for key, values in mismatches.items():
+				print(colored(key, "yellow") + ": test value of " + colored(str(values[1]), "yellow") +
+                                    " did not match reference " + colored(str(values[0]), "yellow"))
 
 		print(colored("TESTING COMPLETED".center(100, "-"), "blue"))
 
@@ -1486,10 +1499,8 @@ class GUIClass():
 			messagebox.showerror("Duration Threshold Error", "Invalid duration threshold (could not convert to integer).")
 			return False
 
-		start = time.time()
 		if not check_input_file(self):
 			return False
-		print(f"Input file checking took {round(time.time() - start, 2)}")
 
 		if check_output:
 			if self.make_plot_BV.get():
@@ -2033,7 +2044,6 @@ class GUIClass():
 										root (tk root widget): base widget of GUI
 										rerun (Bool): indicates if this is a rerun off of user provided vertices
 		"""
-
 		run_start = time.time()
 
 		try:
@@ -2063,7 +2073,6 @@ class GUIClass():
 
 				# Check if all inputs are valid
 				edit_tab_check = self.check_valid_edit_ops() if rerun else True
-				start = time.time()
 
 				if not (
                                     self.check_valid_main(check_output=(file_num == 1)) and
@@ -2074,8 +2083,6 @@ class GUIClass():
 				):
 					successful = False
 					break
-
-				print(f"Validation took {round(time.time() - start, 2)} seconds")
 
 				print("Active file:", in_file)
 

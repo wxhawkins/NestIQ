@@ -215,8 +215,6 @@ def get_day_dur(day_start, night_start):
 
 
 def get_master_df(gui, source_path):
-	first = time.time()
-
 	def smooth_col(radius, col):
 		"""
 			Generates "smoothed" copy of input data by applying a rolling mean of the requested radius.
@@ -289,9 +287,6 @@ def get_master_df(gui, source_path):
 	radius = int(gui.smoothing_radius_E.get())
 	df["smoothed_adj_temper"] = smooth_col(radius, df["adj_temper"])
 
-	print(df.head())
-	print(f"Master df func took {round(time.time() - first, 2)}")
-
 	# Add column storing difference in adjusted temperature from previous entry to current
 	df["delta_temper"] = np.zeros(df.shape[0])
 	df.iloc[1:, df.columns.get_loc("delta_temper")] = df["smoothed_adj_temper"].diff()
@@ -356,7 +351,6 @@ def get_master_arr(gui, master_list):
 			Args:
 					master_list (list of lists): contains the information from the input file being analyzed
 	"""
-	arr_start = time.time()
 
 	master_array = np.array(master_list)
 	master_array = np.delete(master_array, 1, axis=1).astype(float)
@@ -388,7 +382,6 @@ def get_master_arr(gui, master_list):
 	emis_array[0] = emis_array[1]
 	master_array = np.hstack((master_array, emis_array))
 
-	print(f"Get array took {round(time.time() - arr_start, 2)}")
 	return master_array
 
 
