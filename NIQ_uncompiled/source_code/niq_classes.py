@@ -40,26 +40,19 @@ class Bout:
         self.start = start_
         self.stop = stop_
         self.bout_type = bout_type_
-        self.dur = (gui.time_interval * (stop_ - start_))
+        self.dur = gui.time_interval * (stop_ - start_)
         self.mean_egg_temper = 0
         self.mean_air_temper = 0
         self.egg_tempers = []
         air_tempers = []
 
-        for i in range(self.start, self.stop + 1):
-            self.egg_tempers.append(float(gui.master_list[i][gui.egg_temper_col]))
-
+        self.egg_tempers += gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
         self.mean_egg_temper = round(statistics.mean(self.egg_tempers), 3)
 
-        if gui.air_valid:
-            for x in range(self.start, (self.stop) + 1):
-                air_tempers.append(float(gui.master_list[x][gui.air_temper_col]))
+        air_tempers += gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
+        self.mean_air_temper = round(statistics.mean(air_tempers), 3)
 
-            self.mean_air_temper = round(statistics.mean(air_tempers), 3)
-        else:
-            air_tempers.append(0)
-
-        self.temper_change = ((float(gui.master_list[self.stop][gui.egg_temper_col]) - float(gui.master_list[self.start][gui.egg_temper_col])))
+        self.temper_change = gui.master_df.loc[self.stop, "egg_temper"] - gui.master_df.loc[self.start, "egg_temper"]
 
 
 class Block:
@@ -162,21 +155,26 @@ class Block:
         on_incs = []
         on_tempers = []
 
-        self.date = re.search(r"(\d+/\d+/\d+)", gui.master_list[self.start][gui.date_time_col]).group(0)
+        self.date = re.search(r"(\d+/\d+/\d+)", gui.master_df.loc[self.start, "date_time"]).group(0)
 
-        # Compile every temperature for this block
-        for line in gui.master_list[self.start:self.stop + 1]:
-            cur_egg_temper = float(line[gui.egg_temper_col])
-            self.egg_tempers.append(cur_egg_temper)
-            if gui.air_valid:
-                cur_air_temper = float(line[gui.air_temper_col])
-                self.air_tempers.append(cur_air_temper)
+        # This sets the temper containers to Series
+        # self.egg_tempers = gui.master_df.loc[self.start : self.stop + 1, "egg_temper"]
+        # self.air_tempers = gui.master_df.loc[self.start : self.stop + 1, "air_temper"]
+        # data_points_above_temper = len(self.egg_tempers.loc[self.egg_tempers > float(gui.time_above_temper_E.get())])
+        # self.time_above_temper = data_points_above_temper * gui.time_interval
+        # data_points_below_temper = len(self.egg_tempers.loc[self.egg_tempers < float(gui.time_below_temper_E.get())])
+        # self.time_below_temper = data_points_below_temper * gui.time_interval
 
-            if cur_egg_temper > float(gui.time_above_temper_E.get()):
-                self.time_above_temper += gui.time_interval
+        # This sets the temper containers to lists
+        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].round(3).tolist()
+        self.air_tempers = gui.master_df.loc[self.start : self.stop, "air_temper"].round(3).tolist()
+        egg_temper_series = gui.master_df.loc[self.start : self.stop, "egg_temper"]
+        air_temper_series = gui.master_df.loc[self.start : self.stop, "air_temper"]
 
-            if cur_egg_temper < float(gui.time_below_temper_E.get()):
-                self.time_below_temper += gui.time_interval
+        data_points_above_temper = len(egg_temper_series.loc[egg_temper_series > float(gui.time_above_temper_E.get())])
+        self.time_above_temper = data_points_above_temper * gui.time_interval
+        data_points_below_temper = len(air_temper_series.loc[air_temper_series < float(gui.time_below_temper_E.get())])
+        self.time_below_temper = data_points_below_temper * gui.time_interval
 
         for bout in self.bouts:
             if bout.bout_type == 0:
@@ -262,6 +260,7 @@ class Block:
         gui.multi_file_off_decs += bulk_off_decs
         gui.multi_file_on_durs += bulk_on_durs
         gui.milti_in_on_incs += bulk_on_incs
+
 
 # Used to store stats for all days or all nights
 

@@ -1122,7 +1122,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori
     if gui.show_day_markers_BV.get() is True:
         for day in days_list:
             vertical_line = Span(
-                location=int(gui.master_list[day.start][gui.data_point_col]),
+                location=int(gui.master_df.loc[day.start, "data_point"]),
                 dimension="height",
                 line_color=gui.day_marker_color.get(),
                 line_width=float(gui.day_marker_width_E.get()),

@@ -2031,7 +2031,7 @@ class GUIClass:
                 self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
                 self.master_list = niq_misc.get_master_list(self, self.input_file_E.get())
                 self.master_array = niq_misc.get_master_arr(self, self.master_list)
-                self.master_block = niq_classes.Block(self, 0, (len(self.master_list) - 1), False)
+                self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
 
                 # Get days_list for plotting vertical lines
                 days_list = niq_misc.split_days(self)[0]  # Indexing at end excludes nights_list
@@ -2398,7 +2398,7 @@ def main(gui):
         gui.master_array = gui.daytime_mod(nights_list, gui.master_array)
 
     # Store all vertices in master block object for later allocation
-    master_block = niq_classes.Block(gui, 0, (len(gui.master_list) - 1), False)
+    master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)
     master_block.vertices = niq_misc.get_verts_from_master_arr(gui.master_array)
 
     # Extract bouts based on vertex locations
@@ -2459,4 +2459,3 @@ def main(gui):
 if __name__ == "__main__":
     gui = GUIClass(root)
     root.mainloop()
-
