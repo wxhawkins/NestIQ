@@ -175,7 +175,10 @@ class HMM(object):
         # Run viterbi to get expected states for each input data point
         results = self.viterbi(master_array)
 
-        master_df = niq_misc.add_states(master_df, states=np.array(results))
+        # FLAG Reverted to using the old add states function --- didnt fix it
+        master_array = self.old_add_states(master_array, states=np.array(results))
+        master_df.loc[:, "bout_state"] = master_array[:, 6].astype(int)
+        master_df.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
         return master_df
 
     def old_add_states(self, master_array, verts=None, states=None):

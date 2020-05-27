@@ -2046,8 +2046,7 @@ class GUIClass:
                 try:
                     ori_verts_ = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
                 except Exception as e:
-                    print(traceback.print_exc())
-                    print(e)
+                    traceback.print_exc()
                     messagebox.showerror(("Input File Error (Edit tab)"), "Original plot file could not be read.")
 
                     return False
@@ -2246,7 +2245,7 @@ class GUIClass:
 
                     dur_thresh = int(self.dur_thresh_E.get())
                     temp_array = niq_misc.df_to_array(self.master_df)
-                    self.master_array, self.bouts_dropped_locs = niq_misc.filter_by_dur(temp_array, dur_thresh)
+                    self.master_df, self.bouts_dropped_locs = niq_misc.filter_by_dur(self.master_df, dur_thresh)
 
                 try:
                     main(self)
@@ -2290,7 +2289,7 @@ class GUIClass:
         self.root.quit()
         self.root.destroy()
 
-    def reset_nighttime_state(self, nights_list, master_array, df):
+    def reset_nighttime_state(self, nights_list, df):
         """
 						Sets state of nightime data points to "nonsense" value of 2. These points will be ignored for the
 						majority of downstream statistical calculations.
@@ -2301,9 +2300,9 @@ class GUIClass:
 		"""
 
         for night in nights_list:
-            master_array[night.start : night.stop, 6] = 2
             df.loc[night.start : night.stop - 1, "bout_state"] = "None"
 
+        master_array = niq_misc.df_to_array(df)
         return master_array, df
 
     def unsupervised_learning(self, auto_run=False):
@@ -2393,11 +2392,11 @@ def main(gui):
     days_list, nights_list = niq_misc.split_days(gui)
 
     if gui.restrict_search_BV.get():
-        gui.master_array, gui.master_df = gui.reset_nighttime_state(nights_list, gui.master_array, gui.master_df)
+        gui.master_array, gui.master_df = gui.reset_nighttime_state(nights_list, gui.master_df)
 
     # Store all vertices in master block object for later allocation
     master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)
-    master_block.vertices = niq_misc.get_verts_from_master_arr(gui.master_array)
+    master_block.vertices = niq_misc.get_verts_from_master_arr(gui.master_df)
 
     # Extract bouts based on vertex locations
     niq_misc.get_bouts(gui, master_block)

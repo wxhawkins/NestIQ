@@ -1228,7 +1228,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
             data = {"x": [vert.index for vert in ori_verts], "y": [vert.egg_temper for vert in ori_verts]}
     else:
         # Append vertex info to table
-        verts = get_verts_from_master_arr(master_array)
+        verts = get_verts_from_master_arr(master_df)
         data = {"x": [vert.index for vert in verts], "y": [vert.egg_temper for vert in verts]}
 
     src = ColumnDataSource(data)
@@ -1266,7 +1266,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     # show(plot)
 
 
-def get_verts_from_master_arr(master_array):
+def get_verts_from_master_arr(master_df):
     """
 			Extracts vertex objects based on state transitions in master_array.
 
@@ -1274,6 +1274,7 @@ def get_verts_from_master_arr(master_array):
 					master_array (numpy array)
 	"""
 
+    master_array = df_to_array(master_df)
     cur_state = master_array[0, 6]
     vertices = []
 
@@ -1290,7 +1291,7 @@ def replace_entry(entry, new_value):
     entry.insert(0, new_value)
 
 
-def filter_by_dur(master_array, dur_thresh):
+def filter_by_dur(master_df, dur_thresh):
     """
 			Purges the master array of state clusters failing to meet a given duration threshold.
 
@@ -1298,6 +1299,7 @@ def filter_by_dur(master_array, dur_thresh):
 					master_array (numpy array)
 					dur_thresh (int): minimum duration for a cluster of state values to not be erased
 	"""
+    master_array = df_to_array(master_df)
 
     cur_state = master_array[0, 6]
     last_count, count = 0, 0
@@ -1315,7 +1317,9 @@ def filter_by_dur(master_array, dur_thresh):
             bouts_dropped_locs.add(row)
             count += last_count
 
-    return master_array, bouts_dropped_locs
+    master_df.loc[:, "bout_state"] = master_array[:, 6]
+    master_df.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
+    return master_df, bouts_dropped_locs
 
 
 def get_unique_path(file_name, dir_path=Path.cwd(), ext=""):
@@ -1443,8 +1447,6 @@ def old_add_states(self, master_array, verts=None, results_arr=None):
     if results_arr is not None:
         master_array = np.hstack((master_array, results_arr.reshape(results_arr.shape[0], 1)))
 
-    print(master_array[:-10, :])
-    print("IN ADD STATES")
     return master_array
 
 
