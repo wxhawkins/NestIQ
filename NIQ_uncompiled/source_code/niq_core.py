@@ -764,8 +764,6 @@ class GUIClass:
         mod_B.grid(row=11, sticky="W", padx=10, pady=(10, 0))
         mod_B.configure(background="white")
 
-        # niq_misc.generate_plot(self, self.master_array, days_list, self.mon_dims, select_mode = True)
-
         mod_plot_L = tk.Label(tab5, text="Modified Plot:", font=STANDARD_FONT)
         mod_plot_L.grid(row=12, sticky="W", padx=10, pady=(10, 0))
         self.mod_plot_E = tk.Entry(tab5, width=30)
@@ -2054,7 +2052,7 @@ class GUIClass:
 
                     return False
 
-            niq_misc.generate_plot(self, self.master_array, days_list, self.mon_dims, select_mode=True, ori_verts=ori_verts_)
+            niq_misc.generate_plot(self, self.master_df, days_list, self.mon_dims, select_mode=True, ori_verts=ori_verts_)
 
     def init_config(self):
         """
@@ -2236,7 +2234,7 @@ class GUIClass:
 
                 if rerun:
                     custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
-                    self.master_array, self.master_df = niq_misc.add_states(self.master_array, self.master_df, verts=custom_verts)
+                    self.master_df = niq_misc.add_states(self.master_df, verts=custom_verts)
                 elif not rerun:
                     self.master_hmm = niq_hmm.HMM()
                     self.master_hmm.build_model_from_entries(self)
@@ -2244,10 +2242,11 @@ class GUIClass:
                     self.master_hmm.populate_hmm_entries(self)
 
                     # Adds state column to master_array of input file
-                    self.master_array = self.master_hmm.decode(self.master_array)
+                    self.master_df = self.master_hmm.decode(self.master_df)
 
                     dur_thresh = int(self.dur_thresh_E.get())
-                    self.master_array, self.bouts_dropped_locs = niq_misc.filter_by_dur(self.master_array, dur_thresh)
+                    temp_array = niq_misc.df_to_array(self.master_df)
+                    self.master_array, self.bouts_dropped_locs = niq_misc.filter_by_dur(temp_array, dur_thresh)
 
                 try:
                     main(self)
@@ -2342,7 +2341,7 @@ class GUIClass:
 
         self.master_hmm = niq_hmm.HMM()
         self.master_df = niq_misc.get_master_df(self, input_[0])
-        self.master_array = niq_misc.get_master_arr(self, self.master_df)
+        self.master_array = niq_misc.df_to_array(self.master_df)
         emis_arr = self.master_array[:, 5]
         emis_arr = emis_arr.reshape(-1, 1)
         self.master_hmm.baum_welch(emis_arr)
@@ -2370,7 +2369,7 @@ class GUIClass:
         if self.check_vertex_file():
             in_file = self.input_file_E.get()
             self.master_df = niq_misc.get_master_df(self, in_file)
-            self.master_array = niq_misc.get_master_arr(self, self.master_df)
+            self.master_array = niq_misc.df_to_array(self.master_df)
 
             training_verts = []
             training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
@@ -2449,7 +2448,7 @@ def main(gui):
     if len(pairs_list) > 0:
         pairs_block_group.get_stats(gui, append=False)
     if gui.make_plot_BV.get():
-        niq_misc.generate_plot(gui, gui.master_array, days_list, gui.mon_dims)
+        niq_misc.generate_plot(gui, gui.master_df, days_list, gui.mon_dims)
 
     if gui.get_stats_BV.get():
         niq_misc.write_stats(gui, days, nights, pairs_block_group, master_block)

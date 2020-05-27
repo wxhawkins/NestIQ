@@ -1013,7 +1013,7 @@ def smooth_col(radius, col):
     return smoothed_arr
 
 
-def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori_verts=None):
+def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_verts=None):
     """
 			Uses the Bokeh module to generate an interactive plot for the current input file.
 
@@ -1024,6 +1024,7 @@ def generate_plot(gui, master_array, days_list, mon_dims, select_mode=False, ori
 					mon_dims (tuple): x and y dimensions of main display
 					select_mode (bool): generates a modified plot that allows for vertex placement
 	"""
+    master_array = df_to_array(master_df)
 
     # Clears previous plots from memory
     reset_output()
@@ -1447,7 +1448,7 @@ def old_add_states(self, master_array, verts=None, results_arr=None):
     return master_array
 
 
-def add_states(array, df, verts=None, states=None):
+def add_states(df, array=None, verts=None, states=None):
     """
                 Adds bout state column to master_df
 
@@ -1480,17 +1481,20 @@ def add_states(array, df, verts=None, states=None):
             prev_i = next_i
             state = "off" if state == "on" else "on"
 
-    # If results are provided, simply append states to master_array
+    # If states are provided, simply append
     if states is not None:
-        master_array = np.hstack((master_array, states.reshape(states.shape[0], 1)))
         df.loc[:, "bout_state"] = states
         df.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
+        if array:
+            array = np.hstack((array, states.reshape(states.shape[0], 1)))
 
     # Convert "bout_state" column of df to numpy array
-    np_states = df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2]).to_numpy()
+    if array:
+        np_states = df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2]).to_numpy()
+        array = np.hstack((array, np_states.reshape(len(df), 1)))
+        return array, df
 
-    array = np.hstack((array, np_states.reshape(len(df), 1)))
-    return array, df
+    return df
 
 
 def remove_curly(*entries):
@@ -1510,11 +1514,14 @@ def df_to_array(df):
         Convert master DataFrame to numpy array.
     """
 
+    # If array is passed, just return
+    if type(df) == np.ndarray:
+        return df
+
     # Remove date_time column as this data is not compatable with numpy arrays
     temp_df = df.loc[:, df.columns != "date_time"]
 
     # Convert bout_state values from strings to integers
     if "bout_state" in df.columns:
         temp_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2], inplace=True)
-
     return temp_df.to_numpy()

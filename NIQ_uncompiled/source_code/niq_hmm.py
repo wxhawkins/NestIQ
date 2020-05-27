@@ -5,6 +5,7 @@ import time
 import numpy as np
 from hmmlearn import hmm
 
+import niq_misc
 from niq_misc import replace_entry
 
 
@@ -161,20 +162,21 @@ class HMM(object):
         self._trans_probs[1][0] /= trans_from_1_sum
         self._trans_probs[1][1] /= trans_from_1_sum
 
-    def decode(self, master_array):
+    def decode(self, master_df):
         """
             Assigns the most probable state value to each data point based on HMM parameters.
 
             Args:
-                master_array (numpy array)
+                master_df (DataFrame)
         """
 
-        # Run viterbi to get expected states for each input data point
-        results = list(self.viterbi(master_array))
-        results = list(map(int, results))
+        master_array = niq_misc.df_to_array(master_df)
 
-        master_array = self.old_add_states(master_array, states=np.array(results))
-        return master_array
+        # Run viterbi to get expected states for each input data point
+        results = self.viterbi(master_array)
+
+        master_df = niq_misc.add_states(master_df, states=np.array(results))
+        return master_df
 
     def old_add_states(self, master_array, verts=None, states=None):
         """
@@ -305,7 +307,8 @@ class HMM(object):
         result = str(max(previous, key=previous.get))
         result += get_traceback(traceback, result)
 
-        return result[::-1]
+        # Reverse result and convert to integers
+        return list(map(int, result[::-1]))
 
     def build_model_from_entries(self, gui):
         """
