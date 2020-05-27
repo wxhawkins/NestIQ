@@ -282,9 +282,6 @@ def get_master_df(gui, source_path):
     new_col = range(start, df.shape[0] + 1)
     df["data_point"] = new_col
 
-    # Set indices to data_point column
-    # df.set_index("data_point", inplace=True)
-
     # Add adjusted (egg - air temperature) temperatures column
     df["adj_temper"] = df["egg_temper"] - df["air_temper"]
 
@@ -297,6 +294,9 @@ def get_master_df(gui, source_path):
     df.iloc[1:, df.columns.get_loc("delta_temper")] = df["smoothed_adj_temper"].diff()
     # Set first cell equal to second
     df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
+
+    # Set indices to data_point column
+    # df.set_index("data_point", inplace=True)
 
     return df
 
@@ -1142,39 +1142,35 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
         if gui.smooth_status_IV.get():
             adj_array = smooth_series(radius, adj_array)
 
+        # Plot line
         if float(gui.bout_line_width_E.get()) > 0:
             plot.line(master_df["data_point"], adj_array, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
 
         # Plot adjusted temperatures as triangles if egg temperatures are also being plotted
+        plot_shape = plot.triangle if gui.plot_egg_BV.get() else plot.circle
         if gui.plot_egg_BV.get():
-            # Add legend values
-            plot.triangle(
-                master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend="On-bout (egg - air)",
-            )
-
-            plot.triangle(
-                master_df.loc[0, "data_point"],
-                adj_array,
-                size=float(gui.on_point_size_E.get()),
-                color=gui.off_point_color.get(),
-                legend="Off-bout (egg - air)",
-            )
-
-            # Add actual data points
-            plot.triangle(master_df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
-        else:
             # Add legend values
             if select_mode:
                 plot.circle(master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color="gray", legend="Temperature reading")
             else:
-                plot.circle(master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend="On-bout")
+                plot_shape(
+                    master_df.loc[0, "data_point"],
+                    adj_array,
+                    size=float(gui.on_point_size_E.get()),
+                    color=gui.on_point_color.get(),
+                    legend="On-bout (egg - air)",
+                )
 
-                plot.circle(
-                    master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=gui.off_point_color.get(), legend="Off-bout"
+                plot_shape(
+                    master_df.loc[0, "data_point"],
+                    adj_array,
+                    size=float(gui.on_point_size_E.get()),
+                    color=gui.off_point_color.get(),
+                    legend="Off-bout (egg - air)",
                 )
 
             # Add actual data points
-            plot.circle(master_df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
+            plot_shape(master_df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
 
     # -------------------------------------------------------------------------------------------
     # Generate table with vertex information
@@ -1187,7 +1183,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
             data = {"x": [vert.index for vert in ori_verts], "y": [vert.egg_temper for vert in ori_verts]}
     else:
         # Append vertex info to table
-        verts = get_verts_from_master_arr(master_df)
+        verts = get_verts_from_master_df(master_df)
         data = {"x": [vert.index for vert in verts], "y": [vert.egg_temper for vert in verts]}
 
     src = ColumnDataSource(data)
@@ -1222,53 +1218,31 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     plot.border_fill_color = None
 
     show(column(plot, widgetbox(data_table)))
-    # show(plot)
-
-    # Multi-color bout-connecting lines
-    # Will be added later
-
-    # cur_state = master_array[0, 6]
-    # prev_trans = 0
-    # trans_locs = []
-    # trans_locs.append(0)
-    # for line_num, line in enumerate(master_array):
-    # 	state = line[6]
-
-    # 	if int(state) != int(cur_state):
-    # 		trans_locs.append(line_num)
-    # 		prev_trans = line_num
-    # 		cur_state = state
-
-    # trans_locs.append(master_array.shape[0])
-    # prev_loc = 0
-    # color_tup = ("gray", "darkred", "lightgray")
-    # for loc in trans_locs[1:]:
-    # 	cur_loc = loc + 1 if loc + 1 < master_array.shape[0] else loc
-    # 	plot.line(
-    # 				master_array[prev_loc:cur_loc, 0],
-    # 				egg_array[prev_loc:cur_loc],
-    # 				line_width = float(gui.bout_line_width_E.get()),
-    # 				color = color_tup[int(master_array[prev_loc, 6])]
-    # 			 )
-    # 	prev_loc = loc
 
 
-def get_verts_from_master_arr(master_df):
+def get_verts_from_master_df(master_df):
     """
-			Extracts vertex objects based on state transitions in master_array.
+			Extracts vertex objects based on state transitions in master_df.
 
 			Args:
-					master_array (numpy array)
+					master_df (pd.DataFrame)
 	"""
 
-    master_array = df_to_array(master_df)
-    cur_state = master_array[0, 6]
-    vertices = []
+    # Convert bout_states to integers
+    int_states = master_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2])
 
-    for index, row in enumerate(master_array[:]):
-        if row[6] != cur_state:
-            cur_state = row[6]
-            vertices.append(niq_classes.Vertex(index, row[1], cur_state))
+    # Create Boolean Series that stores if the state has changed
+    state_changed = int_states.diff().apply(abs).astype(bool)
+    state_changed.iloc[0] = False
+
+    # Extract indices of rows where the state changes
+    vert_indices = master_df[state_changed].index.tolist()
+
+    # Create and append verticies
+    vertices = []
+    for index in vert_indices:
+        row = master_df.loc[index]
+        vertices.append(niq_classes.Vertex(index, row["egg_temper"], row["bout_state"]))
 
     return vertices
 
@@ -1286,6 +1260,7 @@ def filter_by_dur(master_df, dur_thresh):
 					master_array (numpy array)
 					dur_thresh (int): minimum duration for a cluster of state values to not be erased
 	"""
+
     master_array = df_to_array(master_df)
 
     cur_state = master_array[0, 6]
@@ -1398,43 +1373,6 @@ def get_datetime(gui, line):
 def list_to_gen(list_):
     for item in list_:
         yield item
-
-
-# FLAG largely redundant with function in niq_hmm
-def old_add_states(self, master_array, verts=None, results_arr=None):
-    """
-			Adds column 6 to master array: state (0 or 1).
-
-			Args:
-					master_array (numpy array)
-					verts (list):
-					results_arr (numpy array):
-	"""
-
-    # Appends state values based on vertex locations
-    if verts is not None:
-        state_arr = np.zeros((master_array.shape[0], 1), dtype=float)
-        state_arr.fill(1)
-
-        state = 0  # Assume off-bout start -- is corrected by "swap_params_by_state" if necessary
-        prev_index = verts[0].index
-        row = prev_index
-        for cur_vert in verts[1:]:
-            cur_index = cur_vert.index
-            for _ in range(prev_index, cur_index):
-                state_arr[row] = [state]
-                row += 1
-
-            prev_index = cur_index
-            state = 0 if state else 1
-
-        master_array = np.hstack((master_array, state_arr))
-
-    # If results are provided, simply append states to master_array
-    if results_arr is not None:
-        master_array = np.hstack((master_array, results_arr.reshape(results_arr.shape[0], 1)))
-
-    return master_array
 
 
 def add_states(df, array=None, verts=None, states=None):

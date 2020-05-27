@@ -73,7 +73,6 @@ class GUIClass:
         self.air_valid = True
         self.bouts_dropped_locs = set()
 
-        self.master_array = None
         self.master_hmm = niq_hmm.HMM()
 
         # Configure root
@@ -2027,7 +2026,6 @@ class GUIClass:
         if self.check_valid_plot_ops() and self.check_valid_main(check_output=False) and self.check_valid_adv():
             try:
                 self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
-                self.master_array = niq_misc.df_to_array(self.master_df)
                 self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
 
                 # Get days_list for plotting vertical lines
@@ -2229,7 +2227,6 @@ class GUIClass:
                 print("Active file:", in_file)
 
                 self.master_df = niq_misc.get_master_df(self, in_file)
-                self.master_array = niq_misc.df_to_array(self.master_df)
 
                 if rerun:
                     custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
@@ -2240,7 +2237,7 @@ class GUIClass:
                     self.master_hmm.normalize_params(self)
                     self.master_hmm.populate_hmm_entries(self)
 
-                    # Adds state column to master_array of input file
+                    # Adds state column to master_df of input file
                     self.master_df = self.master_hmm.decode(self.master_df)
                     dur_thresh = int(self.dur_thresh_E.get())
                     temp_array = niq_misc.df_to_array(self.master_df)
@@ -2364,7 +2361,6 @@ class GUIClass:
         if self.check_vertex_file():
             in_file = self.input_file_E.get()
             self.master_df = niq_misc.get_master_df(self, in_file)
-            self.master_array = niq_misc.df_to_array(self.master_df)
 
             training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
             self.master_df = niq_misc.add_states(self.master_df, verts=training_verts)
@@ -2392,7 +2388,7 @@ def main(gui):
 
     # Store all vertices in master block object for later allocation
     master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)
-    master_block.vertices = niq_misc.get_verts_from_master_arr(gui.master_df)
+    master_block.vertices = niq_misc.get_verts_from_master_df(gui.master_df)
 
     # Extract bouts based on vertex locations
     niq_misc.get_bouts(gui, master_block)

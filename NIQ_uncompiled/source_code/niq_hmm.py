@@ -175,48 +175,8 @@ class HMM(object):
         # Run viterbi to get expected states for each input data point
         results = self.viterbi(master_array)
 
-        # FLAG Reverted to using the old add states function --- didnt fix it
-        master_array = self.old_add_states(master_array, states=np.array(results))
-        master_df.loc[:, "bout_state"] = master_array[:, 6].astype(int)
-        master_df.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
+        master_df = niq_misc.add_states(master_df, states=results)
         return master_df
-
-    def old_add_states(self, master_array, verts=None, states=None):
-        """
-            Adds column 6 to master array: state (0 or 1).
-
-            Args:
-                master_array (numpy array)
-                verts (list):
-                resutls_arr (numpy array):
-        """
-
-        # Appends state values based on vertex locations
-        if verts is not None:
-            start = verts[0].index
-            stop = verts[-1].index
-            index_range = stop - start
-            state_arr = np.zeros((index_range, 1), dtype=float)
-
-            row = 0
-            state = 1  # Assume on-bout start -- corrected by "swap_params_by_state" if necessary
-            prev_index = verts[0].index
-            for cur_vert in verts[1:]:
-                cur_index = cur_vert.index
-                for _ in range(prev_index, cur_index):
-                    state_arr[row] = [state]
-                    row += 1
-
-                prev_index = cur_index
-                state = 0 if state else 1
-
-            master_array = np.hstack((master_array[start:stop, :], state_arr))
-
-        # If results are provided, simply append states to master_array
-        if states is not None:
-            master_array = np.hstack((master_array, states.reshape(states.shape[0], 1)))
-
-        return master_array
 
     def viterbi(self, master_array):
         """ 
@@ -311,7 +271,9 @@ class HMM(object):
         result += get_traceback(traceback, result)
 
         # Reverse result and convert to integers
-        return list(map(int, result[::-1]))
+        result = list(map(int, result[::-1]))
+        # Convert to numpy array and return
+        return np.array(result)
 
     def build_model_from_entries(self, gui):
         """
