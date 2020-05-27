@@ -76,7 +76,7 @@ class HMM(object):
         if self._emissions[0]["mean"] > self._emissions[1]["mean"]:
             self.swap_params_by_state()
 
-    def extract_params_from_verts(self, master_array, training_verts):
+    def extract_params_from_verts(self, master_df):
         """
             Transition and emission probabilites are derived from the user's placement of verticies.
 
@@ -85,7 +85,7 @@ class HMM(object):
                 training_verts (list): vertex objects created off of the user's placements
         """
 
-        master_array = self.old_add_states(master_array, verts=training_verts)
+        master_array = niq_misc.df_to_array(master_df)
 
         for state in self._hidden_states:
             self._emissions[state] = {}

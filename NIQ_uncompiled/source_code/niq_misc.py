@@ -186,7 +186,7 @@ def split_days(gui, modifier=0):
             # Recursively call split_days with incremented modifier
             days_list, nights_list = split_days(gui, modifier=(modifier + 1))
         # If still no days or nights found, provide text warning
-        elif (gui.time_interval * int(gui.master_array.shape[0])) > 1440:
+        elif (gui.time_interval * len(gui.master_df)) > 1440:
             if gui.show_warns_BV.get():
                 messagebox.showwarning(
                     "Warning",
@@ -218,24 +218,25 @@ def get_day_dur(day_start, night_start):
     return (night_float - day_float) * 60
 
 
+def smooth_series(radius, col):
+    """
+        Generates "smoothed" copy of input data by applying a rolling mean of the requested radius.
+
+        Args:
+            radius (int): number of values to include in rolling mean
+                        (e.g. radius = 1 means average values i, i-1 and i+1)
+            col (pd.Series): column data to be smoothed
+    """
+
+    # Return original column if radius is less than 1
+    if radius <= 0:
+        return col
+
+    window = (radius * 2) + 1
+    return col.rolling(window, min_periods=1, center=True).mean()
+
+
 def get_master_df(gui, source_path):
-    def smooth_col(radius, col):
-        """
-			Generates "smoothed" copy of input data by applying a rolling mean of the requested radius.
-
-			Args:
-				radius (int): number of values to include in rolling mean
-							(e.g. radius = 1 means average values i, i-1 and i+1)
-				col (pd.Series): column data to be smoothed
-		"""
-
-        # Return original column if radius is less than 1
-        if radius <= 0:
-            return col
-
-        window = (radius * 2) + 1
-        return col.rolling(window, min_periods=1, center=True).mean()
-
     def is_number(string):
         try:
             float(string)
@@ -289,7 +290,7 @@ def get_master_df(gui, source_path):
 
     # Add smoothed, adjusted temperatures column
     radius = int(gui.smoothing_radius_E.get())
-    df["smoothed_adj_temper"] = smooth_col(radius, df["adj_temper"])
+    df["smoothed_adj_temper"] = smooth_series(radius, df["adj_temper"])
 
     # Add column storing difference in adjusted temperature from previous entry to current
     df["delta_temper"] = np.zeros(df.shape[0])
@@ -379,8 +380,9 @@ def get_verts_from_html(gui, in_file, alt=False):
 		"""
 
         data_point_list = []
-        max_dp = int(gui.master_array[-1, 0])
-        min_dp = int(gui.master_array[0, 0])
+        dp_col_num = gui.master_df.columns.get_loc("data_point")
+        max_dp = gui.master_df.iloc[-1, dp_col_num]
+        min_dp = gui.master_df.iloc[0, dp_col_num]
 
         with open(in_file, "r") as vertex_file:
             content = vertex_file.read()
@@ -988,42 +990,18 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
             print("\n\n", file=stats_file)
 
 
-def smooth_col(radius, col):
-    """
-			Generates "smoothed" copy of input data by applying a rolling mean of the requested radius.
-
-			Args:
-					radius (int): number of values to include in rolling mean
-											(e.g. radius = 1 means average values i, i-1 and i+1)
-	"""
-
-    if radius <= 0:
-        return col
-
-    smoothed_arr = np.zeros((col.shape[0], 1), dtype=float)
-    for i in range(radius, col.shape[0] - radius):
-        sum_ = sum(val for val in col[i - radius : i + radius + 1])
-        smoothed_arr[i] = sum_ / ((radius * 2) + 1)
-
-    # Fill in ends
-    for i in range(radius):
-        smoothed_arr[i] = col[i]
-        smoothed_arr[-(i + 1)] = col[-(i + 1)]
-
-    return smoothed_arr
-
-
 def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_verts=None):
     """
 			Uses the Bokeh module to generate an interactive plot for the current input file.
 
 			Args:
 					gui (GUIClass):
-					master_array (numpy array): contains all of the critical information for plot creation
+					master_df (DataFrame): contains all of the critical information for plot creation
 					days_list (list): simply used to place vertical day delimiting line
 					mon_dims (tuple): x and y dimensions of main display
 					select_mode (bool): generates a modified plot that allows for vertex placement
 	"""
+
     master_array = df_to_array(master_df)
 
     # Clears previous plots from memory
@@ -1066,24 +1044,26 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     y_max = float("-inf")
 
     if gui.plot_egg_BV.get():
-        y_min = min(y_min, min(master_array[:, 1]))
-        y_max = max(y_max, max(master_array[:, 1]))
+        y_min = min(y_min, master_df["egg_temper"].min())
+        y_max = max(y_max, master_df["egg_temper"].max())
 
     if gui.plot_air_BV.get() and gui.air_valid:
-        y_min = min(y_min, min(master_array[:, 2]))
-        y_max = max(y_max, max(master_array[:, 2]))
+        y_min = min(y_min, master_df["air_temper"].min())
+        y_max = max(y_max, master_df["air_temper"].max())
 
-    if gui.plot_delta_BV.get():
-        y_min = min(y_min, min(master_array[:, 3]))
-        y_max = max(y_max, max(master_array[:, 3]))
+    if gui.plot_adj_BV.get():
+        y_min = min(y_min, master_df["adj_temper"].min())
+        y_max = max(y_max, master_df["adj_temper"].max())
 
     y_min -= 2
     y_max += 2
 
+    dp_col_num = gui.master_df.columns.get_loc("data_point")
+
     # Create core plot
     plot = figure(
         tools=[hover, "box_select, box_zoom, wheel_zoom, pan, reset, save"],
-        x_range=[int(master_array[0, 0]), int(master_array[-1, 0])],
+        x_range=[master_df.iloc[0, dp_col_num], master_df.iloc[-1, dp_col_num]],
         y_range=[y_min, y_max],
         title=plot_name,
         x_axis_label="Data Point",
@@ -1107,115 +1087,94 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 
     plot.grid.visible = False if not gui.show_grid_BV.get() else True
 
-    # FLAG
     if select_mode:
         color_ = "gray"
         alpha_ = 1
     else:
+        # Set color based on bout state
+        bout_state_col_num = gui.master_df.columns.get_loc("bout_state") - 1
         color_key = {0: gui.off_point_color.get(), 1: gui.on_point_color.get(), 2: "lightgray"}
-        color_ = np.vectorize(color_key.get)(master_array[:, 6])
+        color_ = np.vectorize(color_key.get)(master_array[:, bout_state_col_num])
         alpha_key = {0: 1, 1: 1, 2: 1}
-        alpha_ = np.vectorize(alpha_key.get)(master_array[:, 6])
+        alpha_ = np.vectorize(alpha_key.get)(master_array[:, bout_state_col_num])
 
     radius = int(gui.smoothing_radius_E.get())
 
+    # Get array of air temperatures and smooth if requested
     if gui.air_valid and (gui.plot_air_BV.get() or select_mode):
+        air_array = master_df["air_temper"]
         if gui.smooth_status_IV.get():
-            air_arr = smooth_col(radius, master_array[:, 2]).flatten()
-        else:
-            air_arr = master_array[:, 2]
+            air_array = smooth_series(radius, air_array)
 
         # Plot air temperatures
         plot.line(
-            master_array[:, 0], air_arr, line_width=float(gui.air_line_width_E.get()), color=gui.air_line_color.get(), line_alpha=1, legend="Air temperature"
+            master_df["data_point"],
+            air_array,
+            line_width=float(gui.air_line_width_E.get()),
+            color=gui.air_line_color.get(),
+            line_alpha=1,
+            legend="Air temperature",
         )
 
+    # Get array of egg temperatures and smooth if requested
     if gui.plot_egg_BV.get():
+        egg_array = master_df["egg_temper"]
         if gui.smooth_status_IV.get():
-            egg_arr = smooth_col(radius, master_array[:, 1]).flatten()
-        else:
-            egg_arr = master_array[:, 1]
+            egg_array = smooth_series(radius, egg_array)
 
         # Update legend
         if not select_mode:
-            legend_ = "On-bout (egg)" if gui.plot_delta_BV.get() else "On-bout"
-            plot.circle(master_array[0, 0], egg_arr[0], size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend=legend_)
+            legend_ = "On-bout (egg)" if gui.plot_adj_BV.get() else "On-bout"
+            plot.circle(master_df.loc[0, "data_point"], egg_array[0], size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend=legend_)
 
-            legend_ = "Off-bout (egg)" if gui.plot_delta_BV.get() else "Off-bout"
-            plot.circle(master_array[0, 0], egg_arr[0], size=float(gui.on_point_size_E.get()), color=gui.off_point_color.get(), legend=legend_)
-
-        # Multi-color bout-connecting lines
-        # Will be officially added later
-
-        # cur_state = master_array[0, 6]
-        # prev_trans = 0
-        # trans_locs = []
-        # trans_locs.append(0)
-        # for line_num, line in enumerate(master_array):
-        # 	state = line[6]
-
-        # 	if int(state) != int(cur_state):
-        # 		trans_locs.append(line_num)
-        # 		prev_trans = line_num
-        # 		cur_state = state
-
-        # trans_locs.append(master_array.shape[0])
-        # prev_loc = 0
-        # color_tup = ("gray", "darkred", "lightgray")
-        # for loc in trans_locs[1:]:
-        # 	cur_loc = loc + 1 if loc + 1 < master_array.shape[0] else loc
-        # 	plot.line(
-        # 				master_array[prev_loc:cur_loc, 0],
-        # 				egg_arr[prev_loc:cur_loc],
-        # 				line_width = float(gui.bout_line_width_E.get()),
-        # 				color = color_tup[int(master_array[prev_loc, 6])]
-        # 			 )
-        # 	prev_loc = loc
+            legend_ = "Off-bout (egg)" if gui.plot_adj_BV.get() else "Off-bout"
+            plot.circle(master_df.loc[0, "data_point"], egg_array[0], size=float(gui.on_point_size_E.get()), color=gui.off_point_color.get(), legend=legend_)
 
         # Plot egg temperatures
         if float(gui.bout_line_width_E.get()) > 0:
-            plot.line(master_array[:, 0], egg_arr, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
+            plot.line(master_df["data_point"], egg_array, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
 
-        plot.circle(master_array[:, 0], egg_arr, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
+        plot.circle(master_df["data_point"], egg_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
 
-    if gui.plot_delta_BV.get():
-        delta_col = 4 if gui.smooth_status_IV.get() else 3
+    if gui.plot_adj_BV.get():
+        # Get array of adjusted (egg - air) temperatures and smoth if requested
+        adj_array = master_df["adj_temper"]
+        if gui.smooth_status_IV.get():
+            adj_array = smooth_series(radius, adj_array)
+
         if float(gui.bout_line_width_E.get()) > 0:
-            plot.line(master_array[:, 0], master_array[:, delta_col], line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
+            plot.line(master_df["data_point"], adj_array, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
 
+        # Plot adjusted temperatures as triangles if egg temperatures are also being plotted
         if gui.plot_egg_BV.get():
             # Add legend values
             plot.triangle(
-                master_array[0, 0],
-                master_array[0, delta_col],
-                size=float(gui.on_point_size_E.get()),
-                color=gui.on_point_color.get(),
-                legend="On-bout (egg - air)",
+                master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend="On-bout (egg - air)",
             )
 
             plot.triangle(
-                master_array[0, 0],
-                master_array[0, delta_col],
+                master_df.loc[0, "data_point"],
+                adj_array,
                 size=float(gui.on_point_size_E.get()),
                 color=gui.off_point_color.get(),
                 legend="Off-bout (egg - air)",
             )
 
-            plot.triangle(master_array[:, 0], master_array[:, delta_col], size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
+            # Add actual data points
+            plot.triangle(master_df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
         else:
             # Add legend values
             if select_mode:
-                plot.circle(master_array[0, 0], master_array[0, delta_col], size=float(gui.on_point_size_E.get()), color="gray", legend="Temperature reading")
+                plot.circle(master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color="gray", legend="Temperature reading")
             else:
-                plot.circle(
-                    master_array[0, 0], master_array[0, delta_col], size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend="On-bout"
-                )
+                plot.circle(master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend="On-bout")
 
                 plot.circle(
-                    master_array[0, 0], master_array[0, delta_col], size=float(gui.on_point_size_E.get()), color=gui.off_point_color.get(), legend="Off-bout"
+                    master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=gui.off_point_color.get(), legend="Off-bout"
                 )
 
-            plot.circle(master_array[:, 0], master_array[:, delta_col], size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
+            # Add actual data points
+            plot.circle(master_df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
 
     # -------------------------------------------------------------------------------------------
     # Generate table with vertex information
@@ -1264,6 +1223,34 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 
     show(column(plot, widgetbox(data_table)))
     # show(plot)
+
+    # Multi-color bout-connecting lines
+    # Will be added later
+
+    # cur_state = master_array[0, 6]
+    # prev_trans = 0
+    # trans_locs = []
+    # trans_locs.append(0)
+    # for line_num, line in enumerate(master_array):
+    # 	state = line[6]
+
+    # 	if int(state) != int(cur_state):
+    # 		trans_locs.append(line_num)
+    # 		prev_trans = line_num
+    # 		cur_state = state
+
+    # trans_locs.append(master_array.shape[0])
+    # prev_loc = 0
+    # color_tup = ("gray", "darkred", "lightgray")
+    # for loc in trans_locs[1:]:
+    # 	cur_loc = loc + 1 if loc + 1 < master_array.shape[0] else loc
+    # 	plot.line(
+    # 				master_array[prev_loc:cur_loc, 0],
+    # 				egg_array[prev_loc:cur_loc],
+    # 				line_width = float(gui.bout_line_width_E.get()),
+    # 				color = color_tup[int(master_array[prev_loc, 6])]
+    # 			 )
+    # 	prev_loc = loc
 
 
 def get_verts_from_master_arr(master_df):

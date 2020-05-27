@@ -416,9 +416,9 @@ class GUIClass:
         self.plot_air_CB = tk.Checkbutton(tab3, text="Air", variable=self.plot_air_BV, font=STANDARD_FONT)
         self.plot_air_CB.grid(row=6, sticky="W", padx=240)
 
-        self.plot_delta_BV = tk.BooleanVar()
-        self.plot_delta_CB = tk.Checkbutton(tab3, text="Egg - Air", variable=self.plot_delta_BV, font=STANDARD_FONT)
-        self.plot_delta_CB.grid(row=8, sticky="NW", padx=240)
+        self.plot_adj_BV = tk.BooleanVar()
+        self.plot_adj_CB = tk.Checkbutton(tab3, text="Egg - Air", variable=self.plot_adj_BV, font=STANDARD_FONT)
+        self.plot_adj_CB.grid(row=8, sticky="NW", padx=240)
 
         # ----- Smoothing status -----
         smooth_status_L = tk.Label(tab3, text="Smoothing status", font=STANDARD_FONT)
@@ -909,7 +909,7 @@ class GUIClass:
             replace_entry(self.legend_font_size_E, self.config.get("Plot Options", "legend_font_size"))
             self.plot_egg_CB.select() if self.config.get("Plot Options", "plot_egg_tempers").lower() == "true" else self.plot_egg_CB.deselect()
             self.plot_air_CB.select() if self.config.get("Plot Options", "plot_air_tempers").lower() == "true" else self.plot_air_CB.deselect()
-            self.plot_delta_CB.select() if self.config.get("Plot Options", "plot_egg_minus_air").lower() == "true" else self.plot_delta_CB.deselect()
+            self.plot_adj_CB.select() if self.config.get("Plot Options", "plot_egg_minus_air").lower() == "true" else self.plot_adj_CB.deselect()
             self.smooth_status_IV.set(0) if self.config.get("Plot Options", "plot_smoothed").lower() == "false" else self.smooth_status_IV.set(1)
             self.legend_loc.set(self.config.get("Plot Options", "legend_location"))
             self.on_point_color.set(self.config.get("Plot Options", "on_point_color"))
@@ -2112,7 +2112,7 @@ class GUIClass:
 
         self.config.set("Plot Options", "plot_egg_tempers", self.plot_egg_BV.get())
         self.config.set("Plot Options", "plot_air_tempers", self.plot_air_BV.get())
-        self.config.set("Plot Options", "plot_egg_minus_air", self.plot_delta_BV.get())
+        self.config.set("Plot Options", "plot_egg_minus_air", self.plot_adj_BV.get())
         self.config.set("Plot Options", "plot_smoothed", bool(self.smooth_status_IV.get()))
         self.config.set("Plot Options", "legend_location", self.legend_loc.get())
 
@@ -2288,21 +2288,20 @@ class GUIClass:
         self.root.quit()
         self.root.destroy()
 
-    def reset_nighttime_state(self, nights_list, df):
+    def reset_nighttime_state(self, nights_list, master_df):
         """
 						Sets state of nightime data points to "nonsense" value of 2. These points will be ignored for the
 						majority of downstream statistical calculations.
 
 						Args:
 										nights_list (list of blocks): used to get boudaries for nightime data points
-										master_array (numpy array): master array which will have states column modified
+										master_df (DataFrame): master DataFrame which will have states column modified
 		"""
 
         for night in nights_list:
-            df.loc[night.start : night.stop - 1, "bout_state"] = "None"
+            master_df.loc[night.start : night.stop - 1, "bout_state"] = "None"
 
-        master_array = niq_misc.df_to_array(df)
-        return master_array, df
+        return master_df
 
     def unsupervised_learning(self, auto_run=False):
         """
@@ -2338,9 +2337,7 @@ class GUIClass:
                 return False
 
         self.master_hmm = niq_hmm.HMM()
-        self.master_df = niq_misc.get_master_df(self, input_[0])
-        self.master_array = niq_misc.df_to_array(self.master_df)
-        emis_arr = self.master_array[:, 5]
+        emis_arr = self.master_df.loc[:, "delta_temper"].to_numpy()
         emis_arr = emis_arr.reshape(-1, 1)
         self.master_hmm.baum_welch(emis_arr)
         self.master_hmm.populate_hmm_entries(self)
@@ -2369,9 +2366,9 @@ class GUIClass:
             self.master_df = niq_misc.get_master_df(self, in_file)
             self.master_array = niq_misc.df_to_array(self.master_df)
 
-            training_verts = []
             training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
-            self.master_hmm.extract_params_from_verts(self.master_array, training_verts)
+            self.master_df = niq_misc.add_states(self.master_df, verts=training_verts)
+            self.master_hmm.extract_params_from_verts(self.master_df)
             self.master_hmm.normalize_params(self)
             self.master_hmm.populate_hmm_entries(self)
 
@@ -2391,7 +2388,7 @@ def main(gui):
     days_list, nights_list = niq_misc.split_days(gui)
 
     if gui.restrict_search_BV.get():
-        gui.master_array, gui.master_df = gui.reset_nighttime_state(nights_list, gui.master_df)
+        gui.master_df = gui.reset_nighttime_state(nights_list, gui.master_df)
 
     # Store all vertices in master block object for later allocation
     master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)
