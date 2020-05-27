@@ -10,7 +10,7 @@ from niq_misc import replace_entry
 
 class HMM(object):
     """
-        Houses parameters and functions pretaining to the hidden Markov model.
+        Houses attributes and methods pretaining to the hidden Markov model.
 
         Private Attributes:
             _hidden_states (set): hidden states in the model
@@ -65,8 +65,7 @@ class HMM(object):
 
         # Provide inital values
         model.startprob_ = np.array([0.5, 0.5])
-        model.transmat_ = np.array([[0.98, 0.02],
-                                    [0.02, 0.98]])
+        model.transmat_ = np.array([[0.98, 0.02], [0.02, 0.98]])
         model.means_ = np.array([[0.001], [-0.001]])
         model.covars_ = np.array([[0.001], [0.001]])
 
@@ -85,7 +84,7 @@ class HMM(object):
                 training_verts (list): vertex objects created off of the user's placements
         """
 
-        master_array = self.add_states(master_array, training_verts)
+        master_array = self.old_add_states(master_array, verts=training_verts)
 
         for state in self._hidden_states:
             self._emissions[state] = {}
@@ -174,10 +173,10 @@ class HMM(object):
         results = list(self.viterbi(master_array))
         results = list(map(int, results))
 
-        master_array = self.add_states(master_array, results_arr=np.array(results))
+        master_array = self.old_add_states(master_array, states=np.array(results))
         return master_array
 
-    def add_states(self, master_array, verts=None, results_arr=None):
+    def old_add_states(self, master_array, verts=None, states=None):
         """
             Adds column 6 to master array: state (0 or 1).
 
@@ -195,10 +194,10 @@ class HMM(object):
             state_arr = np.zeros((index_range, 1), dtype=float)
 
             row = 0
-            state = 1  # Assume on-bout start -- is corrected by "swap_params_by_state" if necessary
+            state = 1  # Assume on-bout start -- corrected by "swap_params_by_state" if necessary
             prev_index = verts[0].index
-            for curVert in verts[1:]:
-                cur_index = curVert.index
+            for cur_vert in verts[1:]:
+                cur_index = cur_vert.index
                 for _ in range(prev_index, cur_index):
                     state_arr[row] = [state]
                     row += 1
@@ -206,11 +205,11 @@ class HMM(object):
                 prev_index = cur_index
                 state = 0 if state else 1
 
-            master_array = np.hstack((master_array[start: stop, :], state_arr))
+            master_array = np.hstack((master_array[start:stop, :], state_arr))
 
         # If results are provided, simply append states to master_array
-        if results_arr is not None:
-            master_array = np.hstack((master_array, results_arr.reshape(results_arr.shape[0], 1)))
+        if states is not None:
+            master_array = np.hstack((master_array, states.reshape(states.shape[0], 1)))
 
         return master_array
 
@@ -240,7 +239,7 @@ class HMM(object):
             if stdev is None:
                 stdev = float(self._emissions[state]["stdev"])
 
-            erf_input = ((val - mean) / (stdev * (2 ** 0.5)))
+            erf_input = (val - mean) / (stdev * (2 ** 0.5))
             erf_val = math.erf(erf_input)
             main_prob = (0.5 * (1 + erf_val)) if state == 1 else (1 - (0.5 * (1 + erf_val)))
 
@@ -258,7 +257,7 @@ class HMM(object):
                     tb (string): optimal sequence of states
             """
 
-            tb = ''
+            tb = ""
             for pos in reversed(traceback):
                 prev_origin = pos[int(last_origin)]
                 tb += str(prev_origin)

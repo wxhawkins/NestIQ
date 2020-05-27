@@ -1409,7 +1409,7 @@ def list_to_gen(list_):
 
 
 # FLAG largely redundant with function in niq_hmm
-def add_states(self, master_array, verts=None, results_arr=None):
+def old_add_states(self, master_array, verts=None, results_arr=None):
     """
 			Adds column 6 to master array: state (0 or 1).
 
@@ -1447,6 +1447,52 @@ def add_states(self, master_array, verts=None, results_arr=None):
     return master_array
 
 
+def add_states(array, df, verts=None, states=None):
+    """
+                Adds bout state column to master_df
+
+                Args:   
+                        array (numpy array)
+                        df (DataFrame)
+                        verts (list):
+                        states (numpy array):
+
+                Note: consider adding "partial_bout" argument that dictates if data at extremities of df is classified.
+        """
+
+    # Appends state values based on vertex locations
+    if verts is not None:
+
+        df["bout_state"] = "None"
+
+        state = "off"  # Assume off-bout start -- is corrected by "swap_params_by_state" if necessary
+
+        # Create list of vertex indices
+        indices = [0]
+        indices += [vert.index for vert in verts]
+        indices.append(len(df))
+
+        prev_i = indices[0]
+        for next_i in indices[1:]:
+            df.loc[prev_i : next_i - 1, "bout_state"] = state
+
+            # Set up for next round
+            prev_i = next_i
+            state = "off" if state == "on" else "on"
+
+    # If results are provided, simply append states to master_array
+    if states is not None:
+        master_array = np.hstack((master_array, states.reshape(states.shape[0], 1)))
+        df.loc[:, "bout_state"] = states
+        df.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
+
+    # Convert "bout_state" column of df to numpy array
+    np_states = df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2]).to_numpy()
+
+    array = np.hstack((array, np_states.reshape(len(df), 1)))
+    return array, df
+
+
 def remove_curly(*entries):
     """
 			Removes curly braces from entry box contents. These are often added for paths containing spaces.
@@ -1457,3 +1503,18 @@ def remove_curly(*entries):
 
     for entry in entries:
         replace_entry(entry, entry.get().lstrip("{").rstrip("}"))
+
+
+def df_to_array(df):
+    """
+        Convert master DataFrame to numpy array.
+    """
+
+    # Remove date_time column as this data is not compatable with numpy arrays
+    temp_df = df.loc[:, df.columns != "date_time"]
+
+    # Convert bout_state values from strings to integers
+    if "bout_state" in df.columns:
+        temp_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2], inplace=True)
+
+    return temp_df.to_numpy()

@@ -1080,11 +1080,11 @@ class GUIClass:
         # self.ori_plot_E.insert(0, "C:/Users/wxhaw/Downloads/NIQ_testing/ori_plot.html")
         # Ori plot
         self.ori_plot_E.delete(0, "end")
-        self.ori_plot_E.insert(0, "C:/Users/wxhaw/Downloads/dumb name.html")
+        self.ori_plot_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.html")
 
         # Mod plot
         self.mod_plot_E.delete(0, "end")
-        self.mod_plot_E.insert(0, "C:/Users/wxhaw/Downloads/NIQ_testing/mod_plot_1.html")
+        self.mod_plot_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/mod_plot.html")
 
     def master_test(self):
         """
@@ -1843,8 +1843,8 @@ class GUIClass:
             del paths_dict["Modified Plot"]
 
         for name, path in paths_dict.items():
-            if path.exists():
-                messagebox.showerror(f"{name} File Error (Edit tab)", "".join((path, "File with provided path could not be found.")))
+            if not path.exists():
+                messagebox.showerror(f"{name} File Error (Edit tab)", "".join((str(path), "File with provided path could not be found.")))
 
                 return False
 
@@ -2029,7 +2029,7 @@ class GUIClass:
         if self.check_valid_plot_ops() and self.check_valid_main(check_output=False) and self.check_valid_adv():
             try:
                 self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
-                self.master_array = niq_misc.get_master_arr(self, self.master_df)
+                self.master_array = niq_misc.df_to_array(self.master_df)
                 self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
 
                 # Get days_list for plotting vertical lines
@@ -2047,9 +2047,11 @@ class GUIClass:
                     return False
                 try:
                     ori_verts_ = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
-                except Exception:
+                except Exception as e:
+                    print(traceback.print_exc())
+                    print(e)
                     messagebox.showerror(("Input File Error (Edit tab)"), "Original plot file could not be read.")
-                    traceback.print_exc()
+
                     return False
 
             niq_misc.generate_plot(self, self.master_array, days_list, self.mon_dims, select_mode=True, ori_verts=ori_verts_)
@@ -2230,9 +2232,12 @@ class GUIClass:
                 print("Active file:", in_file)
 
                 self.master_df = niq_misc.get_master_df(self, in_file)
-                self.master_array = niq_misc.get_master_arr(self, self.master_df)
+                self.master_array = niq_misc.df_to_array(self.master_df)
 
-                if not rerun:
+                if rerun:
+                    custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
+                    self.master_array, self.master_df = niq_misc.add_states(self.master_array, self.master_df, verts=custom_verts)
+                elif not rerun:
                     self.master_hmm = niq_hmm.HMM()
                     self.master_hmm.build_model_from_entries(self)
                     self.master_hmm.normalize_params(self)
@@ -2243,9 +2248,6 @@ class GUIClass:
 
                     dur_thresh = int(self.dur_thresh_E.get())
                     self.master_array, self.bouts_dropped_locs = niq_misc.filter_by_dur(self.master_array, dur_thresh)
-                else:
-                    custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
-                    self.master_array = niq_misc.add_states(self, self.master_array, verts=custom_verts)
 
                 try:
                     main(self)
@@ -2289,7 +2291,7 @@ class GUIClass:
         self.root.quit()
         self.root.destroy()
 
-    def daytime_mod(self, nights_list, master_array):
+    def reset_nighttime_state(self, nights_list, master_array, df):
         """
 						Sets state of nightime data points to "nonsense" value of 2. These points will be ignored for the
 						majority of downstream statistical calculations.
@@ -2301,8 +2303,9 @@ class GUIClass:
 
         for night in nights_list:
             master_array[night.start : night.stop, 6] = 2
+            df.loc[night.start : night.stop - 1, "bout_state"] = "None"
 
-        return master_array
+        return master_array, df
 
     def unsupervised_learning(self, auto_run=False):
         """
@@ -2391,7 +2394,7 @@ def main(gui):
     days_list, nights_list = niq_misc.split_days(gui)
 
     if gui.restrict_search_BV.get():
-        gui.master_array = gui.daytime_mod(nights_list, gui.master_array)
+        gui.master_array, gui.master_df = gui.reset_nighttime_state(nights_list, gui.master_array, gui.master_df)
 
     # Store all vertices in master block object for later allocation
     master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)
