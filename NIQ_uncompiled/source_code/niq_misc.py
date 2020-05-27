@@ -1521,9 +1521,10 @@ def df_to_array(df):
         return df
 
     # Remove date_time column as this data is not compatable with numpy arrays
-    temp_df = df.loc[:, df.columns != "date_time"]
+    mod_df = df.drop("date_time", axis=1)
 
     # Convert bout_state values from strings to integers
     if "bout_state" in df.columns:
-        temp_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2], inplace=True)
-    return temp_df.to_numpy()
+        mod_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2], inplace=True)
+
+    return mod_df.to_numpy()

@@ -2234,7 +2234,7 @@ class GUIClass:
                 if rerun:
                     custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
                     self.master_df = niq_misc.add_states(self.master_df, verts=custom_verts)
-                elif not rerun:
+                else:
                     self.master_hmm = niq_hmm.HMM()
                     self.master_hmm.build_model_from_entries(self)
                     self.master_hmm.normalize_params(self)
@@ -2242,7 +2242,6 @@ class GUIClass:
 
                     # Adds state column to master_array of input file
                     self.master_df = self.master_hmm.decode(self.master_df)
-
                     dur_thresh = int(self.dur_thresh_E.get())
                     temp_array = niq_misc.df_to_array(self.master_df)
                     self.master_df, self.bouts_dropped_locs = niq_misc.filter_by_dur(self.master_df, dur_thresh)
