@@ -1228,8 +1228,20 @@ def get_verts_from_master_df(master_df):
 					master_df (pd.DataFrame)
 	"""
 
+    master_array = df_to_array(master_df)
+    cur_state = master_array[0, 6]
+    vertices = []
+
+    for index, row in enumerate(master_array[:]):
+        if row[6] != cur_state:
+            cur_state = row[6]
+            vertices.append(niq_classes.Vertex(index, row[1], cur_state))
+
+    old_verts = vertices
+
     # Convert bout_states to integers
-    int_states = master_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2])
+    temp_df = master_df.copy()
+    int_states = temp_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2])
 
     # Create Boolean Series that stores if the state has changed
     state_changed = int_states.diff().apply(abs).astype(bool)
@@ -1239,12 +1251,16 @@ def get_verts_from_master_df(master_df):
     vert_indices = master_df[state_changed].index.tolist()
 
     # Create and append verticies
+    master_array = df_to_array(master_df)
+    cur_state = master_array[0, 6]
     vertices = []
     for index in vert_indices:
         row = master_df.loc[index]
-        vertices.append(niq_classes.Vertex(index, row["egg_temper"], row["bout_state"]))
+        vertices.append(niq_classes.Vertex(index, row["egg_temper"], int(row["bout_state"] == "on")))
 
-    return vertices
+    new_verts = vertices
+
+    return new_verts
 
 
 def replace_entry(entry, new_value):

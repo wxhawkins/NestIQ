@@ -33,6 +33,7 @@ HEADER_FONT = font.Font(size=12, weight="bold")
 SUBHEADER_FONT = "Helvetica 10 bold"
 TITLE_FONT = ("Helvetica", 18)
 
+# root.iconbitmap('favicon.ico')
 
 class GUIClass:
     """
