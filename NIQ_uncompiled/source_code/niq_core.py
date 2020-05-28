@@ -35,6 +35,7 @@ TITLE_FONT = ("Helvetica", 18)
 
 # root.iconbitmap('favicon.ico')
 
+
 class GUIClass:
     """
 					Large class storing all information present on the graphical user interface: parameters, file names,
@@ -2213,6 +2214,7 @@ class GUIClass:
                     self.run_B.config(bg="gray", fg="white", width=15, height=1)
 
                 # Check if all inputs are valid
+                check_start = time.time()
                 edit_tab_check = self.check_valid_edit_ops() if rerun else True
 
                 if not (
@@ -2224,6 +2226,7 @@ class GUIClass:
                 ):
                     successful = False
                     break
+                print(f"check took {round(time.time() - check_start, 3)}")
 
                 print("Active file:", in_file)
 
@@ -2243,7 +2246,6 @@ class GUIClass:
                     dur_thresh = int(self.dur_thresh_E.get())
                     temp_array = niq_misc.df_to_array(self.master_df)
                     self.master_df, self.bouts_dropped_locs = niq_misc.filter_by_dur(self.master_df, dur_thresh)
-
                 try:
                     main(self)
                 except:
@@ -2381,6 +2383,7 @@ def main(gui):
 					Args:
 									gui (GUIClass)
 	"""
+    block_start = time.time()
 
     days_list, nights_list = niq_misc.split_days(gui)
 
@@ -2439,11 +2442,19 @@ def main(gui):
     pairs_block_group = niq_classes.BlockGroup(gui, pairs_list)
     if len(pairs_list) > 0:
         pairs_block_group.get_stats(gui, append=False)
+
+    print(f"get_stats and blocks took {round(time.time() - block_start, 3)}")
+
+    plot_start = time.time()
     if gui.make_plot_BV.get():
         niq_misc.generate_plot(gui, gui.master_df, days_list, gui.mon_dims)
 
+    print(f"plot took {round(time.time() - plot_start, 3)}")
+    stat_start = time.time()
     if gui.get_stats_BV.get():
         niq_misc.write_stats(gui, days, nights, pairs_block_group, master_block)
+
+    print(f"stat took {round(time.time() - stat_start, 3)}")
 
 
 if __name__ == "__main__":

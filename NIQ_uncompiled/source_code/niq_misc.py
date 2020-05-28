@@ -1148,29 +1148,24 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 
         # Plot adjusted temperatures as triangles if egg temperatures are also being plotted
         plot_shape = plot.triangle if gui.plot_egg_BV.get() else plot.circle
-        if gui.plot_egg_BV.get():
-            # Add legend values
-            if select_mode:
-                plot.circle(master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color="gray", legend="Temperature reading")
-            else:
-                plot_shape(
-                    master_df.loc[0, "data_point"],
-                    adj_array,
-                    size=float(gui.on_point_size_E.get()),
-                    color=gui.on_point_color.get(),
-                    legend="On-bout (egg - air)",
-                )
+        # Add legend values
+        if select_mode:
+            plot.circle(master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color="gray", legend="Temperature reading")
+        else:
+            plot_shape(
+                master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend="On-bout (egg - air)",
+            )
 
-                plot_shape(
-                    master_df.loc[0, "data_point"],
-                    adj_array,
-                    size=float(gui.on_point_size_E.get()),
-                    color=gui.off_point_color.get(),
-                    legend="Off-bout (egg - air)",
-                )
+            plot_shape(
+                master_df.loc[0, "data_point"],
+                adj_array,
+                size=float(gui.on_point_size_E.get()),
+                color=gui.off_point_color.get(),
+                legend="Off-bout (egg - air)",
+            )
 
-            # Add actual data points
-            plot_shape(master_df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
+        # Add actual data points
+        plot_shape(master_df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
 
     # -------------------------------------------------------------------------------------------
     # Generate table with vertex information
@@ -1228,17 +1223,6 @@ def get_verts_from_master_df(master_df):
 					master_df (pd.DataFrame)
 	"""
 
-    master_array = df_to_array(master_df)
-    cur_state = master_array[0, 6]
-    vertices = []
-
-    for index, row in enumerate(master_array[:]):
-        if row[6] != cur_state:
-            cur_state = row[6]
-            vertices.append(niq_classes.Vertex(index, row[1], cur_state))
-
-    old_verts = vertices
-
     # Convert bout_states to integers
     temp_df = master_df.copy()
     int_states = temp_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2])
@@ -1258,9 +1242,7 @@ def get_verts_from_master_df(master_df):
         row = master_df.loc[index]
         vertices.append(niq_classes.Vertex(index, row["egg_temper"], int(row["bout_state"] == "on")))
 
-    new_verts = vertices
-
-    return new_verts
+    return vertices
 
 
 def replace_entry(entry, new_value):
