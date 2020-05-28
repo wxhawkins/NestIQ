@@ -311,43 +311,6 @@ def get_master_df(gui, source_path):
 
     return df
 
-
-def get_master_list(gui, source_path):
-    """
-			Creates 2D list from input CSV.  Also performs some gap filling and trimming of unnecessary lines.
-
-			Args:
-					gui (GUIClass)
-					source_path (str): path to and name of input CSV file
-	"""
-
-    pop_indices = []
-
-    with open(source_path, "r") as input_csv:
-        csv_lines = input_csv.readlines()
-
-    master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
-
-    for i in range(len(master_list)):
-        if any((re.search(r"\D", master_list[i][gui.data_point_col]), not re.search(r"\d", master_list[i][gui.data_point_col]))):
-            pop_indices.append(i)
-
-    for pop_count, index in enumerate(pop_indices):
-        master_list.pop(index - pop_count)
-
-    # Remove extra columns
-    master_list = [row[0:4] for row in master_list] if gui.air_valid else [row[0:3] for row in master_list]
-
-    # Clear formatting characters if present
-    digit_search = re.search(r"\d+", master_list[0][gui.data_point_col])
-    master_list[0][gui.data_point_col] = digit_search.group(0)
-
-    """FLAG I found this function was unecessarily deleteing the last two rows.
-	I have now fixed this but still pass master_list[:-2] so as to not alter the report for testing purposes."""
-    # return master_list[:-2]
-    return master_list
-
-
 def get_master_arr(gui, df):
     """
 			Converts the 2D list containing input data to a 2D numpy array. The date/time column is not
