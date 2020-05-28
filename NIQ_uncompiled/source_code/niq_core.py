@@ -1108,7 +1108,8 @@ class GUIClass:
                 ref_lines = ref_file.readlines()
                 labels = ref_lines[1].strip().split(",")
                 ref_vals = ref_lines[10].strip().split(",")
-                test_vals = test_file.readlines()[10].strip().split(",")
+                # test_vals = test_file.readlines()[10].strip().split(",")
+                test_vals = test_file.read().split("\n")[9].strip().split(",")
 
             # Compare values
             for i, label in enumerate(labels):
@@ -1289,7 +1290,7 @@ class GUIClass:
 						Launches user manual.
 		"""
 
-        subprocess.Popen(self.master_dir_path / "NIQ_manual.pdf", shell=True)
+        subprocess.Popen(str(self.master_dir_path / "NIQ_manual.pdf"), shell=True)
 
     def toggle_col(self, column, command):
         """

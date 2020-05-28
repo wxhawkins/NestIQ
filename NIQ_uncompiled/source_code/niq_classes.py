@@ -166,8 +166,8 @@ class Block:
         # self.time_below_temper = data_points_below_temper * gui.time_interval
 
         # This sets the temper containers to lists
-        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].round(3).tolist()
-        self.air_tempers = gui.master_df.loc[self.start : self.stop, "air_temper"].round(3).tolist()
+        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].round(4).tolist()
+        self.air_tempers = gui.master_df.loc[self.start : self.stop, "air_temper"].round(4).tolist()
         egg_temper_series = gui.master_df.loc[self.start : self.stop, "egg_temper"]
         air_temper_series = gui.master_df.loc[self.start : self.stop, "air_temper"]
 

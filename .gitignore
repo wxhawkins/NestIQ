@@ -1,6 +1,7 @@
 *.pyc
 *bokeh*
 */__pycache__/*
+*/input_files/
 
 
 NIQ_uncompiled/source_code/__pycache__/niq_hmm.cpython-36.pyc
