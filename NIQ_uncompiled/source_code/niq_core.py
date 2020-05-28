@@ -69,7 +69,6 @@ class GUIClass:
         self.multi_in_air_tempers = []
         self.multi_in_full_day_count = 0
 
-        self.master_input = tuple()
         self.input_root = None
         self.time_interval = None
         self.air_valid = True
@@ -1303,23 +1302,6 @@ class GUIClass:
         for option in column:
             option.select() if command == "select" else option.deselect()
 
-    def update_multi_in_default_outs(self, in_file_path):
-        """
-						Automatically updates input and output file entry boxes before each run if multiple files
-						are being processed.
-
-						Args:
-										in_file (string): path to file currently being proceessed
-		"""
-
-        replace_entry(self.input_file_E, in_file_path)
-
-        self.time_interval = self.config.get("Main Settings", "data_time_interval")
-        self.input_root = Path(in_file_path).stem
-
-        set_unique_path(self.plot_file_E, (self.input_root + "_plot"), self.out_path_E.get(), ".html")
-        set_unique_path(self.stats_file_E, (self.input_root + "_stats"), self.out_path_E.get(), ".csv")
-
     def update_default_outs(self):
         """
 						Updates default output file names to unique values.
@@ -1904,31 +1886,19 @@ class GUIClass:
 						Handles input file browsing and selection.
 		"""
 
-        entry = self.input_file_E
-        entry.delete(0, "end")
-
         self.root.update()
-        self.master_input = filedialog.askopenfilename(multiple=True)
+        input_paths = tuple(filedialog.askopenfilename(multiple=True))
         self.root.update()
 
-        if self.master_input == "":
-            self.master_input = tuple("")
-            return
+        replace_entry(self.input_file_E, "|".join(input_paths))
 
-        if len(self.master_input) == 1:
-            path = Path(self.master_input[0])
-            entry.insert(0, path)
-            self.input_root = path.stem
+        if len(input_paths) == 1:
+            # Update default output file names
+            path = remove_curly(input_paths[0], string=True)
+            set_unique_path(self.plot_file_E, (path + "_plot"), self.out_path_E.get(), ".html")
+            set_unique_path(self.stats_file_E, (path + "_stats"), self.out_path_E.get(), ".csv")
 
-            # Update default names
-            set_unique_path(self.plot_file_E, (self.input_root + "_plot"), self.out_path_E.get(), ".html")
-            set_unique_path(self.stats_file_E, (self.input_root + "_stats"), self.out_path_E.get(), ".csv")
-        else:
-            entry.insert(0, self.master_input)
-            replace_entry(self.plot_file_E, "------------------")
-            replace_entry(self.stats_file_E, "------------------")
 
-        niq_misc.remove_curly(entry)
 
     def get_plot_file(self, entry):
         """
@@ -2178,6 +2148,21 @@ class GUIClass:
         with open(config_file, "w") as configFile_:
             self.config.write(configFile_)
 
+    def parse_input_file_entry(self):
+        paths = self.input_file_E.get().split("|")
+        paths = [Path(niq_misc.remove_curly(path.strip(), string=True)) for path in paths]
+        return paths
+
+    def set_active_input(self, path, replace_out=False):
+        replace_entry(self.input_file_E, str(path))
+        self.active_input_path = path
+        self.input_root = path.stem
+
+        if replace_out:
+            # Update default output file names
+            set_unique_path(self.plot_file_E, (self.input_root + "_plot"), self.out_path_E.get(), ".html")
+            set_unique_path(self.stats_file_E, (self.input_root + "_stats"), self.out_path_E.get(), ".csv")
+
     # Check ensure valid parameters and execute processing
     def trigger_run(self, rerun=False):
         """
@@ -2193,30 +2178,24 @@ class GUIClass:
             print("-" * 100)
             print("Running NestIQ")
 
-            self.run, successful = True, True
+            self.time_interval = self.config.get("Main Settings", "data_time_interval")
+
+
+            in_file_paths = self.parse_input_file_entry()
             self.reset_multi_file_var()
 
-            if len(self.master_input) == 0 or self.master_input == ("",):
-                self.master_input = (self.input_file_E.get(),)
 
-            for file_num, in_file in enumerate(self.master_input, 1):
-                in_file = in_file.lstrip("{").rstrip("}")
-
-                self.time_interval = self.config.get("Main Settings", "data_time_interval")
+            for file_num, path in enumerate(in_file_paths, 1):
+                self.set_active_input(path, replace_out=(len(in_file_paths) > 1))
+                self.run = True
                 self.air_valid = True
 
-                if len(self.master_input) == 1:
-                    self.run_B["text"] = "Running..."
-                    self.run_B.config(bg="gray", fg="white", width=10, height=1)
-                    self.root.update()
-                else:
-                    self.update_multi_in_default_outs(in_file)
-                    self.run_B["text"] = "Running (file " + str(file_num) + ")..."
-                    self.run_B.config(bg="gray", fg="white", width=15, height=1)
+                self.run_B["text"] = f"Running {file_num}..."
+                self.run_B.config(bg="gray", fg="white", width=15, height=1)
 
                 # Check if all inputs are valid
                 check_start = time.time()
-                edit_tab_check = self.check_valid_edit_ops() if rerun else True
+                edit_tab_check = True if not rerun else self.check_valid_edit_ops()
 
                 if not (
                     self.check_valid_main(check_output=(file_num == 1))
@@ -2225,13 +2204,12 @@ class GUIClass:
                     and self.check_valid_stat_ops()
                     and edit_tab_check
                 ):
-                    successful = False
                     break
                 print(f"check took {round(time.time() - check_start, 3)}")
 
-                print("Active file:", in_file)
+                print("Active file:", path)
 
-                self.master_df = niq_misc.get_master_df(self, in_file)
+                self.master_df = niq_misc.get_master_df(self, path)
 
                 if rerun:
                     custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
@@ -2245,26 +2223,17 @@ class GUIClass:
                     # Adds state column to master_df of input file
                     self.master_df = self.master_hmm.decode(self.master_df)
                     dur_thresh = int(self.dur_thresh_E.get())
-                    temp_array = niq_misc.df_to_array(self.master_df)
                     self.master_df, self.bouts_dropped_locs = niq_misc.filter_by_dur(self.master_df, dur_thresh)
                 try:
                     main(self)
                 except:
-                    successful = False
                     traceback.print_exc()
                     break
 
-                self.update_default_outs()
-
-            if all((successful, self.multi_in_stats_BV.get(), len(self.master_input) > 1)):
+            if self.multi_in_stats_BV.get():
                 self.append_multi_file_stats()
 
-            if re.search((r"[^\{\}]"), "".join(self.master_input)):
-                replace_entry(self.input_file_E, self.master_input)
-
-            niq_misc.remove_curly(self.input_file_E)
-
-            self.master_input = tuple()
+            replace_entry(self.input_file_E, "|".join([str(path) for path in in_file_paths]))
 
             self.run_B["text"] = "Run"
             self.run_B.config(bg="red4", fg="white", width=10, height=1)

@@ -1366,13 +1366,16 @@ def add_states(df, array=None, verts=None, states=None):
     return df
 
 
-def remove_curly(*entries):
+def remove_curly(*entries, string=False):
     """
 			Removes curly braces from entry box contents. These are often added for paths containing spaces.
 
 			Args:
 					entries (tk.Entry)
 	"""
+
+    if string:
+        return entries[0].lstrip("{").rstrip("}")
 
     for entry in entries:
         replace_entry(entry, entry.get().lstrip("{").rstrip("}"))
