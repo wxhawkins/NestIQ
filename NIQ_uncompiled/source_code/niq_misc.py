@@ -310,7 +310,7 @@ def get_master_df(gui, source_path):
     df["data_point"] = new_col
 
     # Add adjusted (egg - air temperature) temperatures column
-    df["adj_temper"] = df["egg_temper"] - df["air_temper"]
+    df["adj_temper"] = (df["egg_temper"] - df["air_temper"]).round(4)
 
     # Add smoothed, adjusted temperatures column
     radius = int(gui.smoothing_radius_E.get())
@@ -319,6 +319,7 @@ def get_master_df(gui, source_path):
     # Add column storing difference in adjusted temperature from previous entry to current
     df["delta_temper"] = np.zeros(df.shape[0])
     df.iloc[1:, df.columns.get_loc("delta_temper")] = df["smoothed_adj_temper"].diff()
+    
     # Set first cell equal to second
     df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
 
@@ -570,9 +571,9 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 
             # Print input file name first (remove path)
             if out_file == gui.multi_in_stats_file_E.get():
-                header = os.path.basename(os.path.normpath(gui.inFile))
+                header = f"{self.active_input_path.name}\n"
             else:
-                header = "Cumulative Statistics"
+                header = "Cumulative Statistics\n"
 
             if gui.day_num_BV.get():
                 header += "Day Number,"
@@ -610,9 +611,9 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
                 header += "On-Bout Time Sum" + qualifier
 
             if gui.time_above_temper_BV.get():
-                header += "Time above (minutes) " + gui.time_above_temper_E.get()
+                header += "Time above (minutes) " + gui.time_above_temper_E.get() + ","
             if gui.time_below_temper_BV.get():
-                header += "Time below (minutes) " + gui.time_below_temper_E.get()
+                header += "Time below (minutes) " + gui.time_below_temper_E.get() + ","
             if gui.bouts_dropped_BV.get():
                 header += "Vertices Dropped" + qualifier
 
@@ -777,7 +778,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 
                 gui.multi_in_full_day_count += full_day_counter
 
-            multi_file_core = days if gui.restrict_search_BV.get() else master_block
+            bloack_group = days if gui.restrict_search_BV.get() else master_block
 
             # Output stats summary for entire input file
             summary_row = ""
@@ -787,41 +788,41 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
                 summary_row += f"ALL DATA,"
 
             if gui.off_count_BV.get():
-                summary_row += f"{multi_file_core.off_count},"
+                summary_row += f"{bloack_group.off_count},"
             if gui.off_dur_BV.get():
-                summary_row += f"{multi_file_core.mean_off_dur},"
+                summary_row += f"{bloack_group.mean_off_dur},"
             if gui.off_dur_sd_BV.get():
-                summary_row += f"{multi_file_core.off_dur_stdev},"
+                summary_row += f"{bloack_group.off_dur_stdev},"
             if gui.off_dec_BV.get():
-                summary_row += f"{multi_file_core.mean_off_dec},"
+                summary_row += f"{bloack_group.mean_off_dec},"
             if gui.off_dec_sd_BV.get():
-                summary_row += f"{multi_file_core.off_dec_stdev},"
+                summary_row += f"{bloack_group.off_dec_stdev},"
             if gui.mean_off_temper_BV.get():
-                summary_row += f"{multi_file_core.mean_off_temper},"
+                summary_row += f"{bloack_group.mean_off_temper},"
             if gui.off_time_sum_BV.get():
-                summary_row += f"{multi_file_core.off_time_sum},"
+                summary_row += f"{bloack_group.off_time_sum},"
 
             if gui.on_count_BV.get():
-                summary_row += f"{multi_file_core.on_count},"
+                summary_row += f"{bloack_group.on_count},"
             if gui.on_dur_BV.get():
-                summary_row += f"{multi_file_core.mean_on_dur},"
+                summary_row += f"{bloack_group.mean_on_dur},"
             if gui.on_dur_sd_BV.get():
-                summary_row += f"{multi_file_core.on_dur_stdev},"
+                summary_row += f"{bloack_group.on_dur_stdev},"
             if gui.on_inc_BV.get():
-                summary_row += f"{multi_file_core.mean_on_inc},"
+                summary_row += f"{bloack_group.mean_on_inc},"
             if gui.on_inc_sd_BV.get():
-                summary_row += f"{multi_file_core.on_inc_stdev},"
+                summary_row += f"{bloack_group.on_inc_stdev},"
             if gui.mean_on_temper_BV.get():
-                summary_row += f"{multi_file_core.mean_on_temper},"
+                summary_row += f"{bloack_group.mean_on_temper},"
             if gui.on_time_sum_BV.get():
-                summary_row += f"{multi_file_core.on_time_sum},"
+                summary_row += f"{bloack_group.on_time_sum},"
 
             if gui.time_above_temper_BV.get():
                 summary_row += f"{master_time_above_temper},"
             if gui.time_below_temper_BV.get():
                 summary_row += f"{master_time_below_temper},"
             if gui.bouts_dropped_BV.get():
-                summary_row += f"{multi_file_core.bouts_dropped},"
+                summary_row += f"{bloack_group.bouts_dropped},"
 
             if gui.mean_temper_d_BV.get():
                 summary_row += f"{days.mean_egg_temper},"
@@ -850,7 +851,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
             if gui.mean_temper_dn_sd_BV.get():
                 summary_row += f"{round(statistics.stdev(all_egg_tempers), 3)},"
             if gui.median_temper_dn_BV.get():
-                summary_row += f"{statistics.median(all_egg_tempers)},"
+                summary_row += f"{round(statistics.median(all_egg_tempers), 3)},"
             if gui.min_temper_dn_BV.get():
                 summary_row += f"{min(all_egg_tempers)},"
             if gui.max_temper_dn_BV.get():
@@ -1111,20 +1112,25 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 
     # -------------------------------------------------------------------------------------------
     # Generate table with vertex information
-    if select_mode:
-        data = {"x": [], "y": []}
+    table_title = "Egg Temperature"
+    ori_verts = [] if not ori_verts else ori_verts
+    verts = get_verts_from_master_df(master_df) if not select_mode else ori_verts
+    x_list, y_list = [], []
 
-        # Plot original vertices if provided
-        if ori_verts:
-            # FLAG Always plots as egg_temper even when plot shows egg - air
-            data = {"x": [vert.index for vert in ori_verts], "y": [vert.egg_temper for vert in ori_verts]}
-    else:
-        # Append vertex info to table
-        verts = get_verts_from_master_df(master_df)
-        data = {"x": [vert.index for vert in verts], "y": [vert.egg_temper for vert in verts]}
+    # Add vertices to table (allow egg_tempers or adj_tempers, not both)
+    if gui.plot_egg_BV.get():
+        x_list += [gui.master_df.loc[vert.index, "data_point"] for vert in verts]
+        y_list += [gui.master_df.loc[vert.index, "egg_temper"] for vert in verts]
+    elif gui.plot_adj_BV.get():
+        table_title = "Adjusted Temperature"
+        x_list += [gui.master_df.loc[vert.index, "data_point"] for vert in verts]
+        y_list += [gui.master_df.loc[vert.index, "adj_temper"] for vert in verts]
+    
+    data = {"x": x_list, "y": y_list}
+
 
     src = ColumnDataSource(data)
-    columns = [TableColumn(field="x", title="Transition Data Point"), TableColumn(field="y", title="Egg Temperature")]
+    columns = [TableColumn(field="x", title="Transition Data Point"), TableColumn(field="y", title=table_title)]
 
     # FLAG shoud make height dynamic
     data_table = DataTable(source=src, columns=columns, width=500, height=100000)
@@ -1179,6 +1185,7 @@ def get_verts_from_master_df(master_df):
     # Create and append verticies
     master_array = df_to_array(master_df)
     cur_state = master_array[0, 6]
+
     vertices = []
     for index in vert_indices:
         row = master_df.loc[index]
@@ -1311,7 +1318,7 @@ def list_to_gen(list_):
         yield item
 
 
-def add_states(df, array=None, verts=None, states=None):
+def add_states(df, verts=None, states=None):
     """
                 Adds bout state column to master_df
 
@@ -1348,14 +1355,12 @@ def add_states(df, array=None, verts=None, states=None):
     if states is not None:
         df.loc[:, "bout_state"] = states
         df.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
-        if array:
-            array = np.hstack((array, states.reshape(states.shape[0], 1)))
-
-    # Convert "bout_state" column of df to numpy array
-    if array:
-        np_states = df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2]).to_numpy()
-        array = np.hstack((array, np_states.reshape(len(df), 1)))
-        return array, df
+    
+    # Flip bout states if necessary
+    on_bout_delta_temp = df.loc[df["bout_state"] == "on", "delta_temper"].mean()
+    off_bout_delta_temp = df.loc[df["bout_state"] == "off", "delta_temper"].mean()
+    if off_bout_delta_temp > on_bout_delta_temp:
+        df.loc[:, "bout_state"].replace(["off", "on", "None"], ["on", "off", "None"], inplace=True)
 
     return df
 

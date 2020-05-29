@@ -173,7 +173,7 @@ class Block:
 
         data_points_above_temper = len(egg_temper_series.loc[egg_temper_series > float(gui.time_above_temper_E.get())])
         self.time_above_temper = data_points_above_temper * gui.time_interval
-        data_points_below_temper = len(air_temper_series.loc[air_temper_series < float(gui.time_below_temper_E.get())])
+        data_points_below_temper = len(egg_temper_series.loc[egg_temper_series < float(gui.time_below_temper_E.get())])
         self.time_below_temper = data_points_below_temper * gui.time_interval
 
         for bout in self.bouts:
@@ -212,7 +212,7 @@ class Block:
         if len(self.egg_tempers) > 1:
             self.egg_temper_stdev = round(statistics.stdev(self.egg_tempers), 3)
 
-        self.median_temper = statistics.median(self.egg_tempers)
+        self.median_temper = round(statistics.median(self.egg_tempers), 3)
         self.min_egg_temper = min(self.egg_tempers)
         self.max_egg_temper = max(self.egg_tempers)
 
@@ -402,7 +402,7 @@ class BlockGroup:
         if len(self.egg_tempers) > 1:
             self.egg_temper_stdev = round(statistics.stdev(self.egg_tempers), 3)
 
-        self.median_temper = statistics.median(self.egg_tempers)
+        self.median_temper = round(statistics.median(self.egg_tempers), 3)
         self.min_egg_temper = min(self.egg_tempers)
         self.max_egg_temper = max(self.egg_tempers)
 

@@ -1111,7 +1111,7 @@ class GUIClass:
                 labels = ref_lines[1].strip().split(",")
                 ref_vals = ref_lines[10].strip().split(",")
                 # test_vals = test_file.readlines()[10].strip().split(",")
-                test_vals = test_file.read().split("\n")[9].strip().split(",")
+                test_vals = test_file.read().split("\n")[10].strip().split(",")
 
             # Compare values
             for i, label in enumerate(labels):
@@ -1161,14 +1161,14 @@ class GUIClass:
 
         # Initialization
         test_dir_path = self.master_dir_path / "testing"
+        in_file_path = test_dir_path / "input" / "test_input_long.csv"
+
         # Load config file
         ref_config_path = test_dir_path / "config" / "test_config.ini"
         self.load_config(config_file_=ref_config_path)
 
         # Load testing input file
-        self.input_file_E.delete(0, "end")
-        # self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input.csv")
-        self.input_file_E.insert(0, (test_dir_path / "input" / "test_input_long.csv"))
+        replace_entry(self.input_file_E, in_file_path)
 
         # Set up output
         rand_key = str(randint(1e6, 1e7))
@@ -1179,7 +1179,7 @@ class GUIClass:
         # Declare paths
         unres_ref_stats_path = test_dir_path / "stats" / "ref_stats_unrestricted_long.csv"
         res_ref_stats_path = test_dir_path / "stats" / "ref_stats_restricted_long.csv"
-        test_stat_dir = test_dir_path / "temp_output"
+        test_out_dir = test_dir_path / "temp_output"
 
         # Set up text coloring
         colorama.init()
@@ -1227,9 +1227,8 @@ class GUIClass:
 
         self.load_config(config_file_=ref_config_path)
         self.unsupervised_learning()
-        unsup_test_path = test_stat_dir / "unsup_test_config.ini"
+        unsup_test_path = test_out_dir / f"{rand_key}_unsup_test_config.ini"
         unsup_ref_path = test_dir_path / "config" / "unsup_ref_config.ini"
-        unsup_test_path.unlink()
         self.save_config(out_file=str(unsup_test_path))
 
         # Search for config discrepencies
@@ -1264,9 +1263,8 @@ class GUIClass:
 
         self.load_config(config_file_=ref_config_path)
         self.supervised_learning()
-        sup_test_path = test_stat_dir / "sup_test_config.ini"
+        sup_test_path = test_out_dir / f"{rand_key}_sup_test_config.ini"
         sup_ref_path = test_dir_path / "config" / "sup_ref_config.ini"
-        sup_test_path.unlink()
         self.save_config(out_file=str(sup_test_path))
 
         # Search for config discrepencies
@@ -1276,6 +1274,52 @@ class GUIClass:
             print(colored("SUP PASSED".center(100, "-"), "green"))
         else:
             print(colored("SUP FAILED".center(100, "-"), "red"))
+            for key, values in mismatches.items():
+                print(
+                    colored(key, "yellow")
+                    + ": test value of "
+                    + colored(str(values[1]), "yellow")
+                    + " did not match reference "
+                    + colored(str(values[0]), "yellow")
+                )
+
+        # ---------------------------------Plot Editing----------------------------------------
+        print(f"\n\nTesting plot editing")
+
+        # Establish configuration
+        ref_config_path = test_dir_path / "config" / "test_config.ini"
+        self.load_config(config_file_=ref_config_path)
+
+        # Declare file paths
+        mod_ref_path = test_dir_path / "stats" / "ref_mod_stats.csv"
+        ori_plot_path = test_dir_path / "input" / "test_input_long.html"
+        mod_plot_path = test_dir_path / "input" / "mod_plot.html"
+
+        # Fill entry boxes
+        replace_entry(self.input_file_E, in_file_path)
+        replace_entry(self.ori_plot_E, ori_plot_path)
+        replace_entry(self.mod_plot_E, mod_plot_path)
+
+        # Make modifiable plot
+        self.select_vertices(mod_plot=True)
+
+        # Set up output file names
+        test_mod_stats_path = test_out_dir / f"{rand_key}_modified.csv"
+        test_mod_plot_path = test_out_dir / f"{rand_key}_modified.html"
+        replace_entry(self.stats_file_E, test_mod_stats_path)
+        replace_entry(self.plot_file_E, test_mod_plot_path)
+
+        # Rerun with modified verticies
+        self.trigger_run(rerun=True)
+
+        # Look for discrepencies in output files
+        mismatches = compare_stats(rand_key, mod_ref_path, test_mod_stats_path)
+
+        # Notify user of mismatched values if any
+        if not mismatches:
+            print(colored("PLOT EDITING PASSED".center(100, "-"), "green"))
+        else:
+            print(colored("PLOT EDITING FAILED".center(100, "-"), "red"))
             for key, values in mismatches.items():
                 print(
                     colored(key, "yellow")
@@ -1999,33 +2043,39 @@ class GUIClass:
         days_list = []
         ori_verts_ = None
 
-        if self.check_valid_plot_ops() and self.check_valid_main(check_output=False) and self.check_valid_adv():
-            try:
-                self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
-                self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
+        if not all((
+            self.check_valid_plot_ops(),
+            self.check_valid_main(check_output=False),
+            self.check_valid_adv()
+        )):
+            return 
+            
+        try:
+            self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
+            self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
 
-                # Get days_list for plotting vertical lines
-                days_list = niq_misc.split_days(self)[0]  # Indexing at end excludes nights_list
-            except Exception:
-                messagebox.showerror(("Input File Error (Advanced tab)"), "Input file could not be processed.")
+            # Get days_list for plotting vertical lines
+            days_list = niq_misc.split_days(self)[0]  # Indexing at end excludes nights_list
+        except Exception:
+            messagebox.showerror(("Input File Error (Advanced tab)"), "Input file could not be processed.")
+            traceback.print_exc()
+            return False
+
+        ori_verts_ = None
+
+        # Get original vertices if undergoing manual vertex editing
+        if mod_plot:
+            if not self.check_valid_edit_ops(rerun=False):
+                return False
+            try:
+                ori_verts_ = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
+            except Exception as e:
                 traceback.print_exc()
+                messagebox.showerror(("Input File Error (Edit tab)"), "Original plot file could not be read.")
+
                 return False
 
-            ori_verts_ = None
-
-            # Get original vertices if undergoing manual vertex editing
-            if mod_plot:
-                if not self.check_valid_edit_ops(rerun=False):
-                    return False
-                try:
-                    ori_verts_ = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
-                except Exception as e:
-                    traceback.print_exc()
-                    messagebox.showerror(("Input File Error (Edit tab)"), "Original plot file could not be read.")
-
-                    return False
-
-            niq_misc.generate_plot(self, self.master_df, days_list, self.mon_dims, select_mode=True, ori_verts=ori_verts_)
+        niq_misc.generate_plot(self, self.master_df, days_list, self.mon_dims, select_mode=True, ori_verts=ori_verts_)
 
     def init_config(self):
         """
@@ -2195,6 +2245,7 @@ class GUIClass:
 
                 self.run_B["text"] = f"Running {file_num}..."
                 self.run_B.config(bg="gray", fg="white", width=15, height=1)
+                self.root.update()
 
                 # Check if all inputs are valid
                 check_start = time.time()
