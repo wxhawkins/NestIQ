@@ -812,9 +812,9 @@ class GUIClass:
 
         self.valid = True
         while self.valid and not self.run:
-            self.runloop()
+            self.run_loop()
 
-    def runloop(self):
+    def run_loop(self):
         """
 						Updates GUI and sets program clock
 
@@ -1023,16 +1023,19 @@ class GUIClass:
         niq_misc.remove_curly(self.vertex_file_E)
         vertex_path = Path(self.vertex_file_E.get())
 
+        # Check if path is empty
         if vertex_path.name == "":
             messagebox.showerror("Vertex File Error", "Please provide a vertex file.")
             return False
 
-        if not vertex_path.exists():
-            messagebox.showerror("Vertex Selection Error", "Provided vertex selection file not found.")
+        # Check if path has invalid path
+        if vertex_path.suffix not in (".html", ""):
+            messagebox.showerror("Vertex Selection Error", r'Vertex selection file must have ".html" extension.')
             return False
 
-        if str(vertex_path)[-5:] != ".html":
-            messagebox.showerror("Vertex Selection Error", r'Vertex selection file must have ".html" extension.')
+        # Check if path exists
+        if not vertex_path.exists():
+            messagebox.showerror("Vertex Selection Error", "Provided vertex selection file not found.")
             return False
 
         with open(vertex_path, "r") as original_file:
@@ -1170,8 +1173,7 @@ class GUIClass:
         # Set up output
         rand_key = str(randint(1e6, 1e7))
         out_dir_path = test_dir_path / "temp_output"
-        self.out_path_E.delete(0, "end")
-        self.out_path_E.insert(0, out_dir_path)
+        replace_entry( self.out_path_E, out_dir_path)
 
         # ---------------------------------Statistics----------------------------------------
         # Declare paths
@@ -1227,6 +1229,7 @@ class GUIClass:
         self.unsupervised_learning()
         unsup_test_path = test_stat_dir / "unsup_test_config.ini"
         unsup_ref_path = test_dir_path / "config" / "unsup_ref_config.ini"
+        unsup_test_path.unlink()
         self.save_config(out_file=str(unsup_test_path))
 
         # Search for config discrepencies
@@ -1257,13 +1260,13 @@ class GUIClass:
             print(colored("VERTEX SELECTION PLOT FAILED".center(100, "-"), "red"))
             traceback.print_exc()
 
-        self.vertex_file_E.delete(0, "end")
-        self.vertex_file_E.insert(0, vertex_file_path)
+        replace_entry(self.vertex_file_E, vertex_file_path)
 
         self.load_config(config_file_=ref_config_path)
         self.supervised_learning()
         sup_test_path = test_stat_dir / "sup_test_config.ini"
         sup_ref_path = test_dir_path / "config" / "sup_ref_config.ini"
+        sup_test_path.unlink()
         self.save_config(out_file=str(sup_test_path))
 
         # Search for config discrepencies
@@ -1494,7 +1497,7 @@ class GUIClass:
 
             except Exception as e:
                 print(e)
-                traceback.print_exc(file=sys.stdout)
+                traceback.print_exc()
                 messagebox.showerror(
                     "Unknown Error",
                     "".join(

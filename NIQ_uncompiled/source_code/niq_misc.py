@@ -237,6 +237,22 @@ def smooth_series(radius, col):
 
 
 def get_master_df(gui, source_path):
+    """
+			Generates Pandas DataFrame from input CSV. Bout state (on or off bout) column is added later.
+
+					data_point = data point
+                    date_time = date and time of temperature recording
+                    egg_temper = egg temperature
+                    air_temper = ambient air temperature
+                    adj_temper = adjusted temperature (egg - air temperature)
+                    smoothed_adj_temper = adj_temper with rolling mean applied
+                    delta_temper = change in smoothed_adj_temper from the previous row
+
+			Args:
+					df (DataFrame): Contains all information for the array in DataFrame form
+	"""
+
+
     def csv_to_df(path):
         try:
             df = pd.read_csv(path)
@@ -311,28 +327,6 @@ def get_master_df(gui, source_path):
 
     return df
 
-def get_master_arr(gui, df):
-    """
-			Converts the 2D list containing input data to a 2D numpy array. The date/time column is not
-			tranfered. Additionally, delta temperature, smoothed delta temperature, and temperature
-			change from previous columns are added. Later a state (on or off bout) column is also added.
-
-					Column 0 = data point
-					Column 1 = egg temperature
-					Column 2 = air temperature (0s if not provided)
-					Column 3 = adjusted temperature (egg temper - air temper)
-					Column 4 = smoothed column 3 (just a copy if smoothing radius is 0)
-					Column 5 = temperature change from previous
-
-			Args:
-					df (DataFrame): Contains all information for the array in DataFrame form
-	"""
-
-    # Ommit date_time column
-    reduced_df = df.loc[:, df.columns != "date_time"]
-    # Convert to numpy array
-    return reduced_df.to_numpy()
-
 
 def get_verts_from_html(gui, in_file, alt=False):
     """
@@ -361,43 +355,37 @@ def get_verts_from_html(gui, in_file, alt=False):
         with open(in_file, "r") as vertex_file:
             content = vertex_file.read()
 
-        soup = BeautifulSoup(content, "html.parser")
+        # Extract list of vertex data points
+        try:
+            # Try using Beautiful soup method
+            soup = BeautifulSoup(content, "html.parser")
 
-        if alt:
-            # Extract html behind script section containing vertex info
-            hit = soup.find("script", type="application/json").text
-            re_hit = re.search(r"\"x\":\[(.*)\],\"y\":\[", hit)
-            re_hit = re_hit.group(1).lstrip().rstrip()
-            hit_list = re_hit.split(",")
-        else:
             # Extract html behind table
             table_widget = "bk-widget-box bk-layout-fixed"
             table_content = soup.find("div", class_=table_widget)
 
             # Extract leftmost column of data (data points)
             hits = table_content.find_all("div", class_="slick-cell l1 r1")
-            hit_list = [hit.find("span", style="text-align: left;").text for hit in hits]
+            dp_list = [hit.find("span", style="text-align: left;").text for hit in hits]
 
             # Get selected vertex if exists
-            try:
-                with open(in_file, "r") as raw_file:
-                    bulk_content = raw_file.read()
+            cell_re = re.compile(r"slick-cell l1 r1 selected\"><span style=\"text-align: left;\">(\d+)")
+            selected = re.search(cell_re, content)
+            if selected is not None:
+                dp_list.append(selected.group(1))
+        except AttributeError:
+            # Fall back to regex method
+            dp_list = re.search(r'"data"\:\{"x":\[([^\]]*)', content).group(1).split(",")
 
-                temp_re = re.compile(r"slick-cell l1 r1 selected\"><span style=\"text-align: left;\">(\d+)")
-                selected = re.search(temp_re, bulk_content).group(1)
-                hit_list.append(selected)
-            except:
-                pass
-
-        for hit in hit_list:
+        for hit in dp_list:
             # Clean hits and append
             data_point = round(float(hit))
             data_point = max(data_point, min_dp)
             data_point = min(data_point, max_dp)
-            if data_point not in data_point_list:
-                data_point_list.append(data_point)
+            data_point_list.append(data_point)
 
-        return sorted(data_point_list)
+        # Conversion to set removes redundant entries
+        return sorted(set(data_point_list))
 
     vertices = []
 
@@ -409,13 +397,18 @@ def get_verts_from_html(gui, in_file, alt=False):
             delta = (vertex_data_points[0] - i) - 1
             break
 
+    # Search for gap between index value and corresponding datapoint
+    filt = gui.master_df.loc[:, "data_point"] == vertex_data_points[0]
+    first_dp_index = gui.master_df.loc[filt].index
+    delta = int((gui.master_df.loc[first_dp_index, "data_point"] - first_dp_index) - 1)
+
+    # Determine if first vertex is an off start or on start
+    # (FLAG) may lead to some issues due to invalid assumption
     first_vert_temper = gui.master_df.loc[vertex_data_points[0] - delta, "egg_temper"]
     second_vert_temper = gui.master_df.loc[vertex_data_points[1] - delta, "egg_temper"]
-
-    # Determine if first vertex is an offStart or onStart
     vert_type = 0 if first_vert_temper > second_vert_temper else 1
 
-    # (flag) may lead to some issues due to invalid assumption
+    # Generate vertices
     for data_point in vertex_data_points:
         index = data_point - delta
         vertices.append(niq_classes.Vertex(index, gui.master_df.loc[index, "egg_temper"], vert_type))
@@ -438,14 +431,20 @@ def extract_verts_in_range(gui, total_vertices, start_index, stop_index):
     verts_in_range = []
     left_limit, right_limit = 0, 0
 
-    if len(total_vertices) < 1 or stop_index < total_vertices[0].index or start_index > total_vertices[-1].index:
+    if any((
+        len(total_vertices) < 1, 
+        stop_index < total_vertices[0].index, 
+        start_index > total_vertices[-1].index
+    )):
         return verts_in_range
 
+    # Determine first vertex in range
     for i in range(len(total_vertices)):
         if total_vertices[i].index >= start_index:
             left_limit = i
             break
 
+    # Determine last vertex in range
     for i in range((len(total_vertices) - 1), -1, -1):
         if total_vertices[i].index <= stop_index:
             right_limit = i
@@ -520,9 +519,11 @@ def get_day_night_pairs(gui, days_list, nights_list):
 
     # Checks for a night corresponding to day at index i and creates a pair if both are complete
     for i in range(len(days_list)):
-        if (i + modifier) < (len(nights_list)):
-            if not days_list[i].partial_day and not nights_list[i + modifier].partial_day:
-                day_night_pairs_list.append(niq_classes.Block(gui, days_list[i].start, nights_list[i + modifier].stop, False))
+        if (i + modifier) >= (len(nights_list)):
+            break
+
+        if not days_list[i].partial_day and not nights_list[i + modifier].partial_day:
+            day_night_pairs_list.append(niq_classes.Block(gui, days_list[i].start, nights_list[i + modifier].stop, False))
 
     return day_night_pairs_list
 
@@ -546,8 +547,8 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 
     if gui.get_stats_BV.get() or gui.multi_in_stats_BV.get():
         # Compile all egg and air temperatures
-        all_egg_tempers += gui.master_df.loc[:, "egg_temper"].astype(float).round(4).tolist()
-        all_air_tempers += gui.master_df.loc[:, "air_temper"].astype(float).round(4).tolist()
+        all_egg_tempers += gui.master_df.loc[:, "egg_temper"].tolist()
+        all_air_tempers += gui.master_df.loc[:, "air_temper"].tolist()
 
         # Get time exceeding critical temperatures
         for temper in all_egg_tempers:
@@ -903,7 +904,6 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
         else:
             bouts = master_block.bouts
 
-        print("type check =", type(bouts[0]))
         cur_date = ""
         for bout in bouts:
             row = ""
@@ -946,14 +946,15 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 					select_mode (bool): generates a modified plot that allows for vertex placement
 	"""
 
-    master_array = df_to_array(master_df)
-
     # Clears previous plots from memory
     reset_output()
 
-    if not select_mode:
-        output_file(gui.plot_file_E.get())
-    else:
+    master_array = df_to_array(master_df)
+
+    # Set output file
+    output_file(Path(gui.plot_file_E.get()))
+
+    if select_mode:
         output_file(gui.master_dir_path / "misc_files" / "temp_plot.html")
 
     # Set plot dimensions
@@ -973,15 +974,10 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 
     hover = HoverTool(tooltips=[("Data Point", "$x{int}"), ("Temperature", "$y")])
 
+    # Set plot title
+    plot_name = Path(gui.input_file_E.get()).stem
     if gui.plot_title_E.get() != "":
         plot_name = gui.plot_title_E.get()
-    else:
-        if select_mode:
-            plot_name = Path(gui.input_file_E.get()).stem
-        else:
-            quary = gui.plot_file_E.get()[::-1] + "\\"
-            search_ = re.search(("[^\\\\|/]*(\\\\|/)"), quary).group(0)[::-1]
-            plot_name = search_[1:-5] if ".html" in search_ else search_[1:]
 
     # Set plot axes
     y_min = float("inf")
@@ -1017,7 +1013,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     )
 
     # Add vertical lines delimiting days
-    if gui.show_day_markers_BV.get() is True:
+    if gui.show_day_markers_BV.get():
         for day in days_list:
             vertical_line = Span(
                 location=int(gui.master_df.loc[day.start, "data_point"]),
@@ -1029,9 +1025,11 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 
             plot.renderers.extend([vertical_line])
 
-    plot.grid.visible = False if not gui.show_grid_BV.get() else True
+    plot.grid.visible = True if gui.show_grid_BV.get() else False
 
+    # Define data point colors
     if select_mode:
+        # Set static color
         color_ = "gray"
         alpha_ = 1
     else:
@@ -1079,9 +1077,9 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
             plot.line(master_df["data_point"], egg_array, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
 
         plot.circle(master_df["data_point"], egg_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
-
+    
+    # Get array of adjusted (egg - air) temperatures and smooth if requested
     if gui.plot_adj_BV.get():
-        # Get array of adjusted (egg - air) temperatures and smoth if requested
         adj_array = master_df["adj_temper"]
         if gui.smooth_status_IV.get():
             adj_array = smooth_series(radius, adj_array)
@@ -1108,7 +1106,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
                 legend="Off-bout (egg - air)",
             )
 
-        # Add actual data points
+        # Add data points
         plot_shape(master_df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
 
     # -------------------------------------------------------------------------------------------
@@ -1141,7 +1139,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
         plot.add_tools(draw_tool)
         plot.toolbar.active_drag = draw_tool
 
-    # Get size/width settings from GUI
+    # Get formatting settings from GUI
     plot.title.text_font_size = gui.title_font_size_E.get() + "pt"
     plot.axis.axis_label_text_font_size = gui.axis_title_font_size_E.get() + "pt"
     plot.axis.major_label_text_font_size = gui.axis_label_font_size_E.get() + "pt"
@@ -1226,9 +1224,10 @@ def filter_by_dur(master_df, dur_thresh):
     return master_df, bouts_dropped_locs
 
 
-def get_unique_path(file_name, dir_path=Path.cwd(), ext=""):
+def set_unique_path(entry, file_name, dir_path=Path.cwd(), ext=""):
     """
-			Incriments an identificaiton number until a unique file name is found.
+			Incriments an identificaiton number until a unique file name is found then
+            fills entry box with unique path.
 
 			Args:
 					entry (tk.Entry): entry box being updated
@@ -1249,12 +1248,7 @@ def get_unique_path(file_name, dir_path=Path.cwd(), ext=""):
         counter += 1
         file_path = file_path.parent / (stem + "_" + str(counter).zfill(3) + file_path.suffix)
 
-    return file_path.name
-
-
-def set_unique_path(entry, file_name, dir_path=Path.cwd(), ext=""):
-    unique_path = get_unique_path(file_name, dir_path, ext)
-    replace_entry(entry, unique_path)
+    replace_entry(entry, file_path.name)
 
 
 def extract_in_files(in_file_string):
