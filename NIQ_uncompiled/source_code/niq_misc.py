@@ -559,375 +559,380 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
     elif gui.multi_in_stats_BV.get():
         out_file = gui.multi_in_stats_file_E.get()
 
-    if gui.get_stats_BV.get() or gui.multi_in_stats_BV.get():
-        with open(out_file, "a") as stat_summary_file:
-            # Used to indictate scope of certain statistics
-            qualifier = " (D)," if gui.restrict_search_BV.get() else " (DN),"
+    if not (gui.get_stats_BV.get() or gui.multi_in_stats_BV.get()):
+        return
 
-            # Print input file name first (remove path)
-            if out_file == gui.multi_in_stats_file_E.get():
-                header = f"{self.active_input_path.name}\n"
+    # Used to indictate scope of certain statistics
+    qualifier = " (D)," if gui.restrict_search_BV.get() else " (DN),"
+
+    # Print input file name on top (remove directories)
+    header = f"{gui.active_input_path.name}\n"
+
+    if gui.day_num_BV.get():
+        header += "Day Number,"
+    if gui.date_BV.get():
+        header += "Date,"
+
+    if gui.off_count_BV.get():
+        header += "Off-bout Count" + qualifier
+    if gui.off_dur_BV.get():
+        header += "Mean Off Duration" + qualifier
+    if gui.off_dur_sd_BV.get():
+        header += "Off Dur StDev" + qualifier
+    if gui.off_dec_BV.get():
+        header += "Mean Off Temp Drop" + qualifier
+    if gui.off_dec_sd_BV.get():
+        header += "Off Drop StDev" + qualifier
+    if gui.mean_off_temper_BV.get():
+        header += "Mean Off-Bout Temp" + qualifier
+    if gui.off_time_sum_BV.get():
+        header += "Off-Bout Time Sum" + qualifier
+
+    if gui.on_count_BV.get():
+        header += "On-bout Count" + qualifier
+    if gui.on_dur_BV.get():
+        header += "Mean On Duration" + qualifier
+    if gui.on_dur_sd_BV.get():
+        header += "On Dur StDev" + qualifier
+    if gui.on_inc_BV.get():
+        header += "Mean On Temp Rise" + qualifier
+    if gui.on_inc_sd_BV.get():
+        header += "On Rise StDev" + qualifier
+    if gui.mean_on_temper_BV.get():
+        header += "Mean On-Bout Temp" + qualifier
+    if gui.on_time_sum_BV.get():
+        header += "On-Bout Time Sum" + qualifier
+
+    if gui.time_above_temper_BV.get():
+        header += "Time above (minutes) " + gui.time_above_temper_E.get() + ","
+    if gui.time_below_temper_BV.get():
+        header += "Time below (minutes) " + gui.time_below_temper_E.get() + ","
+    if gui.bouts_dropped_BV.get():
+        header += "Vertices Dropped" + qualifier
+
+    if gui.mean_temper_d_BV.get():
+        header += "Mean Daytime Egg Temp,"
+    if gui.mean_temper_d_sd_BV.get():
+        header += "Day Egg Temp StDev,"
+    if gui.median_temper_d_BV.get():
+        header += "Median Daytime Egg Temp,"
+    if gui.min_temper_d_BV.get():
+        header += "Min Daytime Egg Temp,"
+    if gui.max_temper_d_BV.get():
+        header += "Max Daytime Egg Temp,"
+
+    if gui.mean_temper_n_BV.get():
+        header += "Mean Nighttime Egg Temp,"
+    if gui.mean_temper_n_sd_BV.get():
+        header += "Night Egg Temp StDev,"
+    if gui.median_temper_n_BV.get():
+        header += "Median Nighttime Egg Temp,"
+    if gui.min_temper_n_BV.get():
+        header += "Min Nighttime Egg Temp,"
+    if gui.max_temper_n_BV.get():
+        header += "Max Nighttime Egg Temp,"
+
+    if gui.mean_temper_dn_BV.get():
+        header += "Mean Egg Temp (DN),"
+    if gui.mean_temper_dn_sd_BV.get():
+        header += "Egg Temp StDev (DN),"
+    if gui.median_temper_dn_BV.get():
+        header += "Median Egg Temp (DN),"
+    if gui.min_temper_dn_BV.get():
+        header += "Min Egg Temp (DN),"
+    if gui.max_temper_dn_BV.get():
+        header += "Max Egg Temp (DN),"
+
+    if gui.air_valid:
+        if gui.mean_air_temper_BV.get():
+            header += "Mean Air Temp (DN),"
+        if gui.mean_air_temper_sd_BV.get():
+            header += "Air Temp StDev (DN),"
+        if gui.min_air_temper_BV.get():
+            header += "Min Air Temp (DN),"
+        if gui.max_air_temper_BV.get():
+            header += "Max Air Temp (DN),"
+
+    # -----------------------------------------------------------------------------------------------
+
+    if len(days.block_list) > 0 and len(nights.block_list) > 0:
+        # Set modifier based on if day or night comes first
+        modifier = 1 if days.block_list[0].start > nights.block_list[0].start else 0
+        full_day_counter = 0
+
+        day_rows = []
+        # Print individual day stats
+        for i, cur_day in enumerate(days.block_list):
+            day_row = ""
+
+            # Check if there are any night blocks left
+            if (i + modifier) >= (len(nights.block_list)):
+                break
+
+            cur_night = nights.block_list[i + modifier]
+
+            # Only report on complete days
+            if cur_day.partial_day or cur_night.partial_day:
+                continue
+
+            # Pull stats from only daytime period if restriction was requested
+            if gui.restrict_search_BV.get():
+                core_block = cur_day
             else:
-                header = "Cumulative Statistics\n"
+                core_block = day_night_pairs.block_list[full_day_counter]
 
             if gui.day_num_BV.get():
-                header += "Day Number,"
+                day_row += f"{full_day_counter + 1},"
             if gui.date_BV.get():
-                header += "Date,"
+                day_row += f"{core_block.date},"
 
             if gui.off_count_BV.get():
-                header += "Off-bout Count" + qualifier
+                day_row += f"{core_block.off_count},"
             if gui.off_dur_BV.get():
-                header += "Mean Off Duration" + qualifier
+                day_row += f"{core_block.mean_off_dur},"
             if gui.off_dur_sd_BV.get():
-                header += "Off Dur StDev" + qualifier
+                day_row += f"{core_block.off_dur_stdev},"
             if gui.off_dec_BV.get():
-                header += "Mean Off Temp Drop" + qualifier
+                day_row += f"{core_block.mean_off_dec},"
             if gui.off_dec_sd_BV.get():
-                header += "Off Drop StDev" + qualifier
+                day_row += f"{core_block.off_dec_stdev},"
             if gui.mean_off_temper_BV.get():
-                header += "Mean Off-Bout Temp" + qualifier
+                day_row += f"{core_block.mean_off_temper},"
             if gui.off_time_sum_BV.get():
-                header += "Off-Bout Time Sum" + qualifier
+                day_row += f"{core_block.off_time_sum},"
 
             if gui.on_count_BV.get():
-                header += "On-bout Count" + qualifier
+                day_row += f"{core_block.on_count},"
             if gui.on_dur_BV.get():
-                header += "Mean On Duration" + qualifier
+                day_row += f"{core_block.mean_on_dur},"
             if gui.on_dur_sd_BV.get():
-                header += "On Dur StDev" + qualifier
+                day_row += f"{core_block.on_dur_stdev},"
             if gui.on_inc_BV.get():
-                header += "Mean On Temp Rise" + qualifier
+                day_row += f"{core_block.mean_on_inc},"
             if gui.on_inc_sd_BV.get():
-                header += "On Rise StDev" + qualifier
+                day_row += f"{core_block.on_inc_stdev},"
             if gui.mean_on_temper_BV.get():
-                header += "Mean On-Bout Temp" + qualifier
+                day_row += f"{core_block.mean_on_temper},"
             if gui.on_time_sum_BV.get():
-                header += "On-Bout Time Sum" + qualifier
+                day_row += f"{core_block.on_time_sum},"
 
             if gui.time_above_temper_BV.get():
-                header += "Time above (minutes) " + gui.time_above_temper_E.get() + ","
+                day_row += f"{day_night_pairs.block_list[full_day_counter].time_above_temper},"
             if gui.time_below_temper_BV.get():
-                header += "Time below (minutes) " + gui.time_below_temper_E.get() + ","
+                day_row += f"{day_night_pairs.block_list[full_day_counter].time_below_temper},"
             if gui.bouts_dropped_BV.get():
-                header += "Vertices Dropped" + qualifier
+                day_row += f"{core_block.bouts_dropped},"
 
             if gui.mean_temper_d_BV.get():
-                header += "Mean Daytime Egg Temp,"
+                day_row += f"{cur_day.mean_egg_temper},"
             if gui.mean_temper_d_sd_BV.get():
-                header += "Day Egg Temp StDev,"
+                day_row += f"{cur_day.egg_temper_stdev},"
             if gui.median_temper_d_BV.get():
-                header += "Median Daytime Egg Temp,"
+                day_row += f"{cur_day.median_temper},"
             if gui.min_temper_d_BV.get():
-                header += "Min Daytime Egg Temp,"
+                day_row += f"{cur_day.min_egg_temper},"
             if gui.max_temper_d_BV.get():
-                header += "Max Daytime Egg Temp,"
+                day_row += f"{cur_day.max_egg_temper},"
 
             if gui.mean_temper_n_BV.get():
-                header += "Mean Nighttime Egg Temp,"
+                day_row += f"{cur_night.mean_egg_temper},"
             if gui.mean_temper_n_sd_BV.get():
-                header += "Night Egg Temp StDev,"
+                day_row += f"{cur_night.egg_temper_stdev},"
             if gui.median_temper_n_BV.get():
-                header += "Median Nighttime Egg Temp,"
+                day_row += f"{cur_night.median_temper},"
             if gui.min_temper_n_BV.get():
-                header += "Min Nighttime Egg Temp,"
+                day_row += f"{cur_night.min_egg_temper},"
             if gui.max_temper_n_BV.get():
-                header += "Max Nighttime Egg Temp,"
+                day_row += f"{cur_night.max_egg_temper},"
 
             if gui.mean_temper_dn_BV.get():
-                header += "Mean Egg Temp (DN),"
+                day_row += f"{day_night_pairs.block_list[full_day_counter].mean_egg_temper},"
             if gui.mean_temper_dn_sd_BV.get():
-                header += "Egg Temp StDev (DN),"
+                day_row += f"{day_night_pairs.block_list[full_day_counter].egg_temper_stdev},"
             if gui.median_temper_dn_BV.get():
-                header += "Median Egg Temp (DN),"
+                day_row += f"{day_night_pairs.block_list[full_day_counter].median_temper},"
             if gui.min_temper_dn_BV.get():
-                header += "Min Egg Temp (DN),"
+                day_row += f"{day_night_pairs.block_list[full_day_counter].min_egg_temper},"
             if gui.max_temper_dn_BV.get():
-                header += "Max Egg Temp (DN),"
+                day_row += f"{day_night_pairs.block_list[full_day_counter].max_egg_temper},"
 
             if gui.air_valid:
                 if gui.mean_air_temper_BV.get():
-                    header += "Mean Air Temp (DN),"
+                    day_row += f"{day_night_pairs.block_list[full_day_counter].mean_air_temper},"
                 if gui.mean_air_temper_sd_BV.get():
-                    header += "Air Temp StDev (DN),"
+                    day_row += f"{day_night_pairs.block_list[full_day_counter].air_temper_stdev},"
                 if gui.min_air_temper_BV.get():
-                    header += "Min Air Temp (DN),"
+                    day_row += f"{day_night_pairs.block_list[full_day_counter].min_air_temper},"
                 if gui.max_air_temper_BV.get():
-                    header += "Max Air Temp (DN),"
+                    day_row += f"{day_night_pairs.block_list[full_day_counter].max_air_temper},"
 
-            print(header, end="\n", file=stat_summary_file)
+            full_day_counter += 1
 
-            if len(days.block_list) > 0 and len(nights.block_list) > 0:
-                # Set modifier based on if day or night comes first
-                modifier = 1 if days.block_list[0].start > nights.block_list[0].start else 0
-                full_day_counter = 0
+            day_rows.append(day_row)
 
-                # Print individual day stats
-                for i, cur_day in enumerate(days.block_list):
-                    day_row = ""
+        gui.multi_in_full_day_count += full_day_counter
 
-                    # Check if there are any night blocks left
-                    if (i + modifier) >= (len(nights.block_list)):
-                        break
+    # -----------------------------------------------------------------------------------------------
 
-                    cur_night = nights.block_list[i + modifier]
+    block_group = days if gui.restrict_search_BV.get() else master_block
 
-                    # Only report on complete days
-                    if cur_day.partial_day or cur_night.partial_day:
-                        continue
+    # Output stats summary for entire input file
+    summary_row = ""
+    if gui.day_num_BV.get():
+        summary_row += f"--,"
+    if gui.date_BV.get():
+        summary_row += f"ALL DATA,"
 
-                    # Pull stats from only daytime period if restriction was requested
-                    if gui.restrict_search_BV.get():
-                        core_block = cur_day
-                    else:
-                        core_block = day_night_pairs.block_list[full_day_counter]
+    if gui.off_count_BV.get():
+        summary_row += f"{block_group.off_count},"
+    if gui.off_dur_BV.get():
+        summary_row += f"{block_group.mean_off_dur},"
+    if gui.off_dur_sd_BV.get():
+        summary_row += f"{block_group.off_dur_stdev},"
+    if gui.off_dec_BV.get():
+        summary_row += f"{block_group.mean_off_dec},"
+    if gui.off_dec_sd_BV.get():
+        summary_row += f"{block_group.off_dec_stdev},"
+    if gui.mean_off_temper_BV.get():
+        summary_row += f"{block_group.mean_off_temper},"
+    if gui.off_time_sum_BV.get():
+        summary_row += f"{block_group.off_time_sum},"
 
-                    if gui.day_num_BV.get():
-                        day_row += f"{full_day_counter + 1},"
-                    if gui.date_BV.get():
-                        day_row += f"{core_block.date},"
+    if gui.on_count_BV.get():
+        summary_row += f"{block_group.on_count},"
+    if gui.on_dur_BV.get():
+        summary_row += f"{block_group.mean_on_dur},"
+    if gui.on_dur_sd_BV.get():
+        summary_row += f"{block_group.on_dur_stdev},"
+    if gui.on_inc_BV.get():
+        summary_row += f"{block_group.mean_on_inc},"
+    if gui.on_inc_sd_BV.get():
+        summary_row += f"{block_group.on_inc_stdev},"
+    if gui.mean_on_temper_BV.get():
+        summary_row += f"{block_group.mean_on_temper},"
+    if gui.on_time_sum_BV.get():
+        summary_row += f"{block_group.on_time_sum},"
 
-                    if gui.off_count_BV.get():
-                        day_row += f"{core_block.off_count},"
-                    if gui.off_dur_BV.get():
-                        day_row += f"{core_block.mean_off_dur},"
-                    if gui.off_dur_sd_BV.get():
-                        day_row += f"{core_block.off_dur_stdev},"
-                    if gui.off_dec_BV.get():
-                        day_row += f"{core_block.mean_off_dec},"
-                    if gui.off_dec_sd_BV.get():
-                        day_row += f"{core_block.off_dec_stdev},"
-                    if gui.mean_off_temper_BV.get():
-                        day_row += f"{core_block.mean_off_temper},"
-                    if gui.off_time_sum_BV.get():
-                        day_row += f"{core_block.off_time_sum},"
+    if gui.time_above_temper_BV.get():
+        summary_row += f"{master_time_above_temper},"
+    if gui.time_below_temper_BV.get():
+        summary_row += f"{master_time_below_temper},"
+    if gui.bouts_dropped_BV.get():
+        summary_row += f"{block_group.bouts_dropped},"
 
-                    if gui.on_count_BV.get():
-                        day_row += f"{core_block.on_count},"
-                    if gui.on_dur_BV.get():
-                        day_row += f"{core_block.mean_on_dur},"
-                    if gui.on_dur_sd_BV.get():
-                        day_row += f"{core_block.on_dur_stdev},"
-                    if gui.on_inc_BV.get():
-                        day_row += f"{core_block.mean_on_inc},"
-                    if gui.on_inc_sd_BV.get():
-                        day_row += f"{core_block.on_inc_stdev},"
-                    if gui.mean_on_temper_BV.get():
-                        day_row += f"{core_block.mean_on_temper},"
-                    if gui.on_time_sum_BV.get():
-                        day_row += f"{core_block.on_time_sum},"
+    if gui.mean_temper_d_BV.get():
+        summary_row += f"{days.mean_egg_temper},"
+    if gui.mean_temper_d_sd_BV.get():
+        summary_row += f"{days.egg_temper_stdev},"
+    if gui.median_temper_d_BV.get():
+        summary_row += f"{days.median_temper},"
+    if gui.min_temper_d_BV.get():
+        summary_row += f"{days.min_egg_temper},"
+    if gui.max_temper_d_BV.get():
+        summary_row += f"{days.max_egg_temper},"
 
-                    if gui.time_above_temper_BV.get():
-                        day_row += f"{day_night_pairs.block_list[full_day_counter].time_above_temper},"
-                    if gui.time_below_temper_BV.get():
-                        day_row += f"{day_night_pairs.block_list[full_day_counter].time_below_temper},"
-                    if gui.bouts_dropped_BV.get():
-                        day_row += f"{core_block.bouts_dropped},"
+    if gui.mean_temper_n_BV.get():
+        summary_row += f"{nights.mean_egg_temper},"
+    if gui.mean_temper_n_sd_BV.get():
+        summary_row += f"{nights.egg_temper_stdev},"
+    if gui.median_temper_n_BV.get():
+        summary_row += f"{nights.median_temper},"
+    if gui.min_temper_n_BV.get():
+        summary_row += f"{nights.min_egg_temper},"
+    if gui.max_temper_n_BV.get():
+        summary_row += f"{nights.max_egg_temper},"
 
-                    if gui.mean_temper_d_BV.get():
-                        day_row += f"{cur_day.mean_egg_temper},"
-                    if gui.mean_temper_d_sd_BV.get():
-                        day_row += f"{cur_day.egg_temper_stdev},"
-                    if gui.median_temper_d_BV.get():
-                        day_row += f"{cur_day.median_temper},"
-                    if gui.min_temper_d_BV.get():
-                        day_row += f"{cur_day.min_egg_temper},"
-                    if gui.max_temper_d_BV.get():
-                        day_row += f"{cur_day.max_egg_temper},"
+    if gui.mean_temper_dn_BV.get():
+        summary_row += f"{round(statistics.mean(all_egg_tempers), 3)},"
+    if gui.mean_temper_dn_sd_BV.get():
+        summary_row += f"{round(statistics.stdev(all_egg_tempers), 3)},"
+    if gui.median_temper_dn_BV.get():
+        summary_row += f"{round(statistics.median(all_egg_tempers), 3)},"
+    if gui.min_temper_dn_BV.get():
+        summary_row += f"{min(all_egg_tempers)},"
+    if gui.max_temper_dn_BV.get():
+        summary_row += f"{max(all_egg_tempers)},"
 
-                    if gui.mean_temper_n_BV.get():
-                        day_row += f"{cur_night.mean_egg_temper},"
-                    if gui.mean_temper_n_sd_BV.get():
-                        day_row += f"{cur_night.egg_temper_stdev},"
-                    if gui.median_temper_n_BV.get():
-                        day_row += f"{cur_night.median_temper},"
-                    if gui.min_temper_n_BV.get():
-                        day_row += f"{cur_night.min_egg_temper},"
-                    if gui.max_temper_n_BV.get():
-                        day_row += f"{cur_night.max_egg_temper},"
+    if gui.air_valid:
+        if gui.mean_air_temper_BV.get():
+            summary_row += f"{round(statistics.mean(all_air_tempers), 3)},"
+        if gui.mean_air_temper_sd_BV.get():
+            summary_row += f"{round(statistics.stdev(all_air_tempers), 3)},"
+        if gui.min_air_temper_BV.get():
+            summary_row += f"{min(all_air_tempers)},"
+        if gui.max_air_temper_BV.get():
+            summary_row += f"{max(all_air_tempers)},"
 
-                    if gui.mean_temper_dn_BV.get():
-                        day_row += f"{day_night_pairs.block_list[full_day_counter].mean_egg_temper},"
-                    if gui.mean_temper_dn_sd_BV.get():
-                        day_row += f"{day_night_pairs.block_list[full_day_counter].egg_temper_stdev},"
-                    if gui.median_temper_dn_BV.get():
-                        day_row += f"{day_night_pairs.block_list[full_day_counter].median_temper},"
-                    if gui.min_temper_dn_BV.get():
-                        day_row += f"{day_night_pairs.block_list[full_day_counter].min_egg_temper},"
-                    if gui.max_temper_dn_BV.get():
-                        day_row += f"{day_night_pairs.block_list[full_day_counter].max_egg_temper},"
+    summary_row += "\n\n"
 
-                    if gui.air_valid:
-                        if gui.mean_air_temper_BV.get():
-                            day_row += f"{day_night_pairs.block_list[full_day_counter].mean_air_temper},"
-                        if gui.mean_air_temper_sd_BV.get():
-                            day_row += f"{day_night_pairs.block_list[full_day_counter].air_temper_stdev},"
-                        if gui.min_air_temper_BV.get():
-                            day_row += f"{day_night_pairs.block_list[full_day_counter].min_air_temper},"
-                        if gui.max_air_temper_BV.get():
-                            day_row += f"{day_night_pairs.block_list[full_day_counter].max_air_temper},"
-
-                    full_day_counter += 1
-
-                    print(day_row, file=stat_summary_file)
-
-                gui.multi_in_full_day_count += full_day_counter
-
-            bloack_group = days if gui.restrict_search_BV.get() else master_block
-
-            # Output stats summary for entire input file
-            summary_row = ""
-            if gui.day_num_BV.get():
-                summary_row += f"--,"
-            if gui.date_BV.get():
-                summary_row += f"ALL DATA,"
-
-            if gui.off_count_BV.get():
-                summary_row += f"{bloack_group.off_count},"
-            if gui.off_dur_BV.get():
-                summary_row += f"{bloack_group.mean_off_dur},"
-            if gui.off_dur_sd_BV.get():
-                summary_row += f"{bloack_group.off_dur_stdev},"
-            if gui.off_dec_BV.get():
-                summary_row += f"{bloack_group.mean_off_dec},"
-            if gui.off_dec_sd_BV.get():
-                summary_row += f"{bloack_group.off_dec_stdev},"
-            if gui.mean_off_temper_BV.get():
-                summary_row += f"{bloack_group.mean_off_temper},"
-            if gui.off_time_sum_BV.get():
-                summary_row += f"{bloack_group.off_time_sum},"
-
-            if gui.on_count_BV.get():
-                summary_row += f"{bloack_group.on_count},"
-            if gui.on_dur_BV.get():
-                summary_row += f"{bloack_group.mean_on_dur},"
-            if gui.on_dur_sd_BV.get():
-                summary_row += f"{bloack_group.on_dur_stdev},"
-            if gui.on_inc_BV.get():
-                summary_row += f"{bloack_group.mean_on_inc},"
-            if gui.on_inc_sd_BV.get():
-                summary_row += f"{bloack_group.on_inc_stdev},"
-            if gui.mean_on_temper_BV.get():
-                summary_row += f"{bloack_group.mean_on_temper},"
-            if gui.on_time_sum_BV.get():
-                summary_row += f"{bloack_group.on_time_sum},"
-
-            if gui.time_above_temper_BV.get():
-                summary_row += f"{master_time_above_temper},"
-            if gui.time_below_temper_BV.get():
-                summary_row += f"{master_time_below_temper},"
-            if gui.bouts_dropped_BV.get():
-                summary_row += f"{bloack_group.bouts_dropped},"
-
-            if gui.mean_temper_d_BV.get():
-                summary_row += f"{days.mean_egg_temper},"
-            if gui.mean_temper_d_sd_BV.get():
-                summary_row += f"{days.egg_temper_stdev},"
-            if gui.median_temper_d_BV.get():
-                summary_row += f"{days.median_temper},"
-            if gui.min_temper_d_BV.get():
-                summary_row += f"{days.min_egg_temper},"
-            if gui.max_temper_d_BV.get():
-                summary_row += f"{days.max_egg_temper},"
-
-            if gui.mean_temper_n_BV.get():
-                summary_row += f"{nights.mean_egg_temper},"
-            if gui.mean_temper_n_sd_BV.get():
-                summary_row += f"{nights.egg_temper_stdev},"
-            if gui.median_temper_n_BV.get():
-                summary_row += f"{nights.median_temper},"
-            if gui.min_temper_n_BV.get():
-                summary_row += f"{nights.min_egg_temper},"
-            if gui.max_temper_n_BV.get():
-                summary_row += f"{nights.max_egg_temper},"
-
-            if gui.mean_temper_dn_BV.get():
-                summary_row += f"{round(statistics.mean(all_egg_tempers), 3)},"
-            if gui.mean_temper_dn_sd_BV.get():
-                summary_row += f"{round(statistics.stdev(all_egg_tempers), 3)},"
-            if gui.median_temper_dn_BV.get():
-                summary_row += f"{round(statistics.median(all_egg_tempers), 3)},"
-            if gui.min_temper_dn_BV.get():
-                summary_row += f"{min(all_egg_tempers)},"
-            if gui.max_temper_dn_BV.get():
-                summary_row += f"{max(all_egg_tempers)},"
-
-            if gui.air_valid:
-                if gui.mean_air_temper_BV.get():
-                    summary_row += f"{round(statistics.mean(all_air_tempers), 3)},"
-                if gui.mean_air_temper_sd_BV.get():
-                    summary_row += f"{round(statistics.stdev(all_air_tempers), 3)},"
-                if gui.min_air_temper_BV.get():
-                    summary_row += f"{min(all_air_tempers)},"
-                if gui.max_air_temper_BV.get():
-                    summary_row += f"{max(all_air_tempers)},"
-
-            if out_file == gui.multi_in_stats_file_E.get():
-                summary_row += "\n\n"
-
-            print(summary_row, file=stat_summary_file)
-
-    # If both stat output options are selected, simply copy the summary
-    if gui.get_stats_BV.get() and gui.multi_in_stats_BV.get():
-        with open(gui.stats_file_E.get(), "r") as stat_file, open(gui.multi_in_stats_file_E.get(), "a") as multi_file_stats_file:
-            print(os.path.basename(os.path.normpath(gui.input_file_E.get())), file=multi_file_stats_file)
-            out_lines = stat_file.readlines()
-            for line in out_lines[(len(out_lines) - (full_day_counter + 2)) : len(out_lines)]:
-                multi_file_stats_file.write(line)
-
-            print("\n\n", file=multi_file_stats_file)
+    # Determine what files to write day statistics to
+    out_paths = []
+    if gui.get_stats_BV.get():
+        out_paths.append(Path(gui.stats_file_E.get()))
+    if gui.multi_in_stats_BV.get():
+        out_paths.append(Path(gui.multi_in_stats_file_E.get()))
+    
+    # Write day statistics
+    for path in out_paths:
+        with open(path, "a") as out_file:
+            print(header, end="\n", file=out_file)
+            print("\n".join(day_rows), end="\n", file=out_file)
+            print(summary_row, end="\n", file=out_file)
 
     if not gui.get_stats_BV.get():
         return
 
-    # Report information on individual bouts
-    with open(gui.stats_file_E.get(), "a") as stats_file:
-        print("\n\nIndividual Bout Stats", file=stats_file)
+    # -----------------------------------------------------------------------------------------------
 
-        indi_header = (
-            "Date,Bout Type,Start Time,End Time,Start Data Point,End Data Point,Duration (min),Egg Temp Change,Start Egg Temp,End Egg Temp,Mean Egg Temp,"
+    # Report information on individual bouts
+    indi_header = "Individual Bout Stats\n"
+
+    indi_header += (
+        "Date,Bout Type,Start Time,End Time,Start Data Point,End Data Point,Duration (min),Egg Temp Change,Start Egg Temp,End Egg Temp,Mean Egg Temp,"
+    )
+
+    if gui.air_valid:
+        indi_header += "Start Air Temp, End Air Temp, Mean Air Temp"
+
+    # If restricted, take only bouts from daytime periods, else take all bouts
+    bouts = []
+    if gui.restrict_search_BV.get():
+        bouts += [bout for day in days.block_list for bout in day.bouts]
+    else:
+        bouts = master_block.bouts
+
+    bout_rows = []
+    cur_date = ""
+    for bout in bouts:
+        row = ""
+        # Print date if it is the first row corresponding to this date
+        this_date = extract_date(gui.master_df.loc[bout.start, "date_time"])
+        row += "," if this_date == cur_date else f"{this_date},"
+        cur_date = this_date
+
+        row += "Off," if bout.bout_type == 0 else "On,"
+
+        row += (
+            f"{extract_time(gui.master_df.loc[bout.start, 'date_time'])},"
+            + f"{extract_time(gui.master_df.loc[bout.stop, 'date_time'])},"
+            + f"{gui.master_df.loc[bout.start, 'data_point']},"
+            + f"{gui.master_df.loc[bout.stop, 'data_point']},"
+            + f"{bout.dur},"
+            + f"{bout.temper_change},"
+            + f"{gui.master_df.loc[bout.start, 'egg_temper']},"
+            + f"{gui.master_df.loc[bout.stop, 'egg_temper']},"
+            + f"{bout.mean_egg_temper},"
         )
 
         if gui.air_valid:
-            indi_header += "Start Air Temp, End Air Temp, Mean Air Temp"
+            row += f"{gui.master_df.loc[bout.start, 'air_temper']},{gui.master_df.loc[bout.stop, 'air_temper']},{bout.mean_air_temper},"
 
-        print(indi_header, file=stats_file)
+        bout_rows.append(row)
 
-        # If restricted, take only bouts from daytime periods, else take all bouts
-        bouts = []
-        if gui.restrict_search_BV.get():
-            bouts += [bout for day in days.block_list for bout in day.bouts]
-        else:
-            bouts = master_block.bouts
+    with open(Path(gui.stats_file_E.get()), "a") as out_file:
+        print(indi_header, end="\n", file=out_file)
+        print("\n".join(bout_rows), file=out_file)
 
-        cur_date = ""
-        for bout in bouts:
-            row = ""
-            # Print date if it is the first row corresponding to this date
-            this_date = extract_date(gui.master_df.loc[bout.start, "date_time"])
-            row += "," if this_date == cur_date else f"{this_date},"
-            cur_date = this_date
-
-            row += "Off," if bout.bout_type == 0 else "On,"
-
-            row += (
-                f"{extract_time(gui.master_df.loc[bout.start, 'date_time'])},"
-                + f"{extract_time(gui.master_df.loc[bout.stop, 'date_time'])},"
-                + f"{gui.master_df.loc[bout.start, 'data_point']},"
-                + f"{gui.master_df.loc[bout.stop, 'data_point']},"
-                + f"{bout.dur},"
-                + f"{bout.temper_change},"
-                + f"{gui.master_df.loc[bout.start, 'egg_temper']},"
-                + f"{gui.master_df.loc[bout.stop, 'egg_temper']},"
-                + f"{bout.mean_egg_temper},"
-            )
-
-            if gui.air_valid:
-                row += f"{gui.master_df.loc[bout.start, 'air_temper']},{gui.master_df.loc[bout.stop, 'air_temper']},{bout.mean_air_temper},"
-
-            print(row, end="\n", file=stats_file)
-
-        print("\n\n", file=stats_file)
 
 
 def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_verts=None):

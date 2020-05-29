@@ -23,7 +23,8 @@ from termcolor import colored
 import niq_classes
 import niq_hmm
 import niq_misc
-from niq_misc import replace_entry, set_unique_path
+import testing
+from niq_misc import replace_entry, set_unique_path, remove_curly
 
 
 root = tk.Tk()
@@ -124,10 +125,10 @@ class GUIClass:
         self.input_file_B.configure(background="white")
 
         # ----- Output path -----
-        output_path_L = tk.Label(tab1, text="Output path:", font=STANDARD_FONT)
+        output_path_L = tk.Label(tab1, text="Output Folder:", font=STANDARD_FONT)
         output_path_L.grid(row=5, sticky="W", padx=10, pady=(15, 20))
-        self.out_path_E = tk.Entry(tab1, width=25)
-        self.out_path_E.grid(row=5, sticky="W", padx=94, pady=(15, 20))
+        self.out_path_E = tk.Entry(tab1, width=24)
+        self.out_path_E.grid(row=5, sticky="W", padx=98, pady=(15, 20))
         self.out_path_B = tk.Button(tab1, text="Browse Directory", command=(lambda: self.get_dir(self.out_path_E)))
         self.out_path_B.grid(row=5, sticky="W", padx=255, pady=(15, 20))
         self.out_path_B.configure(background="white")
@@ -807,8 +808,8 @@ class GUIClass:
         _ = None
         self.root.bind("<Return>", lambda _: self.trigger_run())
         # Flag
-        self.root.bind("<`>", lambda _: self.test_run())
-        self.root.bind("<Control-`>", lambda _: self.master_test())
+        self.root.bind("<`>", lambda _: testing.test_run(self))
+        self.root.bind("<Control-`>", lambda _: testing.master_test(self))
 
         self.valid = True
         while self.valid and not self.run:
@@ -1069,267 +1070,6 @@ class GUIClass:
 
         return True
 
-    def test_run(self):
-        """ Load GUI entry boxes with test files. """
-
-        # In file
-        self.input_file_E.delete(0, "end")
-        self.input_file_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.csv")
-
-        # Ori plot
-        # self.ori_plot_E.delete(0, "end")
-        # self.ori_plot_E.insert(0, "C:/Users/wxhaw/Downloads/NIQ_testing/ori_plot.html")
-        # Ori plot
-        self.ori_plot_E.delete(0, "end")
-        self.ori_plot_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.html")
-
-        # Mod plot
-        self.mod_plot_E.delete(0, "end")
-        self.mod_plot_E.insert(0, "C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/mod_plot.html")
-
-    def master_test(self):
-        """
-			Run automated tests for unrestricted plotting/statistics, restricted plotting/statistics,
-			unsupervised learning and supervised learning.
-		"""
-
-        def compare_stats(key, ref_path, test_path):
-            """
-				Compare two statistics files line by line and store discrepencies.
-
-				Args:
-					key (int): random number identifier for this test run
-					ref_path (pathlib.Path): Path to reference statistics file
-					test_path (pathlib.Path): Path to test statistics file
-			"""
-
-            mismatches = dict()
-
-            # Exctract important lines from files provided
-            with open(ref_path, "r") as ref_file, open(test_path, "r") as test_file:
-                ref_lines = ref_file.readlines()
-                labels = ref_lines[1].strip().split(",")
-                ref_vals = ref_lines[10].strip().split(",")
-                # test_vals = test_file.readlines()[10].strip().split(",")
-                test_vals = test_file.read().split("\n")[10].strip().split(",")
-
-            # Compare values
-            for i, label in enumerate(labels):
-                if ref_vals[i].strip() != test_vals[i].strip():
-                    try:
-                        if float(ref_vals[i]) != float(test_vals[i]):
-                            mismatches[label] = (ref_vals[i], test_vals[i])
-                    except ValueError:
-                        mismatches[label] = (ref_vals[i], "None")
-
-            return mismatches
-
-        def compare_configs(ref_path, test_path):
-            """
-				Compare two configuration files line by line and store discrepencies.
-
-				Args:
-						ref_path (pathlib.Path): Path to reference configuration file
-						test_path (pathlib.Path): Path to test configuration file
-
-			"""
-
-            with open(unsup_ref_path, "r") as ref_file, open(unsup_test_path, "r") as test_file:
-                ref_lines = ref_file.readlines()
-                test_lines = test_file.readlines()
-
-            mismatches = {}
-            for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
-                if test_line.strip() != ref_line.strip():
-                    try:
-                        # Get line label
-                        label = re.search((r"[^=]*"), ref_line).group(0)
-                        # Get reference and test values
-                        ref_val = re.search((r"=(.*)"), ref_line).group(1).strip()
-                        test_val = re.search((r"=(.*)"), test_line).group(1).strip()
-                        # Try converting and comparing as floats
-                        try:
-                            if float(ref_val) != float(test_val):
-                                mismatches[label] = (ref_val, test_val)
-                        except:
-                            if ref_val != test_val:
-                                mismatches[label] = (ref_val, test_val)
-                    except:
-                        mismatches[label] = (ref_val, "None")
-
-            return mismatches
-
-        # Initialization
-        test_dir_path = self.master_dir_path / "testing"
-        in_file_path = test_dir_path / "input" / "test_input_long.csv"
-
-        # Load config file
-        ref_config_path = test_dir_path / "config" / "test_config.ini"
-        self.load_config(config_file_=ref_config_path)
-
-        # Load testing input file
-        replace_entry(self.input_file_E, in_file_path)
-
-        # Set up output
-        rand_key = str(randint(1e6, 1e7))
-        out_dir_path = test_dir_path / "temp_output"
-        replace_entry(self.out_path_E, out_dir_path)
-
-        # ---------------------------------Statistics----------------------------------------
-        # Declare paths
-        unres_ref_stats_path = test_dir_path / "stats" / "ref_stats_unrestricted_long.csv"
-        res_ref_stats_path = test_dir_path / "stats" / "ref_stats_restricted_long.csv"
-        test_out_dir = test_dir_path / "temp_output"
-
-        # Set up text coloring
-        colorama.init()
-
-        print(f"Key = {rand_key}")
-
-        for test_type in ("unrestricted", "restricted"):
-            # Test unrestricted statistics
-            print(f"\n\nTesting statistics ({test_type})")
-            if test_type == "restricted":
-                self.restrict_search_CB.select()
-            else:
-                self.restrict_search_CB.deselect()
-
-            ref_path = res_ref_stats_path if test_type == "restricted" else unres_ref_stats_path
-
-            # Set up output file names
-            test_stats_path = f"{rand_key}_{test_type}.csv"
-            test_plot_path = f"{rand_key}_{test_type}.html"
-            replace_entry(self.stats_file_E, test_stats_path)
-            replace_entry(self.plot_file_E, test_plot_path)
-
-            # Run statistical analysis
-            self.trigger_run()
-
-            # Look for discrepencies in output files
-            mismatches = compare_stats(rand_key, ref_path, test_stats_path)
-
-            # Notify user of mismatched values if any
-            if not mismatches:
-                print(colored(f"{test_type.upper()} STATS PASSED".center(100, "-"), "green"))
-            else:
-                print(colored(f"{test_type.upper()} STATS FAILED".center(100, "-"), "red"))
-                for key, values in mismatches.items():
-                    print(
-                        colored(key, "yellow")
-                        + ": test value of "
-                        + colored(str(values[1]), "yellow")
-                        + " did not match reference "
-                        + colored(str(values[0]), "yellow")
-                    )
-
-        # ---------------------------------Unsupervised learning--------------------------------------
-        print(f"\n\nTesting unsupervised learning")
-
-        self.load_config(config_file_=ref_config_path)
-        self.unsupervised_learning()
-        unsup_test_path = test_out_dir / f"{rand_key}_unsup_test_config.ini"
-        unsup_ref_path = test_dir_path / "config" / "unsup_ref_config.ini"
-        self.save_config(out_file=str(unsup_test_path))
-
-        # Search for config discrepencies
-        mismatches = compare_configs(unsup_ref_path, unsup_test_path)
-
-        if not mismatches:
-            print(colored("UNSUP PASSED".center(100, "-"), "green"))
-        else:
-            print(colored("UNSUP FAILED".center(100, "-"), "red"))
-            for key, values in mismatches.items():
-                print(
-                    colored(key, "yellow")
-                    + ": test value of "
-                    + colored(str(values[1]), "yellow")
-                    + " did not match reference "
-                    + colored(str(values[0]), "yellow")
-                )
-
-        # ---------------------------------Supervised learning----------------------------------------
-        print(f"\n\nTesting supervised learning")
-
-        vertex_file_path = test_dir_path / "plots" / "vertex_selection.html"
-
-        # Attempt to make vertex selection plot
-        try:
-            self.select_vertices()
-        except:
-            print(colored("VERTEX SELECTION PLOT FAILED".center(100, "-"), "red"))
-            traceback.print_exc()
-
-        replace_entry(self.vertex_file_E, vertex_file_path)
-
-        self.load_config(config_file_=ref_config_path)
-        self.supervised_learning()
-        sup_test_path = test_out_dir / f"{rand_key}_sup_test_config.ini"
-        sup_ref_path = test_dir_path / "config" / "sup_ref_config.ini"
-        self.save_config(out_file=str(sup_test_path))
-
-        # Search for config discrepencies
-        mismatches = compare_configs(sup_ref_path, sup_test_path)
-
-        if not mismatches:
-            print(colored("SUP PASSED".center(100, "-"), "green"))
-        else:
-            print(colored("SUP FAILED".center(100, "-"), "red"))
-            for key, values in mismatches.items():
-                print(
-                    colored(key, "yellow")
-                    + ": test value of "
-                    + colored(str(values[1]), "yellow")
-                    + " did not match reference "
-                    + colored(str(values[0]), "yellow")
-                )
-
-        # ---------------------------------Plot Editing----------------------------------------
-        print(f"\n\nTesting plot editing")
-
-        # Establish configuration
-        ref_config_path = test_dir_path / "config" / "test_config.ini"
-        self.load_config(config_file_=ref_config_path)
-
-        # Declare file paths
-        mod_ref_path = test_dir_path / "stats" / "ref_mod_stats.csv"
-        ori_plot_path = test_dir_path / "input" / "test_input_long.html"
-        mod_plot_path = test_dir_path / "input" / "mod_plot.html"
-
-        # Fill entry boxes
-        replace_entry(self.input_file_E, in_file_path)
-        replace_entry(self.ori_plot_E, ori_plot_path)
-        replace_entry(self.mod_plot_E, mod_plot_path)
-
-        # Make modifiable plot
-        self.select_vertices(mod_plot=True)
-
-        # Set up output file names
-        test_mod_stats_path = test_out_dir / f"{rand_key}_modified.csv"
-        test_mod_plot_path = test_out_dir / f"{rand_key}_modified.html"
-        replace_entry(self.stats_file_E, test_mod_stats_path)
-        replace_entry(self.plot_file_E, test_mod_plot_path)
-
-        # Rerun with modified verticies
-        self.trigger_run(rerun=True)
-
-        # Look for discrepencies in output files
-        mismatches = compare_stats(rand_key, mod_ref_path, test_mod_stats_path)
-
-        # Notify user of mismatched values if any
-        if not mismatches:
-            print(colored("PLOT EDITING PASSED".center(100, "-"), "green"))
-        else:
-            print(colored("PLOT EDITING FAILED".center(100, "-"), "red"))
-            for key, values in mismatches.items():
-                print(
-                    colored(key, "yellow")
-                    + ": test value of "
-                    + colored(str(values[1]), "yellow")
-                    + " did not match reference "
-                    + colored(str(values[0]), "yellow")
-                )
-
-        print(colored("TESTING COMPLETED".center(100, "-"), "blue"))
 
     def help(self):
         """
@@ -1348,17 +1088,6 @@ class GUIClass:
 		"""
         for option in column:
             option.select() if command == "select" else option.deselect()
-
-    def update_default_outs(self):
-        """
-						Updates default output file names to unique values.
-		"""
-
-        _plot_name = (self.input_root + "_plot") if self.input_root else "niq_plot"
-        set_unique_path(self.plot_file_E, _plot_name, self.out_path_E.get(), ".html")
-
-        _stat_name = (self.input_root + "_stats") if self.input_root else "niq_stats"
-        set_unique_path(self.stats_file_E, _stat_name, self.out_path_E.get(), ".csv")
 
     def check_valid_main(self, first_in=True, check_output=True):
         """
