@@ -252,7 +252,6 @@ def get_master_df(gui, source_path):
 					df (DataFrame): Contains all information for the array in DataFrame form
 	"""
 
-
     def csv_to_df(path):
         try:
             df = pd.read_csv(path)
@@ -319,7 +318,7 @@ def get_master_df(gui, source_path):
     # Add column storing difference in adjusted temperature from previous entry to current
     df["delta_temper"] = np.zeros(df.shape[0])
     df.iloc[1:, df.columns.get_loc("delta_temper")] = df["smoothed_adj_temper"].diff()
-    
+
     # Set first cell equal to second
     df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
 
@@ -432,11 +431,7 @@ def extract_verts_in_range(gui, total_vertices, start_index, stop_index):
     verts_in_range = []
     left_limit, right_limit = 0, 0
 
-    if any((
-        len(total_vertices) < 1, 
-        stop_index < total_vertices[0].index, 
-        start_index > total_vertices[-1].index
-    )):
+    if any((len(total_vertices) < 1, stop_index < total_vertices[0].index, start_index > total_vertices[-1].index)):
         return verts_in_range
 
     # Determine first vertex in range
@@ -1078,7 +1073,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
             plot.line(master_df["data_point"], egg_array, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
 
         plot.circle(master_df["data_point"], egg_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
-    
+
     # Get array of adjusted (egg - air) temperatures and smooth if requested
     if gui.plot_adj_BV.get():
         adj_array = master_df["adj_temper"]
@@ -1125,9 +1120,8 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
         table_title = "Adjusted Temperature"
         x_list += [gui.master_df.loc[vert.index, "data_point"] for vert in verts]
         y_list += [gui.master_df.loc[vert.index, "adj_temper"] for vert in verts]
-    
-    data = {"x": x_list, "y": y_list}
 
+    data = {"x": x_list, "y": y_list}
 
     src = ColumnDataSource(data)
     columns = [TableColumn(field="x", title="Transition Data Point"), TableColumn(field="y", title=table_title)]
@@ -1355,7 +1349,7 @@ def add_states(df, verts=None, states=None):
     if states is not None:
         df.loc[:, "bout_state"] = states
         df.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
-    
+
     # Flip bout states if necessary
     on_bout_delta_temp = df.loc[df["bout_state"] == "on", "delta_temper"].mean()
     off_bout_delta_temp = df.loc[df["bout_state"] == "off", "delta_temper"].mean()

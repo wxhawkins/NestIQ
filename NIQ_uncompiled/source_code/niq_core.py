@@ -1173,7 +1173,7 @@ class GUIClass:
         # Set up output
         rand_key = str(randint(1e6, 1e7))
         out_dir_path = test_dir_path / "temp_output"
-        replace_entry( self.out_path_E, out_dir_path)
+        replace_entry(self.out_path_E, out_dir_path)
 
         # ---------------------------------Statistics----------------------------------------
         # Declare paths
@@ -1582,7 +1582,7 @@ class GUIClass:
             elif entry == gui.stats_file_E or entry == gui.multi_in_stats_file_E:
                 ext = ".csv"
 
-            entry_path = Path(entry.get()).with_suffix(ext)
+            entry_path = Path(self.out_path_E.get()) / Path(entry.get()).with_suffix(ext)
 
             # Check if plot file already exists and if so, ask to override
             if entry_path.exists() and self.show_warns_BV.get():
@@ -1945,8 +1945,6 @@ class GUIClass:
             set_unique_path(self.plot_file_E, (path + "_plot"), self.out_path_E.get(), ".html")
             set_unique_path(self.stats_file_E, (path + "_stats"), self.out_path_E.get(), ".csv")
 
-
-
     def get_plot_file(self, entry):
         """
 						Handles plot file browsing and selection
@@ -2043,13 +2041,9 @@ class GUIClass:
         days_list = []
         ori_verts_ = None
 
-        if not all((
-            self.check_valid_plot_ops(),
-            self.check_valid_main(check_output=False),
-            self.check_valid_adv()
-        )):
-            return 
-            
+        if not all((self.check_valid_plot_ops(), self.check_valid_main(check_output=False), self.check_valid_adv())):
+            return
+
         try:
             self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
             self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
@@ -2233,10 +2227,8 @@ class GUIClass:
 
             self.time_interval = self.config.get("Main Settings", "data_time_interval")
 
-
             in_file_paths = self.parse_input_file_entry()
             self.reset_multi_file_var()
-
 
             for file_num, path in enumerate(in_file_paths, 1):
                 self.set_active_input(path, replace_out=(len(in_file_paths) > 1))
@@ -2252,7 +2244,7 @@ class GUIClass:
                 edit_tab_check = True if not rerun else self.check_valid_edit_ops()
 
                 if not (
-                    self.check_valid_main(check_output=(file_num == 1))
+                    self.check_valid_main(first_in=(file_num == 1))
                     and self.check_valid_adv()
                     and self.check_valid_plot_ops()
                     and self.check_valid_stat_ops()
