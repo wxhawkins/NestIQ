@@ -431,7 +431,7 @@ def extract_verts_in_range(gui, total_vertices, start_index, stop_index):
     verts_in_range = []
     left_limit, right_limit = 0, 0
 
-    if any((len(total_vertices) < 1, stop_index < total_vertices[0].index, start_index > total_vertices[-1].index)):
+    if len(total_vertices) < 1 or stop_index < total_vertices[0].index or start_index > total_vertices[-1].index:
         return verts_in_range
 
     # Determine first vertex in range
@@ -993,8 +993,8 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
         y_max = max(y_max, master_df["air_temper"].max())
 
     if gui.plot_adj_BV.get():
-        y_min = min(y_min, master_df["adj_temper"].min())
-        y_max = max(y_max, master_df["adj_temper"].max())
+        y_min = min(y_min, master_df["smoothed_adj_temper"].min())
+        y_max = max(y_max, master_df["smoothed_adj_temper"].max())
 
     y_min -= 2
     y_max += 2
@@ -1081,9 +1081,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 
     # Get array of adjusted (egg - air) temperatures and smooth if requested
     if gui.plot_adj_BV.get():
-        adj_array = master_df["adj_temper"]
-        if gui.smooth_status_IV.get():
-            adj_array = smooth_series(radius, adj_array)
+        adj_array = master_df["smoothed_adj_temper"]
 
         # Plot line
         if float(gui.bout_line_width_E.get()) > 0:
@@ -1124,7 +1122,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     elif gui.plot_adj_BV.get():
         table_title = "Adjusted Temperature"
         x_list += [gui.master_df.loc[vert.index, "data_point"] for vert in verts]
-        y_list += [gui.master_df.loc[vert.index, "adj_temper"] for vert in verts]
+        y_list += [gui.master_df.loc[vert.index, "smoothed_adj_temper"] for vert in verts]
 
     data = {"x": x_list, "y": y_list}
 

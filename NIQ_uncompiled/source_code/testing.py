@@ -1,3 +1,5 @@
+from pathlib import Path
+import re
 from random import randint
 
 import colorama
@@ -9,14 +11,19 @@ from niq_misc import replace_entry
 def test_run(gui):
     """ Load GUI entry boxes with test files. """
 
+    test_dir_path = gui.master_dir_path / "testing"
+
     # Input file
-    replace_entry(gui.input_file_E, Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.csv"))
+    replace_entry(gui.input_file_E, test_dir_path / "input" / "test_input_long.csv")
+
+    # Vertex plot
+    replace_entry(gui.vertex_file_E, test_dir_path / "plots" / "vertex_selection.html")
 
     # Original plot
-    replace_entry(gui.ori_plot_E, Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/test_input_long.html"))
+    replace_entry(gui.ori_plot_E, test_dir_path / "input" / "test_input_long.html")
 
     # Modified plot
-    replace_entry(gui.mod_plot_E, Path("C:/Users/wxhaw/OneDrive/Desktop/Github/NestIQ/NIQ_uncompiled/testing/input/mod_plot.html"))
+    replace_entry(gui.mod_plot_E, test_dir_path / "input" / "mod_plot.html")
 
 def master_test(gui):
     """

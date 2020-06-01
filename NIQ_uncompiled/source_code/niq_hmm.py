@@ -44,7 +44,7 @@ class HMM(object):
                     model (hmmlearn.GaussianHMM)
             """
 
-            self._initial = np.array([0.5, 0.5])
+            self._initial = model.startprob_
 
             self._trans_probs = {}
             self._trans_probs[0] = {}
@@ -62,11 +62,12 @@ class HMM(object):
             self._emissions[0]["stdev"] = model.covars_[0][0][0]
             self._emissions[1]["stdev"] = model.covars_[1][0][0]
 
-        model = hmm.GaussianHMM(n_components=2, tol=1e-100, n_iter=1000, algorithm="baum_welch")
+        model = hmm.GaussianHMM(n_components=2, tol=1e-100, n_iter=1000, algorithm="baum_welch", init_params="")
 
         # Provide inital values
         model.startprob_ = np.array([0.5, 0.5])
         model.transmat_ = np.array([[0.98, 0.02], [0.02, 0.98]])
+        # model.transmat_ = np.array([[0.9999, 0.0001], [0.0001, 0.9999]])
         model.means_ = np.array([[0.001], [-0.001]])
         model.covars_ = np.array([[0.001], [0.001]])
 
@@ -84,6 +85,9 @@ class HMM(object):
                 master_array (numpy array)
                 training_verts (list): vertex objects created off of the user's placements
         """
+
+        init = master_df["bout_state"].value_counts().apply(lambda x: x/len(master_df))
+        self._initial = init.round(7).to_numpy()
 
         master_array = niq_misc.df_to_array(master_df)
 
@@ -108,6 +112,7 @@ class HMM(object):
         self._trans_probs = trans_probs
         self.auto_dur_thresh(master_array)
 
+        # Temperature change from previous data point should always be larger for on-bouts
         if self._emissions[0]["mean"] > self._emissions[1]["mean"]:
             self.swap_params_by_state()
 
@@ -118,6 +123,7 @@ class HMM(object):
             parameters if necessary.
         """
 
+        self._initial = self._initial[::-1]
         self._trans_probs[0][0], self._trans_probs[1][1] = self._trans_probs[1][1], self._trans_probs[0][0]
         self._trans_probs[0][1], self._trans_probs[1][0] = self._trans_probs[1][0], self._trans_probs[0][1]
         self._emissions[0]["mean"], self._emissions[1]["mean"] = self._emissions[1]["mean"], self._emissions[0]["mean"]
@@ -259,8 +265,11 @@ class HMM(object):
 
         # First set of probabilites are calculated differently
         previous = {}
-        previous[0] = np.log10(self._initial[0]) + np.log10(get_cumu_prob(self, 0, first_row[5]))
-        previous[1] = np.log10(self._initial[1]) + np.log10(get_cumu_prob(self, 1, first_row[5]))
+        # Avoid divide by 0 warning
+        init_0 = self._initial[0] if self._initial[0] != 0 else 1e-10
+        init_1 = self._initial[1] if self._initial[1] != 0 else 1e-10
+        previous[0] = np.log10(init_0) + np.log10(get_cumu_prob(self, 0, first_row[5]))
+        previous[1] = np.log10(init_1) + np.log10(get_cumu_prob(self, 1, first_row[5]))
 
         for row in master_array[1:, :]:
             update_previous, update_tb = update_probs(row, previous)

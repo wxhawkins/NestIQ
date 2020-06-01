@@ -2081,6 +2081,9 @@ class GUIClass:
                 self.root.update()
                 return False
 
+        in_file = self.input_file_E.get()
+        self.master_df = niq_misc.get_master_df(self, in_file)
+
         self.master_hmm = niq_hmm.HMM()
         emis_arr = self.master_df.loc[:, "delta_temper"].to_numpy()
         emis_arr = emis_arr.reshape(-1, 1)
@@ -2106,15 +2109,17 @@ class GUIClass:
 
         self.master_hmm = niq_hmm.HMM()
 
-        if self.check_vertex_file():
-            in_file = self.input_file_E.get()
-            self.master_df = niq_misc.get_master_df(self, in_file)
+        if not self.check_vertex_file():
+            return
+        
+        in_file = self.input_file_E.get()
+        self.master_df = niq_misc.get_master_df(self, in_file)
 
-            training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
-            self.master_df = niq_misc.add_states(self.master_df, verts=training_verts)
-            self.master_hmm.extract_params_from_verts(self.master_df)
-            self.master_hmm.normalize_params(self)
-            self.master_hmm.populate_hmm_entries(self)
+        training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
+        self.master_df = niq_misc.add_states(self.master_df, verts=training_verts)
+        self.master_hmm.extract_params_from_verts(self.master_df)
+        self.master_hmm.normalize_params(self)
+        self.master_hmm.populate_hmm_entries(self)
 
 
 def main(gui):
