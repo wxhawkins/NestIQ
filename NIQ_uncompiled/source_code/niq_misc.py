@@ -65,7 +65,138 @@ def check_time_in_daytime(day_start, night_start, time):
     return True
 
 
-def split_days(gui, modifier=0):
+def split_days(gui):
+    """
+        Analyze dates of master DataFrame and parse row data into daytime and nighttime block objects.
+    """
+
+    def convert_to_datetime(dt_string):
+        """
+            Converts Date/Time cell from master DataFrame to datetime.datetime object.
+            
+            Args:
+                    dt_string (str): contents of date/time cell of input file provided by user
+        """
+
+        # Extract hour and minute values
+        time_search = re.search(r"(\d+):(\d+)(:(\d+))?", dt_string)
+        hour = int(time_search.group(1))
+        minute = int(time_search.group(2))
+        second = time_search.group(3) if time_search.group(3) else 0
+
+        # Extract date (Month/Day/Year fromat)
+        date_search = re.search(r"(\d+)\/(\d+)\/(\d+)", dt_string)
+        month = int(date_search.group(1))
+        day = int(date_search.group(2))
+        year = int(date_search.group(3))
+
+        # Create datetime object
+        dt = datetime.datetime(year, month, day, hour, minute, second)
+        return dt
+
+    def is_daytime(date_time):
+        """
+            Check if a given time falls within the daytime period defined by the user.
+
+            Args:
+                    date_time (datetime.datetime)
+        """
+
+        time = date_time.time()
+        # When the start of daytime is earlier in the day than the start of nighttime
+        if day_start < night_start:
+            if time >= day_start and time < night_start:
+                return True
+        # When the start of nighttime is earlier in the day than the start of daytime
+        elif night_start < day_start:
+            if not (time >= night_start and time < day_start):
+                return True
+
+        return False
+
+    def get_durs(day_start, night_start):
+        """
+            Get expected durations in seconds for complete daytime and nightime periods.
+
+            Args:
+                    day_start (datetime.time): user-defined start of daytime
+                    night_start (datetime.time) user-defined start of nighttime
+        """
+
+        # Convert start times to datetime objects
+        d = datetime.datetime(2020, 1, 1, day_start.hour, day_start.minute, day_start.second)
+        n = datetime.datetime(2020, 1, 1, night_start.hour, night_start.minute, night_start.second)
+
+        # When the start of daytime is earlier in the day than the start of nighttime
+        if day_start < night_start:
+            day_dur = (n - d).total_seconds()
+            night_dur = 86400 - day_dur  # Total seconds in day - daytime duration
+        # When the start of nighttime is earlier in the day than the start of daytime
+        elif night_start < day_start:
+            night_dur = (d - n).total_seconds()
+            day_dur = 86400 - day_dur  # Total seconds in day - nighttime duration
+
+        return day_dur, night_dur
+
+    def is_partial(df, start_index, end_index, block_type):
+        """
+            Checks if given range of indices represents a complete daytime or nighttime period.
+
+            Args:
+                    df (pd.DataFrame)
+                    start_index (int)
+                    end_index (int):
+                    block_type (str): "day" or "night"
+        """
+
+        dur_thresh = day_dur - 300 if block_type == "day" else night_dur - 300
+        start_time = df.loc[start_index, "date_time"]
+        end_time = df.loc[end_index, "date_time"]
+        block_dur = end_time - start_time
+        if block_dur > datetime.timedelta(seconds=dur_thresh):
+            return False
+
+        return True
+
+    # Create time objects from entry box values
+    day_start = convert_to_datetime(f"01/01/2020 {str(gui.day_start_E.get())}").time()
+    night_start = convert_to_datetime(f"01/01/2020 {str(gui.night_start_E.get())}").time()
+
+    # Get daytime and nighttime durations
+    day_dur, night_dur = get_durs(day_start, night_start)
+
+    # Create copy of master DataFrame to be appended to 
+    temp_df = gui.master_df.copy()
+    temp_df["date_time"] = temp_df["date_time"].apply(convert_to_datetime)
+    temp_df["is_daytime"] = temp_df["date_time"].apply(is_daytime)
+
+    # Detect day/night or night/day transitions
+    int_states = temp_df.loc[:, "is_daytime"].replace([True, False], [1, 0])
+    state_changed = int_states.diff().apply(abs).astype(bool)
+    state_changed.iloc[0] = False
+    temp_df["transition_point"] = state_changed
+
+    # Collect indices of day/night transition points
+    filt = temp_df["transition_point"] == True
+    transition_indices = temp_df[filt].index.to_list()
+    transition_indices.append(len(temp_df))
+
+    # Construct day and night blocks from transition points
+    days_list, nights_list = [], []
+    block_type = "day" if is_daytime(temp_df.loc[0, "date_time"]) else "night"
+    cur_index = 0
+    for next_index in transition_indices:
+        block_list = days_list if block_type == "day" else nights_list
+        partial = is_partial(temp_df, cur_index, next_index - 1, block_type)
+        block_list.append(niq_classes.Block(gui, cur_index, (next_index - 1), partial))
+
+        block_type = "day" if block_type == "night" else "night"
+        cur_index = next_index
+
+    return days_list, nights_list
+
+
+def split_days_old(gui, modifier=0):
     """
 			Splits the entire data set into individual day and night objects based on user-provided day and
 			night start times.
@@ -325,7 +456,7 @@ def get_master_df(gui, source_path):
     # Set indices to data_point column
     # df.set_index("data_point", inplace=True)
 
-    return df
+    return df.reset_index(drop=True)
 
 
 def get_verts_from_html(gui, in_file, alt=False):
@@ -871,7 +1002,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
         out_paths.append(Path(gui.stats_file_E.get()))
     if gui.multi_in_stats_BV.get():
         out_paths.append(Path(gui.multi_in_stats_file_E.get()))
-    
+
     # Write day statistics
     for path in out_paths:
         with open(path, "a") as out_file:
@@ -934,7 +1065,6 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
         print("\n".join(bout_rows), file=out_file)
 
 
-
 def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_verts=None):
     """
 			Uses the Bokeh module to generate an interactive plot for the current input file.
@@ -973,7 +1103,25 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
         plot_width = int(gui.plot_dim_x_E.get())
         plot_height = int(gui.plot_dim_y_E.get())
 
-    hover = HoverTool(tooltips=[("Data Point", "$x{int}"), ("Temperature", "$y")])
+    TOOLTIPS = """
+        <div>
+            <div>
+                <span style="font-size: 17px">[$x{int}]</span>
+                <span style="font-size: 15px">@desc</span>
+            </div>
+            <div>
+                <span>@fonts{safe}</span>
+            </div>
+            <div>
+                <span style="font-size: 15px">Location</span>
+                <span style="font-size: 10px"</span>
+            </div>
+        </div>
+    """
+
+    # TOOLTIPS = [("Data Point", "$x{int}"), ("Temperature", "$y")]
+
+    hover = HoverTool(tooltips=TOOLTIPS)
 
     # Set plot title
     plot_name = Path(gui.input_file_E.get()).stem
