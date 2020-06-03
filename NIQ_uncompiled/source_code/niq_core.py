@@ -1070,7 +1070,6 @@ class GUIClass:
 
         return True
 
-
     def help(self):
         """
 						Launches user manual.
@@ -1105,7 +1104,7 @@ class GUIClass:
 							Also displays warnings for less severe format violations.
 			"""
 
-            in_file_path = Path(self.input_file_E.get())
+            in_file_path = self.active_input_path
             datetime_valid = True
 
             file_name_appendage = f"For file: {in_file_path.name} \n\n"
@@ -1125,163 +1124,125 @@ class GUIClass:
             try:
                 with open(in_file_path, "r") as csv_file:
                     csv_lines = csv_file.readlines()
-                    master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
+                    
+                master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
 
-                    pop_indices = []
-                    # Remove lines not conforming to expected format (such as headers)
-                    for i in range(len(master_list[:-1])):
-                        # Cells in data point column must contain only numbers
-                        if not str(master_list[i][self.data_point_col]).isnumeric():
-                            pop_indices.append(i)
+                pop_indices = []
+                # Remove lines not conforming to expected format (such as headers)
+                for i in range(len(master_list[:-1])):
+                    # Cells in data point column must contain only numbers
+                    if not str(master_list[i][self.data_point_col]).isnumeric():
+                        pop_indices.append(i)
 
-                    for pop_count, index in enumerate(pop_indices):
-                        master_list.pop(index - pop_count)
-                    master_list.pop(len(master_list) - 1)
+                for pop_count, index in enumerate(pop_indices):
+                    master_list.pop(index - pop_count)
+                master_list.pop(len(master_list) - 1)
 
-                    prev_line = master_list[0]
+                prev_line = master_list[0]
 
-                    if not (self.get_data_time_interval(niq_misc.list_to_gen(master_list[1:]), prev_line)):
+                if not self.get_data_time_interval(master_list):
+                    return False
+
+                if len(prev_line) < 3:
+                    self.air_valid = False
+
+                interval_clock = 0 if self.time_interval >= 1 else round(1 / self.time_interval)
+                interval_time = 1
+                start_found = False
+
+                for line in master_list[1:]:
+                    line = line[:4] if self.air_valid else line[:3]
+
+                    # Check if data points are continuous and sequential
+                    try:
+                        if not int(line[self.data_point_col]) == (int(prev_line[self.data_point_col]) + 1):
+                            raise ValueError
+                    except:
+                        messagebox.showerror(
+                            "Data Point Error",
+                            f"{file_name_appendage}Error after data point " +
+                            f"{prev_line[self.data_point_col]}. Data point number is not sequential with regard to previous data point."
+                        )
                         return False
 
-                    if len(prev_line) < 3:
-                        self.air_valid = False
-
-                    if not niq_misc.get_datetime(self, prev_line):
+                    # Test conversion of date/time string to datetime object
+                    try:
+                        prev_datetime = niq_misc.convert_to_datetime(prev_line[1])
+                        cur_datetime = niq_misc.convert_to_datetime(line[1])
+                    except ValueError:
+                        messagebox.showerror(
+                            "Date/Time Error", 
+                            f"{file_name_appendage}No time found for data point {line[0]}.  Date/Time should be in MM/DD/YYYY HH:MM format."
+                        )
                         return False
 
-                    interval_clock = 0 if self.time_interval >= 1 else round(1 / self.time_interval)
-                    interval_time = 1
-                    start_found = False
+                    # Check for inconsistencies in date/time values
+                    datetime_diff = (cur_datetime - prev_datetime).seconds / 60
 
-                    for line in master_list[1:]:
-                        line = line[:4] if self.air_valid else line[:3]
+                    if datetime_diff == 0 or datetime_diff == self.time_interval:
+                        start_found = True
 
-                        # Check if data points are continuous and sequential
-                        try:
-                            if not int(line[self.data_point_col]) == (int(prev_line[self.data_point_col]) + 1):
-                                raise ValueError
-                        except:
-                            messagebox.showerror(
-                                "Data Point Error",
-                                "".join(
-                                    (
-                                        file_name_appendage
-                                        + "Error after data point "
-                                        + str(prev_line[self.data_point_col])
-                                        + ". Data point number is not sequential with regard to previous data point."
-                                    )
-                                ),
-                            )
+                    if datetime_valid and start_found:
+                        if cur_datetime == False:
                             return False
 
-                        prev_datetime = niq_misc.get_datetime(self, prev_line)
-                        cur_datetime = niq_misc.get_datetime(self, line)
-                        datetime_diff = (cur_datetime - prev_datetime).seconds / 60
-
-                        if datetime_diff == 0 or datetime_diff == self.time_interval:
-                            start_found = True
-
-                        if datetime_valid and start_found:
-                            if cur_datetime == False:
-                                return False
-
-                            if datetime_diff != self.time_interval:
-                                if not interval_clock > 0:
+                        if datetime_diff != self.time_interval:
+                            if not interval_clock > 0:
+                                datetime_valid = False
+                            else:
+                                if datetime_diff == 0:
+                                    interval_time += 1
+                                elif datetime_diff != 1:
                                     datetime_valid = False
                                 else:
-                                    if datetime_diff == 0:
-                                        interval_time += 1
-                                    elif datetime_diff != 1:
-                                        datetime_valid = False
+                                    if interval_time == interval_clock:
+                                        interval_time = 1
                                     else:
-                                        if interval_time == interval_clock:
-                                            interval_time = 1
-                                        else:
-                                            datetime_valid = False
+                                        datetime_valid = False
 
-                            if not datetime_valid:
-                                if self.show_warns_BV.get():
-                                    messagebox.showwarning(
-                                        "Date/time Warning",
-                                        "".join(
-                                            (
-                                                file_name_appendage
-                                                + "Discontinuous date/time found for data point "
-                                                + line[self.data_point_col]
-                                                + ". The program will continue, but this could cause inaccurate statistical output."
-                                            )
-                                        ),
-                                    )
+                        if not datetime_valid:
+                            if self.show_warns_BV.get():
+                                messagebox.showwarning(
+                                    "Date/time Warning",
+                                    f"{file_name_appendage}Discontinuous date/time found for data point " +
+                                    f"{line[self.data_point_col]}. The program will continue, but this could cause inaccurate statistical output."
+                                )
 
-                        # Check egg temperatures column
+                    # Check egg temperatures column
+                    try:
+                        float(line[self.egg_temper_col])
+                    except:
+                        messagebox.showerror(
+                            "Temperature Error",
+                            f"{file_name_appendage}Invalid temperature given for data point {line[self.data_point_col]}."
+                        )
+                        return False
+
+                    # Check air temperatures column if appropriate
+                    if self.air_valid:
                         try:
-                            float(line[self.egg_temper_col])
+                            float(line[self.air_temper_col])
+                        except (IndexError, ValueError):
+                            self.air_valid = False
+                            if self.show_warns_BV.get():
+                                messagebox.showwarning(
+                                    "Air Temperature Warning",
+                                    f"{file_name_appendage}Invalid air temperature detected for data point " +
+                                    f"{line[self.data_point_col]}. Air temperatures will not be plotted or included in statistical output."
+                                )
+                    prev_line = line
 
-                            if line[self.egg_temper_col] == "":
-                                raise ValueError
-
-                        except:
-                            messagebox.showerror(
-                                "Temperature Error",
-                                "".join((file_name_appendage + "Invalid temperature given for data point " + line[self.data_point_col] + ".")),
-                            )
-                            return False
-
-                        # Check air temperatures column if appropriate
-                        if self.air_valid:
-                            try:
-                                if line[self.air_temper_col] == "":
-                                    self.air_valid = False
-                                    if self.show_warns_BV.get():
-                                        messagebox.showwarning(
-                                            "Air Temperature Warning",
-                                            "".join(
-                                                (
-                                                    file_name_appendage
-                                                    + "No air temperature detected for data point "
-                                                    + line[self.data_point_col]
-                                                    + ". Air temperatures will not be plotted or included in statistical output."
-                                                )
-                                            ),
-                                        )
-                                else:
-                                    try:
-                                        float(line[self.air_temper_col])
-                                    except:
-                                        self.air_valid = False
-                                        if self.show_warns_BV.get():
-                                            messagebox.showwarning(
-                                                "Air Temperature Warning",
-                                                "".join(
-                                                    (
-                                                        file_name_appendage
-                                                        + "Invalid air temperature detected for data point "
-                                                        + line[self.data_point_col]
-                                                        + ". Air temperatures will not be plotted or included in statistical output."
-                                                    )
-                                                ),
-                                            )
-                            except IndexError:
-                                self.air_valid = False
-
-                        prev_line = line
-
-                    return True
+                return True
 
             except Exception as e:
                 print(e)
                 traceback.print_exc()
                 messagebox.showerror(
                     "Unknown Error",
-                    "".join(
-                        (
-                            file_name_appendage
-                            + "There was an unidentifiable error with the provided input file. "
-                            + 'This is sometimes the result of "extra" cells in the input file.\n\n'
-                            + "Please reference the NestIQ manual for details regarding proper input file format."
-                            + ' This can be accessed by clicking "Help" in the top right.'
-                        )
-                    ),
+                    f"{file_name_appendage}There was an unidentifiable error with the provided input file. " +
+                    "This is sometimes the result of 'extra' cells in the input file.\n\n" +
+                    "Please reference the NestIQ manual for details regarding proper input file format." +
+                    " This can be accessed by clicking 'Help' in the top right."
                 )
                 return False
 
@@ -1296,13 +1257,13 @@ class GUIClass:
 			"""
 
             if entry.get() == "":
-                messagebox.showerror((title + " Error"), "File name is empty.")
+                messagebox.showerror(f"{title} Error", "File name is empty.")
                 return False
 
             entry_path = Path(entry.get())
 
             if entry_path.is_dir():
-                messagebox.showerror((title + " Error"), "Directory provided but no file name.")
+                messagebox.showerror(f"{title} Error", "Directory provided but no file name.")
                 return False
 
             # Add extension if not present
@@ -1315,7 +1276,7 @@ class GUIClass:
 
             # Check if plot file already exists and if so, ask to override
             if entry_path.exists() and self.show_warns_BV.get():
-                if messagebox.askyesno("Override?", ('The file "' + entry.get() + '" already exists.  Do you want to override?')):
+                if messagebox.askyesno("Override?", f"The file '{entry.get()}' already exists.  Do you want to override?"):
                     entry_path.unlink()
                 else:
                     return False
@@ -1376,15 +1337,19 @@ class GUIClass:
             return False
 
         # Check time entry boxes
-        if not check_time(self.day_start_E.get(), "day") or not check_time(self.night_start_E.get(), "night"):
-            return False
+        for time_str in (self.day_start_E.get(), self.night_start_E.get()):
+            try:
+                time_struct = time.strptime(time_str, "%H:%M")
+            except ValueError:
+                messagebox.showerror("Daytime Start/End Error", f"Provided value of {time_str} is invalid. Please provide times in 24 hr HH:MM format.")
+                return False
 
         # Check data smoothing box
         try:
             if not float(self.smoothing_radius_E.get()).is_integer():
                 raise ValueError
 
-            if not int(self.smoothing_radius_E.get()) >= 0:
+            if int(self.smoothing_radius_E.get()) < 0:
                 messagebox.showerror("Data Smoothing Radius Error", "Data smoothing radius must be greater than or equal to zero.")
                 return False
         except ValueError:
@@ -1444,7 +1409,6 @@ class GUIClass:
                     return False
 
             self.unsupervised_learning(auto_run=True)
-
             return True
 
         try:
@@ -1453,7 +1417,7 @@ class GUIClass:
             for entry in entries:
                 if float(entry.get()) < 0:
                     raise ValueError("Probability less than 0 provided.")
-        except:
+        except ValueError:
             if self.UL_default_BV.get():
                 if try_autofill():
                     return True
@@ -1592,6 +1556,7 @@ class GUIClass:
 						Args:
 										rerun (Bool): Indicates if checking should be performed for modified plot path as well.
 		"""
+
         niq_misc.remove_curly(self.ori_plot_E, self.mod_plot_E)
 
         paths_dict = {"Original Plot": Path(self.ori_plot_E.get()), "Modified Plot": Path(self.mod_plot_E.get())}
@@ -1602,13 +1567,12 @@ class GUIClass:
 
         for name, path in paths_dict.items():
             if not path.exists():
-                messagebox.showerror(f"{name} File Error (Edit tab)", "".join((str(path), "File with provided path could not be found.")))
-
+                messagebox.showerror(f"{name} File Error (Edit tab)", f"{str(path)}, File with provided path could not be found.")
                 return False
 
         return True
 
-    def get_data_time_interval(self, reader, first_line):
+    def get_data_time_interval(self, master_list):
         """
 						Attempts to determine the time gap between individual data points and sets self.time_interval
 						accordingly.
@@ -1618,7 +1582,7 @@ class GUIClass:
 										first_line (list): first line of data from the input file
 		"""
 
-        # If interval value is provided in config file, convert to float and return
+        # Set interval to value provided in the config file if present and valid
         if self.time_interval != "auto":
             try:
                 self.time_interval = float(self.time_interval)
@@ -1630,32 +1594,17 @@ class GUIClass:
                         "Interval value provided in configuration file is invalid. Automatic detection of data interval will proceed.",
                     )
 
-        copy_count = 1
-        # Parse until second unique value is found
-        cur_line = next(reader)
-        while cur_line[self.date_time_col] == first_line[self.date_time_col]:
-            cur_line = next(reader)
-
-        # Count sequential occurances of second unique value
-        ref_line = cur_line
-        cur_line = next(reader)
-        while cur_line[self.date_time_col] == ref_line[self.date_time_col]:
-            copy_count += 1
-            cur_line = next(reader)
-
-        if copy_count > 1:
-            interval = 1 / copy_count
-        else:
-            ref_datetime = niq_misc.get_datetime(self, ref_line)
-            cur_datetime = niq_misc.get_datetime(self, cur_line)
-
-            if ref_datetime == False or cur_datetime == False:
-                return False
-            interval = (cur_datetime - ref_datetime).seconds / 60
-
-        self.time_interval = interval
+        # Convert to datetime objects
+        first_time = niq_misc.convert_to_datetime(master_list[0][1])
+        last_time = niq_misc.convert_to_datetime(master_list[-1][1])
+        # Get average step between data points in seconds
+        delta_sec = (last_time - first_time).total_seconds()
+        interval = delta_sec / len(master_list)
+        # Convert to minutes and round
+        self.time_interval = round(interval / 60, 3)
 
         return True
+
 
     def get_input_file_name(self):
         """
@@ -1948,13 +1897,12 @@ class GUIClass:
 										root (tk root widget): base widget of GUI
 										rerun (Bool): indicates if this is a rerun off of user provided vertices
 		"""
+        
         run_start = time.time()
 
         try:
             print("-" * 100)
             print("Running NestIQ")
-
-            self.time_interval = self.config.get("Main Settings", "data_time_interval")
 
             in_file_paths = self.parse_input_file_entry()
             self.reset_multi_file_var()
@@ -2111,7 +2059,7 @@ class GUIClass:
 
         if not self.check_vertex_file():
             return
-        
+
         in_file = self.input_file_E.get()
         self.master_df = niq_misc.get_master_df(self, in_file)
 

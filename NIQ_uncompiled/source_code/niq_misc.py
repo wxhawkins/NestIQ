@@ -18,81 +18,33 @@ from bs4 import BeautifulSoup
 import niq_classes
 
 
-def extract_time(date_time_cell):
+def convert_to_datetime(dt_string):
     """
-			Pulls time out of cell containing date and time (MM/DD/YYYY HH:MM)
-
-			Args:
-					date_time_cell (str): input file cell containing the date and time string to be extracted from
-	"""
-
-    return re.search(r"(\d+:\d+)", date_time_cell).group(1)
-
-
-def extract_date(date_time_cell):
+        Converts Date/Time cell from master DataFrame to datetime.datetime object.
+        
+        Args:
+                dt_string (str): contents of date/time cell of input file provided by user
     """
-			Pulls date out of cell containing date and time (MM/DD/YYYY HH:MM)
 
-			Args:
-					date_time_cell (str): input file cell containing the date and time string to be extracted from
-	"""
+    # Initially include seconds in search, then ommit if not found
+    try:
+        time_struct = time.strptime(dt_string, r"%m/%d/%Y %H:%M:%S")
+    except ValueError:
+        try:
+            time_struct = time.strptime(dt_string, r"%m/%d/%Y %H:%M")
+        except ValueError:
+            time_struct = time.strptime(dt_string, r"%m/%d/%y %H:%M")
 
-    return re.search(r"(\d+\/\d+\/\d+)", date_time_cell).group(1)
+    dt = datetime.datetime(*time_struct[0:6])
 
+    return dt
 
-def check_time_in_daytime(day_start, night_start, time):
-    """
-			Checks if a given time is inside of user-provided daytime period.
-
-			Args:
-					day_start (str): time considered the start of daytime
-					night_start (str): time considered the end of daytime
-					time (str): time being analyzed
-	"""
-
-    day = re.search(r"(\d+)(:)(\d+)", day_start)
-    day_float = float(day.group(1)) + (float(day.group(3)) / 60)
-
-    night = re.search(r"(\d+)(:)(\d+)", night_start)
-    night_float = float(night.group(1)) + (float(night.group(3)) / 60)
-
-    cur_time = re.search(r"(\d+)(:)(\d+)", time)
-    cur_time_float = float(cur_time.group(1)) + (float(cur_time.group(3)) / 60)
-
-    if (cur_time_float > night_float) or (cur_time_float < day_float):
-        return False
-
-    return True
 
 
 def split_days(gui):
     """
         Analyze dates of master DataFrame and parse row data into daytime and nighttime block objects.
     """
-
-    def convert_to_datetime(dt_string):
-        """
-            Converts Date/Time cell from master DataFrame to datetime.datetime object.
-            
-            Args:
-                    dt_string (str): contents of date/time cell of input file provided by user
-        """
-
-        # Extract hour and minute values
-        time_search = re.search(r"(\d+):(\d+)(:(\d+))?", dt_string)
-        hour = int(time_search.group(1))
-        minute = int(time_search.group(2))
-        second = time_search.group(3) if time_search.group(3) else 0
-
-        # Extract date (Month/Day/Year fromat)
-        date_search = re.search(r"(\d+)\/(\d+)\/(\d+)", dt_string)
-        month = int(date_search.group(1))
-        day = int(date_search.group(2))
-        year = int(date_search.group(3))
-
-        # Create datetime object
-        dt = datetime.datetime(year, month, day, hour, minute, second)
-        return dt
 
     def is_daytime(date_time):
         """
@@ -149,6 +101,7 @@ def split_days(gui):
                     block_type (str): "day" or "night"
         """
 
+        # Allow 5 min of discrepency from full durrations
         dur_thresh = day_dur - 300 if block_type == "day" else night_dur - 300
         start_time = df.loc[start_index, "date_time"]
         end_time = df.loc[end_index, "date_time"]
@@ -165,9 +118,8 @@ def split_days(gui):
     # Get daytime and nighttime durations
     day_dur, night_dur = get_durs(day_start, night_start)
 
-    # Create copy of master DataFrame to be appended to 
+    # Create copy of master DataFrame to be appended to
     temp_df = gui.master_df.copy()
-    temp_df["date_time"] = temp_df["date_time"].apply(convert_to_datetime)
     temp_df["is_daytime"] = temp_df["date_time"].apply(is_daytime)
 
     # Detect day/night or night/day transitions
@@ -195,140 +147,6 @@ def split_days(gui):
 
     return days_list, nights_list
 
-
-def split_days_old(gui, modifier=0):
-    """
-			Splits the entire data set into individual day and night objects based on user-provided day and
-			night start times.
-
-			Args:
-					gui (GUIClass)
-					modifier (int): amount in minutes to modify given times by
-	"""
-
-    def shift_time(ori_time):
-        """
-				Slightly offsets the time from the input file to try to address skipping of critical times being
-				searched for.
-
-				Args:
-						ori_time (str): original time (prior to modification)
-		"""
-
-        if modifier == 0:
-            new_time = ori_time
-        else:
-            # Convert string time value to datetime format
-            search = re.search(r"((\d+):(\d+))", ori_time)
-            hour = int(search.group(2))
-            minute = int(search.group(3))
-            time = datetime.datetime(1, 1, 1, hour, minute, 0)
-
-            # Add modifer and strip unnecessary characters
-            new_time = time + datetime.timedelta(minutes=modifier)
-            new_time = str(new_time)[11:-3]
-            if new_time[0] == "0":
-                new_time = new_time[1:]
-
-        return " " + new_time.strip()
-
-    days_list, nights_list = [], []
-
-    reached_end = False
-    day_start = shift_time(gui.day_start_E.get())
-    night_start = shift_time(gui.night_start_E.get())
-    day_dur = get_day_dur(day_start, night_start)
-    night_dur = 1440 - day_dur
-    day_interval = 1440 / gui.time_interval
-    day_start_index = -1
-    night_start_index = -1
-
-    # Look for first day or night
-    for i in range(0, len(gui.master_df)):
-        # If day_start found before night_start
-        if re.search(day_start, gui.master_df.loc[i, "date_time"]):
-            # Set start of first day to this index
-            day_start_index = i
-            # Set start of first night to day index + duration of daytime
-            night_start_index = i + (day_dur / gui.time_interval)
-            # Check if this sets night_start_index past length of master DataFrame
-            if night_start_index > (len(gui.master_df) - 1):
-                reached_end = True
-                night_start_index = len(gui.master_df) - 1
-                days_list.append(niq_classes.Block(gui, day_start_index, night_start_index - 1, True))
-
-            break
-        # If night_start found before day_start
-        elif re.search(night_start, gui.master_df.loc[i, "date_time"]):
-            # Set start of first night to this index
-            night_start_index = i
-            # Set start of first day to night index + duration of nighttime
-            day_start_index = i + (night_dur / gui.time_interval)
-            # Check if this sets day_start_index past length of master DataFrame
-            if day_start_index > (len(gui.master_df) - 1):
-                reached_end = True
-                day_start_index = len(gui.master_df) - 1
-
-            break
-
-    # Check if data starts at night and process to achieve uniformity going into following while loop
-    # Catch partial day at start of master DataFrame
-    if night_start_index < day_start_index:
-        days_list.append(niq_classes.Block(gui, 0, night_start_index - 1, True))
-        nights_list.append(niq_classes.Block(gui, night_start_index, day_start_index - 1, reached_end))
-        night_start_index += day_interval
-    # Catch partial night at start of master DataFrame
-    elif day_start_index < night_start_index:
-        nights_list.append(niq_classes.Block(gui, 0, day_start_index - 1, True))
-    # If neither day_start or night_start found, append partial day or night
-    elif day_start_index == night_start_index:
-        reached_end = True
-        if check_time_in_daytime(day_start, night_start, gui.master_df.loc[i, "date_time"]):
-            days_list.append(niq_classes.Block(gui, 0, (len(gui.master_df) - 1), True))
-        else:
-            nights_list.append(niq_classes.Block(gui, 0, (len(gui.master_df) - 1), True))
-
-    # Save each day and night as object
-    while not reached_end:
-        days_list.append(niq_classes.Block(gui, day_start_index, night_start_index - 1, False))
-        day_start_index += day_interval
-
-        # Make final night stop at end of master DataFrame
-        if day_start_index > len(gui.master_df):
-            day_start_index = len(gui.master_df) - 1
-            nights_list.append(niq_classes.Block(gui, night_start_index, day_start_index - 1, True))
-            reached_end = True
-            break
-        else:
-            nights_list.append(niq_classes.Block(gui, night_start_index, day_start_index - 1, False))
-            night_start_index += day_interval
-
-        # Make final day stop at end of master DataFrame
-        if night_start_index > len(gui.master_df):
-            night_start_index = len(gui.master_df) - 1
-            days_list.append(niq_classes.Block(gui, day_start_index, night_start_index - 1, True))
-            reached_end = True
-
-    # Address problem of start time skipping
-    if len(days_list) == 0 or len(nights_list) == 0:
-        if (modifier + 1) < gui.time_interval:
-            days_list.clear()
-            nights_list.clear()
-            # Recursively call split_days with incremented modifier
-            days_list, nights_list = split_days(gui, modifier=(modifier + 1))
-        # If still no days or nights found, provide text warning
-        elif (gui.time_interval * len(gui.master_df)) > 1440:
-            if gui.show_warns_BV.get():
-                messagebox.showwarning(
-                    "Warning",
-                    (
-                        "If daytime periods are not being identified correctly, try manually"
-                        + ' setting "data_time_interval" variable in the defaultConfig.ini file'
-                        + " found in the cofig_files folder."
-                    ),
-                )
-
-    return days_list, nights_list
 
 
 def get_day_dur(day_start, night_start):
@@ -399,9 +217,10 @@ def get_master_df(gui, source_path):
     def is_number(string):
         try:
             float(string)
-            return True
         except ValueError:
             return False
+
+        return True
 
     df = csv_to_df(source_path)
 
@@ -430,7 +249,7 @@ def get_master_df(gui, source_path):
 
     # Convert column object types
     df["data_point"] = df["data_point"].astype(int)
-    df["date_time"] = df["date_time"].astype(str)
+    df["date_time"] = df["date_time"].apply(convert_to_datetime)
     df["egg_temper"] = df["egg_temper"].astype(float).round(4)
     df["air_temper"] = df["air_temper"].astype(float).round(4)
 
@@ -1037,15 +856,15 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
     for bout in bouts:
         row = ""
         # Print date if it is the first row corresponding to this date
-        this_date = extract_date(gui.master_df.loc[bout.start, "date_time"])
+        this_date = gui.master_df.loc[bout.start, "date_time"].strftime(r"%m/%d/%Y")
         row += "," if this_date == cur_date else f"{this_date},"
         cur_date = this_date
 
         row += "Off," if bout.bout_type == 0 else "On,"
 
         row += (
-            f"{extract_time(gui.master_df.loc[bout.start, 'date_time'])},"
-            + f"{extract_time(gui.master_df.loc[bout.stop, 'date_time'])},"
+            f"{gui.master_df.loc[bout.start, 'date_time'].strftime(r'%H:%M')},"
+            + f"{gui.master_df.loc[bout.stop, 'date_time'].strftime(r'%H:%M')},"
             + f"{gui.master_df.loc[bout.start, 'data_point']},"
             + f"{gui.master_df.loc[bout.stop, 'data_point']},"
             + f"{bout.dur},"
@@ -1103,23 +922,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
         plot_width = int(gui.plot_dim_x_E.get())
         plot_height = int(gui.plot_dim_y_E.get())
 
-    TOOLTIPS = """
-        <div>
-            <div>
-                <span style="font-size: 17px">[$x{int}]</span>
-                <span style="font-size: 15px">@desc</span>
-            </div>
-            <div>
-                <span>@fonts{safe}</span>
-            </div>
-            <div>
-                <span style="font-size: 15px">Location</span>
-                <span style="font-size: 10px"</span>
-            </div>
-        </div>
-    """
-
-    # TOOLTIPS = [("Data Point", "$x{int}"), ("Temperature", "$y")]
+    TOOLTIPS = [("Data Point", "$x{int}"), ("Temperature", "$y")]
 
     hover = HoverTool(tooltips=TOOLTIPS)
 
@@ -1417,50 +1220,6 @@ def extract_in_files(in_file_string):
         in_file_tup += (path[1:] + ".csv",) if num != 0 else (path + ".csv",)
 
     return in_file_tup[:-1]
-
-
-def get_datetime(gui, line):
-    """
-			Creates datetime object from date/time cell in the input file.
-
-			Args:
-					line (str): text from date/time cell
-	"""
-
-    print_file_name = "File: " + os.path.basename(os.path.normpath(gui.input_file_E.get())) + " \n\n"
-
-    try:
-        time_search = re.search(r"(\d+):(\d+)", line[gui.date_time_col])
-        date_search = re.search(r"(\d+)\/(\d+)\/(\d+)", line[gui.date_time_col])
-
-        if not time_search:
-            messagebox.showerror(
-                "Time Format Error", (print_file_name + "No time found for data point " + line[gui.data_point_col] + ".  Time should be in HH:MM format.")
-            )
-            print(line)
-            return False
-
-        if not date_search:
-            messagebox.showerror(
-                "Date Format Error", (print_file_name + "No date found for data point " + line[gui.data_point_col] + ".  Date should be in MM/DD/YYYY format.")
-            )
-            return False
-
-        hour, minute = int(time_search.group(1)), int(time_search.group(2))
-        month, day, year = int(date_search.group(1)), int(date_search.group(2)), int(date_search.group(3))
-
-        datetime_ = datetime.datetime(year, month, day, hour, minute)
-        return datetime_
-    except:
-        messagebox.showerror(
-            "Date/Time Error", "".join((print_file_name, "Unknown error while processing date/time column. Ensure input file is in the correct format."))
-        )
-        return False
-
-
-def list_to_gen(list_):
-    for item in list_:
-        yield item
 
 
 def add_states(df, verts=None, states=None):

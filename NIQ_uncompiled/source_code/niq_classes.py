@@ -155,7 +155,7 @@ class Block:
         on_incs = []
         on_tempers = []
 
-        self.date = re.search(r"(\d+/\d+/\d+)", gui.master_df.loc[self.start, "date_time"]).group(0)
+        self.date = gui.master_df.loc[self.start, "date_time"].strftime(r"%m/%d/%Y")
 
         # This sets the temper containers to Series
         # self.egg_tempers = gui.master_df.loc[self.start : self.stop + 1, "egg_temper"]
