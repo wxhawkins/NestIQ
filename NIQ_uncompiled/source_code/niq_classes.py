@@ -1,5 +1,5 @@
+import numpy as np
 import re
-import statistics
 
 
 class Vertex:
@@ -41,16 +41,16 @@ class Bout:
         self.stop = stop_
         self.bout_type = bout_type_
         self.dur = gui.time_interval * (stop_ - start_)
-        self.mean_egg_temper = 0
-        self.mean_air_temper = 0
+        self.mean_egg_temper = None
+        self.mean_air_temper = None
         self.egg_tempers = []
         air_tempers = []
 
         self.egg_tempers += gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
-        self.mean_egg_temper = round(statistics.mean(self.egg_tempers), 3)
+        self.mean_egg_temper = round(np.mean(self.egg_tempers), 3)
 
         air_tempers += gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
-        self.mean_air_temper = round(statistics.mean(air_tempers), 3)
+        self.mean_air_temper = round(np.mean(air_tempers), 3)
 
         self.temper_change = gui.master_df.loc[self.stop, "egg_temper"] - gui.master_df.loc[self.start, "egg_temper"]
 
@@ -108,36 +108,31 @@ class Block:
         self.bouts = []
 
         self.off_count = 0
-        self.mean_off_dur = 0
-        self.off_dur_stdev = 0
-
-        self.mean_off_dec = 0
-        self.off_dec_stdev = 0
-
-        self.mean_off_temper = 0
+        self.mean_off_dur = None
+        self.off_dur_stdev = None
+        self.mean_off_dec = None
+        self.off_dec_stdev = None
+        self.mean_off_temper = None
         self.off_time_sum = 0
 
         self.on_count = 0
-        self.mean_on_dur = 0
-        self.on_dur_stdev = 0
-
-        self.mean_on_inc = 0
-        self.on_inc_stdev = 0
-
-        self.mean_on_temper = 0
+        self.mean_on_dur = None
+        self.on_dur_stdev = None
+        self.mean_on_inc = None
+        self.on_inc_stdev = None
+        self.mean_on_temper = None
         self.on_time_sum = 0
 
-        self.mean_egg_temper = 0
-        self.egg_temper_stdev = 0
+        self.mean_egg_temper = None
+        self.egg_temper_stdev = None
+        self.median_temper = None
+        self.min_egg_temper = None
+        self.max_egg_temper = None
 
-        self.median_temper = 0
-        self.min_egg_temper = 0
-        self.max_egg_temper = 0
-
-        self.mean_air_temper = 0
-        self.air_temper_stdev = 0
-        self.min_air_temper = 0
-        self.max_air_temper = 0
+        self.mean_air_temper = None
+        self.air_temper_stdev = None
+        self.min_air_temper = None
+        self.max_air_temper = None
 
         self.time_above_temper = 0
         self.time_below_temper = 0
@@ -145,7 +140,7 @@ class Block:
 
     def get_stats(self, gui):
         """
-                Calculate and store various statistics for this block.
+                Calculate and store various statistics for this Block.
         """
 
         off_durs = []
@@ -158,23 +153,18 @@ class Block:
         self.date = gui.master_df.loc[self.start, "date_time"].strftime(r"%m/%d/%Y")
 
         # This sets the temper containers to Series
-        # self.egg_tempers = gui.master_df.loc[self.start : self.stop + 1, "egg_temper"]
-        # self.air_tempers = gui.master_df.loc[self.start : self.stop + 1, "air_temper"]
-        # data_points_above_temper = len(self.egg_tempers.loc[self.egg_tempers > float(gui.time_above_temper_E.get())])
-        # self.time_above_temper = data_points_above_temper * gui.time_interval
-        # data_points_below_temper = len(self.egg_tempers.loc[self.egg_tempers < float(gui.time_below_temper_E.get())])
-        # self.time_below_temper = data_points_below_temper * gui.time_interval
+        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"]
+        self.air_tempers = gui.master_df.loc[self.start : self.stop, "air_temper"]
 
-        # This sets the temper containers to lists
-        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].round(4).tolist()
-        self.air_tempers = gui.master_df.loc[self.start : self.stop, "air_temper"].round(4).tolist()
-        egg_temper_series = gui.master_df.loc[self.start : self.stop, "egg_temper"]
-        air_temper_series = gui.master_df.loc[self.start : self.stop, "air_temper"]
-
-        data_points_above_temper = len(egg_temper_series.loc[egg_temper_series > float(gui.time_above_temper_E.get())])
+        # Get number of data points passing threshold and multiply by duration
+        data_points_above_temper = len(self.egg_tempers.loc[self.egg_tempers > float(gui.time_above_temper_E.get())])
+        data_points_below_temper = len(self.egg_tempers.loc[self.egg_tempers < float(gui.time_below_temper_E.get())])
         self.time_above_temper = data_points_above_temper * gui.time_interval
-        data_points_below_temper = len(egg_temper_series.loc[egg_temper_series < float(gui.time_below_temper_E.get())])
         self.time_below_temper = data_points_below_temper * gui.time_interval
+
+        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].to_list()
+        self.air_tempers = gui.master_df.loc[self.start : self.stop, "air_temper"].to_list()
+
 
         for bout in self.bouts:
             if bout.bout_type == 0:
@@ -182,7 +172,7 @@ class Block:
                 off_durs.append(bout.dur)
                 off_decs.append(bout.temper_change)
                 off_tempers += bout.egg_tempers
-            else:
+            elif bout.bout_type == 1:
                 # Compile on-bout data
                 on_durs.append(bout.dur)
                 on_incs.append(bout.temper_change)
@@ -190,35 +180,35 @@ class Block:
 
         # Get means and standard deviations
         if self.off_count > 0:
-            self.mean_off_dur = round(statistics.mean(off_durs), 2)
-            self.mean_off_dec = round(statistics.mean(off_decs), 3)
-            self.mean_off_temper = round(statistics.mean(off_tempers), 3)
+            self.mean_off_dur = round(np.mean(off_durs), 2)
+            self.mean_off_dec = round(np.mean(off_decs), 3)
+            self.mean_off_temper = round(np.mean(off_tempers), 3)
             self.off_time_sum = round(sum(off_durs), 2)
             if self.off_count > 1:
-                self.off_dur_stdev = round(statistics.stdev(off_durs), 2)
-                self.off_dec_stdev = round(statistics.stdev(off_decs), 3)
+                self.off_dur_stdev = round(np.std(off_durs), 2)
+                self.off_dec_stdev = round(np.std(off_decs), 3)
 
         if self.on_count > 0:
-            self.mean_on_dur = round(statistics.mean(on_durs), 2)
-            self.mean_on_inc = round(statistics.mean(on_incs), 3)
-            self.mean_on_temper = round(statistics.mean(on_tempers), 3)
+            self.mean_on_dur = round(np.mean(on_durs), 2)
+            self.mean_on_inc = round(np.mean(on_incs), 3)
+            self.mean_on_temper = round(np.mean(on_tempers), 3)
             self.on_time_sum = round(sum(on_durs), 2)
             if self.on_count > 1:
-                self.on_dur_stdev = round(statistics.stdev(on_durs), 2)
-                self.on_inc_stdev = round(statistics.stdev(on_incs), 3)
+                self.on_dur_stdev = round(np.std(on_durs), 2)
+                self.on_inc_stdev = round(np.std(on_incs), 3)
 
         # Calculate temperature statistics for this block
-        self.mean_egg_temper = round(statistics.mean(self.egg_tempers), 3)
+        self.mean_egg_temper = round(np.mean(self.egg_tempers), 3)
         if len(self.egg_tempers) > 1:
-            self.egg_temper_stdev = round(statistics.stdev(self.egg_tempers), 3)
+            self.egg_temper_stdev = round(np.std(self.egg_tempers), 3)
 
-        self.median_temper = round(statistics.median(self.egg_tempers), 3)
+        self.median_temper = round(np.median(self.egg_tempers), 3)
         self.min_egg_temper = min(self.egg_tempers)
         self.max_egg_temper = max(self.egg_tempers)
 
         if gui.air_valid:
-            self.mean_air_temper = round(statistics.mean(self.air_tempers), 3)
-            self.air_temper_stdev = round(statistics.stdev(self.air_tempers), 3)
+            self.mean_air_temper = round(np.mean(self.air_tempers), 3)
+            self.air_temper_stdev = round(np.std(self.air_tempers), 3)
             self.min_air_temper = min(self.air_tempers)
             self.max_air_temper = max(self.air_tempers)
 
@@ -240,31 +230,24 @@ class Block:
         bulk_off_tempers = []
         bulk_on_durs = []
         bulk_on_incs = []
-        bulk_on_tempers = []
 
         # Compile various data for all block periods
         for bout in self.bouts:
             if bout.bout_type == 0:
                 bulk_off_durs.append(bout.dur)
                 bulk_off_decs.append(bout.temper_change)
-                for temper in bout.egg_tempers:
-                    bulk_off_tempers.append(temper)
             elif bout.bout_type == 1:
                 bulk_on_durs.append(bout.dur)
                 bulk_on_incs.append(bout.temper_change)
-                for temper in bout.egg_tempers:
-                    bulk_on_tempers.append(temper)
 
         # Compile lists used to calculate statistics across multiple input files
         gui.multi_file_off_durs += bulk_off_durs
         gui.multi_file_off_decs += bulk_off_decs
         gui.multi_file_on_durs += bulk_on_durs
-        gui.milti_in_on_incs += bulk_on_incs
+        gui.multi_in_on_incs += bulk_on_incs
 
 
 # Used to store stats for all days or all nights
-
-
 class BlockGroup:
     """
             Stores information about all blocks of a single type such as daytime blocks, nightime
@@ -308,42 +291,41 @@ class BlockGroup:
         self.air_tempers = []
 
         self.off_count = 0
-        self.mean_off_dur = 0
-        self.off_dur_stdev = 0
-
-        self.mean_off_dec = 0
-        self.off_dec_stdev = 0
-
-        self.mean_off_temper = 0
+        self.mean_off_dur = None
+        self.off_dur_stdev = None
+        self.mean_off_dec = None
+        self.off_dec_stdev = None
+        self.mean_off_temper = None
         self.off_time_sum = 0
 
         self.on_count = 0
-        self.mean_on_dur = 0
-        self.on_dur_stdev = 0
-
-        self.mean_on_inc = 0
-        self.on_inc_stdev = 0
-
-        self.mean_on_temper = 0
+        self.mean_on_dur = None
+        self.on_dur_stdev = None
+        self.mean_on_inc = None
+        self.on_inc_stdev = None
+        self.mean_on_temper = None
         self.on_time_sum = 0
 
-        self.mean_egg_temper = 0
-        self.egg_temper_stdev = 0
+        self.mean_egg_temper = None
+        self.egg_temper_stdev = None
+        self.median_temper = None
+        self.min_egg_temper = None
+        self.max_egg_temper = None
 
-        self.median_temper = 0
-        self.min_egg_temper = 0
-        self.max_egg_temper = 0
-
-        self.mean_air_temper = 0
-        self.air_temper_stdev = 0
-        self.min_air_temper = 0
-        self.max_air_temper = 0
+        self.mean_air_temper = None
+        self.air_temper_stdev = None
+        self.min_air_temper = None
+        self.max_air_temper = None
 
         self.time_above_temper = 0
         self.time_below_temper = 0
         self.bouts_dropped = 0
 
-    def get_stats(self, gui, append=True):
+    def get_stats(self, gui):
+        """
+                Calculate and store various statistics for this BlockGroup.
+        """
+
         bulk_off_durs = []
         bulk_off_decs = []
         bulk_off_tempers = []
@@ -370,44 +352,42 @@ class BlockGroup:
                 if bout.bout_type == 0:
                     bulk_off_durs.append(bout.dur)
                     bulk_off_decs.append(bout.temper_change)
-                    for temper in bout.egg_tempers:
-                        bulk_off_tempers.append(temper)
-                else:
+                    bulk_off_tempers += bout.egg_tempers
+                elif bout.bout_type == 1:
                     bulk_on_durs.append(bout.dur)
                     bulk_on_incs.append(bout.temper_change)
-                    for temper in bout.egg_tempers:
-                        bulk_on_tempers.append(temper)
+                    bulk_on_tempers += bout.egg_tempers
 
         # Get means and standard deviations
         if self.off_count > 0:
-            self.mean_off_dur = round(statistics.mean(bulk_off_durs), 2)
-            self.mean_off_dec = round(statistics.mean(bulk_off_decs), 3)
-            self.mean_off_temper = round(statistics.mean(bulk_off_tempers), 3)
+            self.mean_off_dur = round(np.mean(bulk_off_durs), 2)
+            self.mean_off_dec = round(np.mean(bulk_off_decs), 3)
+            self.mean_off_temper = round(np.mean(bulk_off_tempers), 3)
             self.off_time_sum = round(sum(bulk_off_durs), 2)
             if self.off_count > 1:
-                self.off_dur_stdev = round(statistics.stdev(bulk_off_durs), 2)
-                self.off_dec_stdev = round(statistics.stdev(bulk_off_decs), 3)
+                self.off_dur_stdev = round(np.std(bulk_off_durs), 2)
+                self.off_dec_stdev = round(np.std(bulk_off_decs), 3)
 
         if self.on_count > 0:
-            self.mean_on_dur = round(statistics.mean(bulk_on_durs), 2)
-            self.mean_on_inc = round(statistics.mean(bulk_on_incs), 3)
-            self.mean_on_temper = round(statistics.mean(bulk_on_tempers), 3)
+            self.mean_on_dur = round(np.mean(bulk_on_durs), 2)
+            self.mean_on_inc = round(np.mean(bulk_on_incs), 3)
+            self.mean_on_temper = round(np.mean(bulk_on_tempers), 3)
             self.on_time_sum = round(sum(bulk_on_durs), 2)
             if self.on_count > 1:
-                self.on_dur_stdev = round(statistics.stdev(bulk_on_durs), 2)
-                self.on_inc_stdev = round(statistics.stdev(bulk_on_incs), 3)
+                self.on_dur_stdev = round(np.std(bulk_on_durs), 2)
+                self.on_inc_stdev = round(np.std(bulk_on_incs), 3)
 
         # Calculate temperature statistics for all blocks
-        self.mean_egg_temper = round(statistics.mean(self.egg_tempers), 3)
+        self.mean_egg_temper = round(np.mean(self.egg_tempers), 3)
         if len(self.egg_tempers) > 1:
-            self.egg_temper_stdev = round(statistics.stdev(self.egg_tempers), 3)
+            self.egg_temper_stdev = round(np.std(self.egg_tempers), 3)
 
-        self.median_temper = round(statistics.median(self.egg_tempers), 3)
+        self.median_temper = round(np.median(self.egg_tempers), 3)
         self.min_egg_temper = min(self.egg_tempers)
         self.max_egg_temper = max(self.egg_tempers)
 
         if gui.air_valid:
-            self.mean_air_temper = round(statistics.mean(self.air_tempers), 3)
-            self.air_temper_stdev = round(statistics.stdev(self.air_tempers), 3)
+            self.mean_air_temper = round(np.mean(self.air_tempers), 3)
+            self.air_temper_stdev = round(np.std(self.air_tempers), 3)
             self.min_air_temper = min(self.air_tempers)
             self.max_air_temper = max(self.air_tempers)

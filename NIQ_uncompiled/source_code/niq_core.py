@@ -3,7 +3,6 @@ import csv
 import datetime
 import os
 import re
-import statistics
 import subprocess
 import sys
 import time
@@ -24,8 +23,7 @@ import niq_classes
 import niq_hmm
 import niq_misc
 import testing
-from niq_misc import replace_entry, set_unique_path, remove_curly
-
+from niq_misc import remove_curly, replace_entry, set_unique_path
 
 root = tk.Tk()
 STANDARD_FONT = font.Font(size=10)
@@ -51,12 +49,6 @@ class GUIClass:
         self.master_dir_path = Path.cwd().parent
         self.init_config()
 
-        # Initialize column identities -- currently static
-        self.data_point_col = 0
-        self.date_time_col = 1
-        self.egg_temper_col = 2
-        self.air_temper_col = 3
-
         # Store primary monitor dimensions
         self.mon_dims = (self.root.winfo_screenwidth(), self.root.winfo_screenheight())
 
@@ -64,7 +56,7 @@ class GUIClass:
         self.multi_file_off_durs = []
         self.multi_file_off_decs = []
         self.multi_file_on_durs = []
-        self.milti_in_on_incs = []
+        self.multi_in_on_incs = []
         self.multi_in_day_tempers = []
         self.multi_in_night_tempers = []
         self.multi_in_air_tempers = []
@@ -1131,7 +1123,7 @@ class GUIClass:
                 # Remove lines not conforming to expected format (such as headers)
                 for i in range(len(master_list[:-1])):
                     # Cells in data point column must contain only numbers
-                    if not str(master_list[i][self.data_point_col]).isnumeric():
+                    if not str(master_list[i][0]).isnumeric():
                         pop_indices.append(i)
 
                 for pop_count, index in enumerate(pop_indices):
@@ -1155,13 +1147,13 @@ class GUIClass:
 
                     # Check if data points are continuous and sequential
                     try:
-                        if not int(line[self.data_point_col]) == (int(prev_line[self.data_point_col]) + 1):
+                        if not int(line[0]) == (int(prev_line[0]) + 1):
                             raise ValueError
                     except:
                         messagebox.showerror(
                             "Data Point Error",
                             f"{file_name_appendage}Error after data point " +
-                            f"{prev_line[self.data_point_col]}. Data point number is not sequential with regard to previous data point."
+                            f"{prev_line[0]}. Data point number is not sequential with regard to previous data point."
                         )
                         return False
 
@@ -1205,30 +1197,30 @@ class GUIClass:
                                 messagebox.showwarning(
                                     "Date/time Warning",
                                     f"{file_name_appendage}Discontinuous date/time found for data point " +
-                                    f"{line[self.data_point_col]}. The program will continue, but this could cause inaccurate statistical output."
+                                    f"{line[0]}. The program will continue, but this could cause inaccurate statistical output."
                                 )
 
                     # Check egg temperatures column
                     try:
-                        float(line[self.egg_temper_col])
+                        float(line[2])
                     except:
                         messagebox.showerror(
                             "Temperature Error",
-                            f"{file_name_appendage}Invalid temperature given for data point {line[self.data_point_col]}."
+                            f"{file_name_appendage}Invalid temperature given for data point {line[0]}."
                         )
                         return False
 
                     # Check air temperatures column if appropriate
                     if self.air_valid:
                         try:
-                            float(line[self.air_temper_col])
+                            float(line[3])
                         except (IndexError, ValueError):
                             self.air_valid = False
                             if self.show_warns_BV.get():
                                 messagebox.showwarning(
                                     "Air Temperature Warning",
                                     f"{file_name_appendage}Invalid air temperature detected for data point " +
-                                    f"{line[self.data_point_col]}. Air temperatures will not be plotted or included in statistical output."
+                                    f"{line[0]}. Air temperatures will not be plotted or included in statistical output."
                                 )
                     prev_line = line
 
@@ -1668,30 +1660,30 @@ class GUIClass:
             print("Cumulative Summary", file=compiled_stats_file)
 
             print("Off-Bout Count", qualifier, str(len(self.multi_file_off_durs)), file=compiled_stats_file)
-            print("Mean Off Dur", qualifier, str(round(statistics.mean(self.multi_file_off_durs), 2)), file=compiled_stats_file)
-            print("Off Dur StDev", qualifier, str(round(statistics.stdev(self.multi_file_off_durs), 2)), file=compiled_stats_file)
-            print("Mean Off Temp Drop", qualifier, str(round(statistics.mean(self.multi_file_off_decs), 3)), file=compiled_stats_file)
-            print("Off Drop StDev", qualifier, str(round(statistics.stdev(self.multi_file_off_decs), 3)), file=compiled_stats_file)
+            print("Mean Off Dur", qualifier, str(round(np.mean(self.multi_file_off_durs), 2)), file=compiled_stats_file)
+            print("Off Dur StDev", qualifier, str(round(np.std(self.multi_file_off_durs), 2)), file=compiled_stats_file)
+            print("Mean Off Temp Drop", qualifier, str(round(np.mean(self.multi_file_off_decs), 3)), file=compiled_stats_file)
+            print("Off Drop StDev", qualifier, str(round(np.std(self.multi_file_off_decs), 3)), file=compiled_stats_file)
 
             print("On-Bout Count", qualifier, str(len(self.multi_file_on_durs)), file=compiled_stats_file)
-            print("Mean On Dur", qualifier, str(round(statistics.mean(self.multi_file_on_durs), 2)), file=compiled_stats_file)
-            print("On Dur StDev", qualifier, str(round(statistics.stdev(self.multi_file_on_durs), 2)), file=compiled_stats_file)
-            print("Mean On Temp Rise", qualifier, str(round(statistics.mean(self.milti_in_on_incs), 3)), file=compiled_stats_file)
-            print("On Rise StDev", qualifier, str(round(statistics.stdev(self.milti_in_on_incs), 3)), file=compiled_stats_file)
+            print("Mean On Dur", qualifier, str(round(np.mean(self.multi_file_on_durs), 2)), file=compiled_stats_file)
+            print("On Dur StDev", qualifier, str(round(np.std(self.multi_file_on_durs), 2)), file=compiled_stats_file)
+            print("Mean On Temp Rise", qualifier, str(round(np.mean(self.multi_in_on_incs), 3)), file=compiled_stats_file)
+            print("On Rise StDev", qualifier, str(round(np.std(self.multi_in_on_incs), 3)), file=compiled_stats_file)
 
             print("Full Day Count,", str(self.multi_in_full_day_count), file=compiled_stats_file)
-            print("Mean Egg Temp,", str(round(statistics.mean((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
-            print("Egg Temp StDev,", str(round(statistics.stdev((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
-            print("Mean Daytime Egg Temp,", str(round(statistics.mean(self.multi_in_day_tempers), 3)), file=compiled_stats_file)
-            print("Day Egg Temp StDev,", str(round(statistics.stdev(self.multi_in_day_tempers), 3)), file=compiled_stats_file)
-            print("Mean Nighttime Egg Temp,", str(round(statistics.mean(self.multi_in_night_tempers), 3)), file=compiled_stats_file)
-            print("Night Egg Temp StDev,", str(round(statistics.stdev(self.multi_in_night_tempers), 3)), file=compiled_stats_file)
+            print("Mean Egg Temp,", str(round(np.mean((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
+            print("Egg Temp StDev,", str(round(np.std((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
+            print("Mean Daytime Egg Temp,", str(round(np.mean(self.multi_in_day_tempers), 3)), file=compiled_stats_file)
+            print("Day Egg Temp StDev,", str(round(np.std(self.multi_in_day_tempers), 3)), file=compiled_stats_file)
+            print("Mean Nighttime Egg Temp,", str(round(np.mean(self.multi_in_night_tempers), 3)), file=compiled_stats_file)
+            print("Night Egg Temp StDev,", str(round(np.std(self.multi_in_night_tempers), 3)), file=compiled_stats_file)
             print("Min Egg Temp,", str(min(self.multi_in_day_tempers + self.multi_in_night_tempers)), file=compiled_stats_file)
             print("Max Egg Temp,", str(max(self.multi_in_day_tempers + self.multi_in_night_tempers)), file=compiled_stats_file)
 
             if self.air_valid:
-                print("Mean Air Temp,", str(round(statistics.mean(self.multi_in_air_tempers), 3)), file=compiled_stats_file)
-                print("Air Temp StDev,", str(round(statistics.stdev(self.multi_in_air_tempers), 3)), file=compiled_stats_file)
+                print("Mean Air Temp,", str(round(np.mean(self.multi_in_air_tempers), 3)), file=compiled_stats_file)
+                print("Air Temp StDev,", str(round(np.std(self.multi_in_air_tempers), 3)), file=compiled_stats_file)
                 print("Min Air Temp,", str(min(self.multi_in_air_tempers)), file=compiled_stats_file)
                 print("Max Air Temp,", str(max(self.multi_in_air_tempers)), file=compiled_stats_file)
 
@@ -1705,7 +1697,7 @@ class GUIClass:
         self.multi_file_off_durs = []
         self.multi_file_off_decs = []
         self.multi_file_on_durs = []
-        self.milti_in_on_incs = []
+        self.multi_in_on_incs = []
         self.multi_in_day_tempers = []
         self.multi_in_night_tempers = []
         self.multi_in_air_tempers = []
@@ -1981,7 +1973,7 @@ class GUIClass:
         self.root.quit()
         self.root.destroy()
 
-    def reset_nighttime_state(self, nights_list, master_df):
+    def set_nighttime_state(self, nights_list, master_df):
         """
 						Sets state of nightime data points to "nonsense" value of 2. These points will be ignored for the
 						majority of downstream statistical calculations.
@@ -1991,8 +1983,9 @@ class GUIClass:
 										master_df (DataFrame): master DataFrame which will have states column modified
 		"""
 
-        for night in nights_list:
-            master_df.loc[night.start : night.stop - 1, "bout_state"] = "None"
+        if self.restrict_search_BV.get():
+            for night in nights_list:
+                master_df.loc[night.start : night.stop - 1, "bout_state"] = "None"
 
         return master_df
 
@@ -2081,12 +2074,12 @@ def main(gui):
 					Args:
 									gui (GUIClass)
 	"""
+    
     block_start = time.time()
 
     days_list, nights_list = niq_misc.split_days(gui)
 
-    if gui.restrict_search_BV.get():
-        gui.master_df = gui.reset_nighttime_state(nights_list, gui.master_df)
+    gui.master_df = gui.set_nighttime_state(nights_list, gui.master_df)
 
     # Store all vertices in master block object for later allocation
     master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)
@@ -2122,11 +2115,11 @@ def main(gui):
 
     days = niq_classes.BlockGroup(gui, days_list)
     if len(days_list) > 0:
-        days.get_stats(gui, append=False)
+        days.get_stats(gui)
 
     nights = niq_classes.BlockGroup(gui, nights_list)
     if len(nights_list) > 0:
-        nights.get_stats(gui, append=False)
+        nights.get_stats(gui)
 
     pairs_list = []
     if len(days_list) > 0 and len(nights_list) > 0:
@@ -2139,7 +2132,7 @@ def main(gui):
 
     pairs_block_group = niq_classes.BlockGroup(gui, pairs_list)
     if len(pairs_list) > 0:
-        pairs_block_group.get_stats(gui, append=False)
+        pairs_block_group.get_stats(gui)
 
     print(f"get_stats and blocks took {round(time.time() - block_start, 3)}")
 

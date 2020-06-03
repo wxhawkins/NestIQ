@@ -44,6 +44,7 @@ def master_test(gui):
         mismatches = dict()
 
         # Exctract important lines from files provided
+
         with open(ref_path, "r") as ref_file, open(test_path, "r") as test_file:
             ref_lines = ref_file.readlines()
             labels = ref_lines[1].strip().split(",")
@@ -72,12 +73,14 @@ def master_test(gui):
 
         """
 
-        with open(unsup_ref_path, "r") as ref_file, open(unsup_test_path, "r") as test_file:
+        with open(ref_path, "r") as ref_file, open(test_path, "r") as test_file:
             ref_lines = ref_file.readlines()
             test_lines = test_file.readlines()
-
-        mismatches = {}
+        print(test_path)
+        mismatches = dict()
         for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
+            # print(ref_line)
+            print(test_line)
             if test_line.strip() != ref_line.strip():
                 try:
                     # Get line label
@@ -144,6 +147,7 @@ def master_test(gui):
         gui.trigger_run()
 
         # Look for discrepencies in output files
+        mismatches = dict()
         mismatches = compare_stats(rand_key, ref_path, test_stats_path)
 
         # Notify user of mismatched values if any
@@ -170,6 +174,7 @@ def master_test(gui):
     gui.save_config(out_file=str(unsup_test_path))
 
     # Search for config discrepencies
+    mismatches = dict()
     mismatches = compare_configs(unsup_ref_path, unsup_test_path)
 
     if not mismatches:
@@ -206,6 +211,7 @@ def master_test(gui):
     gui.save_config(out_file=str(sup_test_path))
 
     # Search for config discrepencies
+    mismatches = dict()
     mismatches = compare_configs(sup_ref_path, sup_test_path)
 
     if not mismatches:
@@ -251,6 +257,7 @@ def master_test(gui):
     gui.trigger_run(rerun=True)
 
     # Look for discrepencies in output files
+    mismatches = dict()
     mismatches = compare_stats(rand_key, mod_ref_path, test_mod_stats_path)
 
     # Notify user of mismatched values if any

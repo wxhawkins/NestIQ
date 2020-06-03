@@ -86,7 +86,7 @@ class HMM(object):
                 training_verts (list): vertex objects created off of the user's placements
         """
 
-        init = master_df["bout_state"].value_counts().apply(lambda x: x/len(master_df))
+        init = master_df["bout_state"].value_counts().apply(lambda x: x / len(master_df))
         self._initial = init.round(7).to_numpy()
 
         master_array = niq_misc.df_to_array(master_df)
