@@ -39,21 +39,21 @@ def convert_to_datetime(dt_string):
 
     return dt
 
-def is_partial(df, start_index, end_index, expected_dur):
+def is_partial(df, first_index, last_index, expected_dur):
     """
         Checks if given range of indices represents a complete daytime or nighttime period.
 
         Args:
                 df (pd.DataFrame)
-                start_index (int)
-                end_index (int):
+                first_index (int)
+                last_index (int):
                 expected_dur (int): expected duration in seconds
     """
 
     # Allow 5 min (300 sec) of discrepency from expected durration
     block_dur_thresh = expected_dur - 300
-    start_time = df.loc[start_index, "date_time"]
-    end_time = df.loc[end_index, "date_time"]
+    start_time = df.loc[first_index, "date_time"]
+    end_time = df.loc[last_index, "date_time"]
     block_dur = end_time - start_time
     if block_dur > datetime.timedelta(seconds=block_dur_thresh):
         return False
@@ -406,37 +406,37 @@ def get_verts_from_html(gui, in_file, alt=False):
     return vertices
 
 
-def extract_bouts_in_range(gui, total_bouts, start_index, stop_index):
+def extract_bouts_in_range(gui, total_bouts, first_index, last_index):
     """
 			Extracts vertices falling into a specified window of index values.
 
 			Args:
 					gui (GUIClass)
 					total_bouts (list): every bout identified for the current input file
-					start_index (int)
-					stop_index (int)
+					first_index (int)
+					last_index (int)
 	"""
 
     bouts_in_range = []
     left_limit, right_limit = 0, 0
 
-    if len(total_bouts) < 1 or stop_index < total_bouts[0].start or start_index > total_bouts[-1].start:
+    if len(total_bouts) < 1 or last_index < total_bouts[0].first or first_index > total_bouts[-1].last:
         return bouts_in_range
 
     # Determine first bout in range
     for i in range(len(total_bouts)):
-        if total_bouts[i].start >= start_index:
+        if total_bouts[i].first >= first_index:
             left_limit = i
             break
 
     # Determine last bout in range
     for i in range((len(total_bouts) - 1), -1, -1):
-        if total_bouts[i].start <= stop_index:
+        if total_bouts[i].last <= last_index:
             right_limit = i
             break
 
     bouts_in_range = total_bouts[left_limit : (right_limit + 1)]
-    bouts_in_range.sort(key=lambda x: x.start)
+    bouts_in_range.sort(key=lambda x: x.first)
     return bouts_in_range
 
 
@@ -591,7 +591,7 @@ def write_stats(gui, days, nights, date_blocks, master_block):
         # Set date_modifier based on if a date_block exists before the first day block
         date_modifier = 0 if date_blocks.block_list[0].date == days.block_list[0].date else 1
         # Set night_modifier based on if day or night comes first
-        night_modifier = 1 if days.block_list[0].start > nights.block_list[0].start else 0
+        night_modifier = 1 if days.block_list[0].first > nights.block_list[0].last else 0
     except IndexError:
         date_modifier, night_modifier = 0, 0
 
@@ -843,26 +843,26 @@ def write_stats(gui, days, nights, date_blocks, master_block):
     for bout in bouts:
         row = ""
         # Print date if it is the first row corresponding to this date
-        this_date = gui.master_df.loc[bout.start, "date_time"].strftime(r"%m/%d/%Y")
+        this_date = gui.master_df.loc[bout.first, "date_time"].strftime(r"%m/%d/%Y")
         row += "," if this_date == cur_date else f"{this_date},"
         cur_date = this_date
 
         row += bout.bout_type
 
         row += (
-            f"{gui.master_df.loc[bout.start, 'date_time'].strftime(r'%H:%M')},"
-            + f"{gui.master_df.loc[bout.stop, 'date_time'].strftime(r'%H:%M')},"
-            + f"{gui.master_df.loc[bout.start, 'data_point']},"
-            + f"{gui.master_df.loc[bout.stop, 'data_point']},"
+            f"{gui.master_df.loc[bout.first, 'date_time'].strftime(r'%H:%M')},"
+            + f"{gui.master_df.loc[bout.last, 'date_time'].strftime(r'%H:%M')},"
+            + f"{gui.master_df.loc[bout.first, 'data_point']},"
+            + f"{gui.master_df.loc[bout.last, 'data_point']},"
             + f"{bout.dur},"
             + f"{bout.temper_change},"
-            + f"{gui.master_df.loc[bout.start, 'egg_temper']},"
-            + f"{gui.master_df.loc[bout.stop, 'egg_temper']},"
+            + f"{gui.master_df.loc[bout.first, 'egg_temper']},"
+            + f"{gui.master_df.loc[bout.last, 'egg_temper']},"
             + f"{bout.mean_egg_temper},"
         )
 
         if gui.air_valid:
-            row += f"{gui.master_df.loc[bout.start, 'air_temper']},{gui.master_df.loc[bout.stop, 'air_temper']},{bout.mean_air_temper},"
+            row += f"{gui.master_df.loc[bout.first, 'air_temper']},{gui.master_df.loc[bout.last, 'air_temper']},{bout.mean_air_temper},"
 
         bout_rows.append(row)
 
@@ -955,7 +955,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     if gui.show_day_markers_BV.get():
         for day in days_list:
             vertical_line = Span(
-                location=int(gui.master_df.loc[day.start, "data_point"]),
+                location=int(gui.master_df.loc[day.first, "data_point"]),
                 dimension="height",
                 line_color=gui.day_marker_color.get(),
                 line_width=float(gui.day_marker_width_E.get()),
@@ -1319,7 +1319,7 @@ def get_bouts_from_verts(gui, verts):
         # Skip if cur_vert is start of nighttime period
         if cur_vert.vert_type != "None":
             bouts.append(niq_classes.Bout(gui, cur_vert.index, next_vert.index, cur_vert.vert_type)) 
-                   
+
         cur_vert = next_vert
 
     return bouts

@@ -1712,7 +1712,6 @@ class GUIClass:
 
         try:
             self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
-            # FLAG self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
 
             # Get days_list for plotting vertical lines
             days_list = niq_misc.split_days(self)[0]  # Indexing at end excludes nights_list
@@ -1905,7 +1904,6 @@ class GUIClass:
                 self.root.update()
 
                 # Check if all inputs are valid
-                check_start = time.time()
                 edit_tab_check = True if not rerun else self.check_valid_edit_ops()
 
                 if not (
@@ -1916,7 +1914,6 @@ class GUIClass:
                     and edit_tab_check
                 ):
                     break
-                print(f"check took {round(time.time() - check_start, 3)}")
 
                 print("Active file:", path)
 
@@ -1982,7 +1979,7 @@ class GUIClass:
 
         if self.restrict_search_BV.get():
             for night in nights_list:
-                master_df.loc[night.start : night.stop - 1, "bout_state"] = "None"
+                master_df.loc[night.first : night.last, "bout_state"] = "None"
 
         return master_df
 
@@ -2090,7 +2087,7 @@ def main(gui):
     gui.master_df = gui.erase_nighttime_state(gui.master_df)
 
     # Store all vertices in master block object for later allocation
-    gui.master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)
+    gui.master_block = niq_classes.Block(gui, 0, len(gui.master_df) - 1, False)
     gui.master_block.vertices = niq_misc.get_verts_from_master_df(gui.master_df)
     gui.master_block.bouts = niq_misc.get_bouts_from_verts(gui, gui.master_block.vertices)
     gui.master_block.get_stats(gui)
@@ -2107,7 +2104,7 @@ def main(gui):
 
     # Get vertices, bouts and stats for day blocks
     for day in days_list:
-        day.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, day.start, day.stop)
+        day.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, day.first, day.last)
         day.get_stats(gui)
         gui.multi_in_day_tempers += day.egg_tempers
 
@@ -2116,7 +2113,7 @@ def main(gui):
 
     # Get vertices, bouts and stats for night blocks
     for night in nights_list:
-        night.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, night.start, night.stop)
+        night.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, night.first, night.last)
         night.get_stats(gui)
         gui.multi_in_night_tempers += night.egg_tempers
 
@@ -2124,7 +2121,7 @@ def main(gui):
     date_block_list = []
     date_block_list = niq_misc.get_date_blocks(gui)
     for date_block in date_block_list:
-        date_block.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, date_block.start, date_block.stop)
+        date_block.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, date_block.first, date_block.last)
         date_block.get_stats(gui)
 
     # Create BlockGroup objects to get day, night and date block cumulative statistics

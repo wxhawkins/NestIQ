@@ -28,8 +28,8 @@ class Bout:
             Stores information for a single on or off-bout.
 
             Atributes:
-                    start (int): index where the bout begins
-                    stop (int): index where the bout ends
+                    first (int): index where the bout begins
+                    last (int): index where the bout ends
                     bout_type (int): off or on
                     dur (int): duration in number of data points
                     mean_egg_temper (float)
@@ -37,32 +37,32 @@ class Bout:
                     egg_tempers (list of floats): list of egg temperatures for each data point in bout
     """
 
-    def __init__(self, gui, start_, stop_, bout_type_):
-        self.start = start_
-        self.stop = stop_
-        self.middle = round(np.mean([start_, stop_]))
+    def __init__(self, gui, first_, last_, bout_type_):
+        self.first = first_
+        self.last = last_
+        self.middle = round(np.mean([first_, last_]))
         self.bout_type = bout_type_
         self.is_daytime = gui.master_df.loc[self.middle, "is_daytime"]
-        self.dur = gui.time_interval * (stop_ - start_)
+        self.dur = gui.time_interval * (last_ - first_)
         self.mean_egg_temper = None
         self.mean_air_temper = None
 
         # Flag convert to series
-        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
+        self.egg_tempers = gui.master_df.loc[self.first : self.last, "egg_temper"].tolist()
         self.mean_egg_temper = round(np.mean(self.egg_tempers), 3)
-        self.air_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
+        self.air_tempers = gui.master_df.loc[self.first : self.last, "egg_temper"].tolist()
         self.mean_air_temper = round(np.mean(self.air_tempers), 3)
-        self.temper_change = gui.master_df.loc[self.stop, "egg_temper"] - gui.master_df.loc[self.start, "egg_temper"]
+        self.temper_change = gui.master_df.loc[self.last, "egg_temper"] - gui.master_df.loc[self.first, "egg_temper"]
 
-        self.start_date = gui.master_df.loc[self.start, "date_time"]
+        self.start_date = gui.master_df.loc[self.first, "date_time"]
 
 class Block:
     """
             Descrete section of time such as a single daytime period, nightime period, or date.
 
             Atributes:
-                    start (int): index where the block begins
-                    stop (int): index where the block ends
+                    first (int): index where the block begins
+                    last (int): index where the block ends
                     partial_day (bool): True if block does not represent a full 24 hr day
                     date (string)
                     egg_tempers (list of floats)
@@ -97,9 +97,9 @@ class Block:
                     bouts_dropped (int): number of bouts discarded due to failing to meet one or more thresholds
     """
 
-    def __init__(self, gui, start_, stop_, partial_day_):
-        self.start = int(start_)
-        self.stop = int(stop_)
+    def __init__(self, gui, first_, last_, partial_day_):
+        self.first = int(first_)
+        self.last = int(last_)
         self.partial_day = partial_day_
         self.date = ""
 
@@ -151,14 +151,14 @@ class Block:
         on_incs = []
         on_tempers = []
 
+        self.date = gui.master_df.loc[self.first, "date_time"].strftime(r"%m/%d/%Y")
+
         self.off_count = len([bout for bout in self.bouts if bout.bout_type == "off"])
         self.on_count = len([bout for bout in self.bouts if bout.bout_type == "on"])
-                
-        self.date = gui.master_df.loc[self.start, "date_time"].strftime(r"%m/%d/%Y")
 
         # This sets the temper containers to Series
-        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"]
-        self.air_tempers = gui.master_df.loc[self.start : self.stop, "air_temper"]
+        self.egg_tempers = gui.master_df.loc[self.first : self.last, "egg_temper"]
+        self.air_tempers = gui.master_df.loc[self.first : self.last, "air_temper"]
 
         # Get number of data points passing threshold and multiply by duration
         data_points_above_temper = len(self.egg_tempers.loc[self.egg_tempers > float(gui.time_above_temper_E.get())])
@@ -166,8 +166,8 @@ class Block:
         self.time_above_temper = data_points_above_temper * gui.time_interval
         self.time_below_temper = data_points_below_temper * gui.time_interval
 
-        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].to_list()
-        self.air_tempers = gui.master_df.loc[self.start : self.stop, "air_temper"].to_list()
+        self.egg_tempers = gui.master_df.loc[self.first : self.last, "egg_temper"].to_list()
+        self.air_tempers = gui.master_df.loc[self.first : self.last, "air_temper"].to_list()
 
 
         for bout in self.bouts:
@@ -217,7 +217,7 @@ class Block:
             self.max_air_temper = max(self.air_tempers)
 
         for index in gui.bouts_dropped_locs:
-            if index >= self.start and index < self.stop:
+            if index >= self.first and index <= self.last:
                 self.bouts_dropped += 1
 
         return True
