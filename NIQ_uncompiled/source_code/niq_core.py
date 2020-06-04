@@ -1116,7 +1116,7 @@ class GUIClass:
             try:
                 with open(in_file_path, "r") as csv_file:
                     csv_lines = csv_file.readlines()
-                    
+
                 master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
 
                 pop_indices = []
@@ -1152,8 +1152,8 @@ class GUIClass:
                     except:
                         messagebox.showerror(
                             "Data Point Error",
-                            f"{file_name_appendage}Error after data point " +
-                            f"{prev_line[0]}. Data point number is not sequential with regard to previous data point."
+                            f"{file_name_appendage}Error after data point "
+                            + f"{prev_line[0]}. Data point number is not sequential with regard to previous data point.",
                         )
                         return False
 
@@ -1163,8 +1163,7 @@ class GUIClass:
                         cur_datetime = niq_misc.convert_to_datetime(line[1])
                     except ValueError:
                         messagebox.showerror(
-                            "Date/Time Error", 
-                            f"{file_name_appendage}No time found for data point {line[0]}.  Date/Time should be in MM/DD/YYYY HH:MM format."
+                            "Date/Time Error", f"{file_name_appendage}No time found for data point {line[0]}.  Date/Time should be in MM/DD/YYYY HH:MM format."
                         )
                         return False
 
@@ -1196,18 +1195,15 @@ class GUIClass:
                             if self.show_warns_BV.get():
                                 messagebox.showwarning(
                                     "Date/time Warning",
-                                    f"{file_name_appendage}Discontinuous date/time found for data point " +
-                                    f"{line[0]}. The program will continue, but this could cause inaccurate statistical output."
+                                    f"{file_name_appendage}Discontinuous date/time found for data point "
+                                    + f"{line[0]}. The program will continue, but this could cause inaccurate statistical output.",
                                 )
 
                     # Check egg temperatures column
                     try:
                         float(line[2])
                     except:
-                        messagebox.showerror(
-                            "Temperature Error",
-                            f"{file_name_appendage}Invalid temperature given for data point {line[0]}."
-                        )
+                        messagebox.showerror("Temperature Error", f"{file_name_appendage}Invalid temperature given for data point {line[0]}.")
                         return False
 
                     # Check air temperatures column if appropriate
@@ -1219,8 +1215,8 @@ class GUIClass:
                             if self.show_warns_BV.get():
                                 messagebox.showwarning(
                                     "Air Temperature Warning",
-                                    f"{file_name_appendage}Invalid air temperature detected for data point " +
-                                    f"{line[0]}. Air temperatures will not be plotted or included in statistical output."
+                                    f"{file_name_appendage}Invalid air temperature detected for data point "
+                                    + f"{line[0]}. Air temperatures will not be plotted or included in statistical output.",
                                 )
                     prev_line = line
 
@@ -1231,10 +1227,10 @@ class GUIClass:
                 traceback.print_exc()
                 messagebox.showerror(
                     "Unknown Error",
-                    f"{file_name_appendage}There was an unidentifiable error with the provided input file. " +
-                    "This is sometimes the result of 'extra' cells in the input file.\n\n" +
-                    "Please reference the NestIQ manual for details regarding proper input file format." +
-                    " This can be accessed by clicking 'Help' in the top right."
+                    f"{file_name_appendage}There was an unidentifiable error with the provided input file. "
+                    + "This is sometimes the result of 'extra' cells in the input file.\n\n"
+                    + "Please reference the NestIQ manual for details regarding proper input file format."
+                    + " This can be accessed by clicking 'Help' in the top right.",
                 )
                 return False
 
@@ -1597,7 +1593,6 @@ class GUIClass:
 
         return True
 
-
     def get_input_file_name(self):
         """
 						Handles input file browsing and selection.
@@ -1708,6 +1703,7 @@ class GUIClass:
 						Generates special plot for the user to select their ideal vertex locations. This plot can be
 						saved and later used for supervised parameter acquisition or manual vertex modification.
 		"""
+
         days_list = []
         ori_verts_ = None
 
@@ -1716,7 +1712,7 @@ class GUIClass:
 
         try:
             self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
-            self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
+            # FLAG self.master_block = niq_classes.Block(self, 0, (len(self.master_df) - 1), False)
 
             # Get days_list for plotting vertical lines
             days_list = niq_misc.split_days(self)[0]  # Indexing at end excludes nights_list
@@ -1743,7 +1739,7 @@ class GUIClass:
 
     def init_config(self):
         """
-						Initializes GUI from backup_config.ini.  backup_config.ini is used as a backup if anything goes wrong.
+            Initializes GUI from backup_config.ini.  backup_config.ini is used as a backup if anything goes wrong.
 		"""
         self.config = configparser.RawConfigParser()
 
@@ -1757,11 +1753,11 @@ class GUIClass:
 
     def update_config(self, config_file=None):
         """
-						Generates a configuration file from the current GUI parameters. If no file name if provided,
-						this function saves to backup_config.ini, resetting the default parameters for NestIQ.
+            Generates a configuration file from the current GUI parameters. If no file name if provided,
+            this function saves to backup_config.ini, resetting the default parameters for NestIQ.
 
-						Args:
-										config_file (string): path to and name of file to be saved
+            Args:
+                config_file (string): path to and name of file to be saved
 		"""
 
         if config_file is None:
@@ -1883,13 +1879,13 @@ class GUIClass:
     # Check ensure valid parameters and execute processing
     def trigger_run(self, rerun=False):
         """
-						Ensure everything is in order and if so, initiate processing of the input file(s).
+            Ensure everything is in order and if so, initiate processing of the input file(s).
 
-						Args:
-										root (tk root widget): base widget of GUI
-										rerun (Bool): indicates if this is a rerun off of user provided vertices
+            Args:
+                root (tk root widget): base widget of GUI
+                rerun (Bool): indicates if this is a rerun off of user provided vertices
 		"""
-        
+
         run_start = time.time()
 
         try:
@@ -1963,10 +1959,10 @@ class GUIClass:
 
     def close_niq(self):
         """
-						Cleanly terminates the program.
+            Cleanly terminates the program.
 
-						Args:
-										root (tk root widget): base of GUI
+            Args:
+               root (tk root widget): base of GUI
 		"""
 
         self.valid = False
@@ -1975,12 +1971,12 @@ class GUIClass:
 
     def set_nighttime_state(self, nights_list, master_df):
         """
-						Sets state of nightime data points to "nonsense" value of 2. These points will be ignored for the
-						majority of downstream statistical calculations.
+            Sets state of nightime data points to "nonsense" value of 2. These points will be ignored for the
+            majority of downstream statistical calculations.
 
-						Args:
-										nights_list (list of blocks): used to get boudaries for nightime data points
-										master_df (DataFrame): master DataFrame which will have states column modified
+            Args:
+                nights_list (list of blocks): used to get boudaries for nightime data points
+                master_df (DataFrame): master DataFrame which will have states column modified
 		"""
 
         if self.restrict_search_BV.get():
@@ -1991,11 +1987,11 @@ class GUIClass:
 
     def unsupervised_learning(self, auto_run=False):
         """
-						Prepares master array from input data, runs the baum welch algorithm, and populates the GUI with
-						resulting parameters.
+            Prepares master array from input data, runs the baum welch algorithm, and populates the GUI with
+            resulting parameters.
 
-						Args:
-										auto_run (bool): False if this function call is from clicking button on the Advanced tab
+            Args:
+                auto_run (bool): False if this function call is from clicking button on the Advanced tab
 		"""
 
         self.run_B["text"] = "Learning..."
@@ -2037,7 +2033,7 @@ class GUIClass:
 
     def supervised_learning(self):
         """
-						Calculates model parameters from user-provided vertex locations.
+		    Calculates model parameters from user-provided vertex locations.
 		"""
 
         input_ = niq_misc.extract_in_files(self.input_file_E.get())
@@ -2053,8 +2049,7 @@ class GUIClass:
         if not self.check_vertex_file():
             return
 
-        in_file = self.input_file_E.get()
-        self.master_df = niq_misc.get_master_df(self, in_file)
+        self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
 
         training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
         self.master_df = niq_misc.add_states(self.master_df, verts=training_verts)
@@ -2065,87 +2060,64 @@ class GUIClass:
 
 def main(gui):
     """
-					Performs some final data reorganization and then executes all of the core data analyzation
-					function. Vertex locations are initially collected for the entire file. These vertices are later
-					allocated to individual day and night objects. Day/night pairs are grouped to represent full
-					24 hr periods. Finally, "BlockGroup" objects are created for each of these three categories
-					for the calculation of broader statistics.
+        Performs some final data reorganization and then executes all of the core data analyzation
+        function. Vertex locations are initially collected for the entire file. These vertices are later
+        allocated to individual day and night objects. Day/night pairs are grouped to represent full
+        24 hr periods. Finally, "BlockGroup" objects are created for each of these three categories
+        for the calculation of broader statistics.
 
-					Args:
-									gui (GUIClass)
+        Args:
+            gui (GUIClass)
 	"""
-    
-    block_start = time.time()
-
-    days_list, nights_list = niq_misc.split_days(gui)
-
-    gui.master_df = gui.set_nighttime_state(nights_list, gui.master_df)
 
     # Store all vertices in master block object for later allocation
-    master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)
-    master_block.vertices = niq_misc.get_verts_from_master_df(gui.master_df)
+    gui.master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)
+    gui.master_block.vertices = niq_misc.get_verts_from_master_df(gui.master_df)
+    gui.master_block.bouts = niq_misc.get_bouts_from_verts(gui, gui.master_block.vertices)
+    gui.master_block.get_stats(gui)
+    file_bouts = gui.master_block.bouts
 
-    # Extract bouts based on vertex locations
-    niq_misc.get_bouts(gui, master_block)
-    if not master_block.get_stats(gui):
-        return False
+    # Get parse master_df into day and night blocks
+    days_list, nights_list = niq_misc.split_days(gui)
+    gui.master_df = gui.set_nighttime_state(nights_list, gui.master_df)
 
     if not gui.restrict_search_BV.get():
-        master_block.deposit_multi_file_stats(gui)
+        gui.master_block.deposit_multi_file_stats(gui)
     if gui.air_valid:
-        gui.multi_in_air_tempers += master_block.air_tempers
+        gui.multi_in_air_tempers += gui.master_block.air_tempers
 
-    master_block.vertices.sort(key=lambda x: x.index)
-
+    # Get vertices, bouts and stats for day blocks
     for day in days_list:
-        day.vertices = niq_misc.extract_verts_in_range(gui, master_block.vertices, day.start, day.stop)
-        niq_misc.get_bouts(gui, day)
+        day.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, day.start, day.stop)
         day.get_stats(gui)
         gui.multi_in_day_tempers += day.egg_tempers
 
         if gui.restrict_search_BV.get():
             day.deposit_multi_file_stats(gui)
 
+    # Get vertices, bouts and stats for night blocks
     for night in nights_list:
-        if not gui.restrict_search_BV.get():
-            night.vertices = niq_misc.extract_verts_in_range(gui, master_block.vertices, night.start, night.stop)
-            niq_misc.get_bouts(gui, night)
+        night.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, night.start, night.stop)
         night.get_stats(gui)
         gui.multi_in_night_tempers += night.egg_tempers
 
-    days = niq_classes.BlockGroup(gui, days_list)
-    if len(days_list) > 0:
-        days.get_stats(gui)
-
-    nights = niq_classes.BlockGroup(gui, nights_list)
-    if len(nights_list) > 0:
-        nights.get_stats(gui)
-
+    # Create blocks for day/night pairs
     pairs_list = []
-    if len(days_list) > 0 and len(nights_list) > 0:
-        pairs_list = niq_misc.get_day_night_pairs(gui, days_list, nights_list)
-        for pair in pairs_list:
-            if not gui.restrict_search_BV.get():
-                pair.vertices = niq_misc.extract_verts_in_range(gui, master_block.vertices, pair.start, pair.stop)
-                niq_misc.get_bouts(gui, pair)
-            pair.get_stats(gui)
+    pairs_list = niq_misc.get_day_night_pairs(gui, days_list, nights_list)
+    for pair in pairs_list:
+        pair.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, pair.start, pair.stop)
+        pair.get_stats(gui)
 
+    # Create BlockGroup objects to get day, night and pair cumulative statistics
+    days = niq_classes.BlockGroup(gui, days_list)
+    nights = niq_classes.BlockGroup(gui, nights_list)
     pairs_block_group = niq_classes.BlockGroup(gui, pairs_list)
-    if len(pairs_list) > 0:
-        pairs_block_group.get_stats(gui)
 
-    print(f"get_stats and blocks took {round(time.time() - block_start, 3)}")
-
-    plot_start = time.time()
+    # Plot and write stats file if requested
     if gui.make_plot_BV.get():
         niq_misc.generate_plot(gui, gui.master_df, days_list, gui.mon_dims)
-
-    print(f"plot took {round(time.time() - plot_start, 3)}")
-    stat_start = time.time()
     if gui.get_stats_BV.get():
-        niq_misc.write_stats(gui, days, nights, pairs_block_group, master_block)
-
-    print(f"stat took {round(time.time() - stat_start, 3)}")
+        niq_misc.write_stats(gui, days, nights, pairs_block_group, gui.master_block)
 
 
 if __name__ == "__main__":

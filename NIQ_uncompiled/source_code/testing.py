@@ -76,11 +76,8 @@ def master_test(gui):
         with open(ref_path, "r") as ref_file, open(test_path, "r") as test_file:
             ref_lines = ref_file.readlines()
             test_lines = test_file.readlines()
-        print(test_path)
         mismatches = dict()
         for ref_line, test_line in zip(ref_lines[2:], test_lines[2:]):
-            # print(ref_line)
-            print(test_line)
             if test_line.strip() != ref_line.strip():
                 try:
                     # Get line label

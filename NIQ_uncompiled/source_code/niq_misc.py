@@ -102,11 +102,11 @@ def split_days(gui):
         """
 
         # Allow 5 min of discrepency from full durrations
-        dur_thresh = day_dur - 300 if block_type == "day" else night_dur - 300
+        day_dur_thresh = day_dur - 300 if block_type == "day" else night_dur - 300
         start_time = df.loc[start_index, "date_time"]
         end_time = df.loc[end_index, "date_time"]
         block_dur = end_time - start_time
-        if block_dur > datetime.timedelta(seconds=dur_thresh):
+        if block_dur > datetime.timedelta(seconds=day_dur_thresh):
             return False
 
         return True
@@ -367,84 +367,39 @@ def get_verts_from_html(gui, in_file, alt=False):
     return vertices
 
 
-def extract_verts_in_range(gui, total_vertices, start_index, stop_index):
+def extract_bouts_in_range(gui, total_bouts, start_index, stop_index):
     """
 			Extracts vertices falling into a specified window of index values.
 
 			Args:
 					gui (GUIClass)
-					total_vertices (list): every vertex identified for the current input file
+					total_bouts (list): every bout identified for the current input file
 					start_index (int)
 					stop_index (int)
 	"""
 
-    verts_in_range = []
+    bouts_in_range = []
     left_limit, right_limit = 0, 0
 
-    if len(total_vertices) < 1 or stop_index < total_vertices[0].index or start_index > total_vertices[-1].index:
-        return verts_in_range
+    if len(total_bouts) < 1 or stop_index < total_bouts[0].start or start_index > total_bouts[-1].start:
+        return bouts_in_range
 
-    # Determine first vertex in range
-    for i in range(len(total_vertices)):
-        if total_vertices[i].index >= start_index:
+    # Determine first bout in range
+    for i in range(len(total_bouts)):
+        if total_bouts[i].start >= start_index:
             left_limit = i
             break
 
-    # Determine last vertex in range
-    for i in range((len(total_vertices) - 1), -1, -1):
-        if total_vertices[i].index <= stop_index:
+    # Determine last bout in range
+    for i in range((len(total_bouts) - 1), -1, -1):
+        if total_bouts[i].start <= stop_index:
             right_limit = i
             break
 
-    verts_in_range = total_vertices[left_limit : (right_limit + 1)]
-    return verts_in_range
+    bouts_in_range = total_bouts[left_limit : (right_limit + 1)]
+    bouts_in_range.sort(key=lambda x: x.start)
+    return bouts_in_range
 
-
-def get_bouts(gui, block):
-    """
-			Extracts bout objects based on vertex locations.
-
-			Args:
-					gui (GUIClass)
-					block (Block): custom class object holding vertex locations
-	"""
-    # Get minimum bout duration
-    dur_thresh = int(gui.dur_thresh_E.get())
-
-    # Return if insufficient number of vertices supplied
-    verts = block.vertices
-    if verts == None or len(verts) < 2:
-        return
-
-    if gui.count_partial_BV.get():
-        # Handle first bout
-        if verts[0].index > dur_thresh:
-            if verts[0].vert_type == 0:  # Start of off-bout
-                block.bouts.append(niq_classes.Bout(gui, block.start, verts[0].index, 1))
-                block.on_count += 1
-            elif verts[0].vert_type == 1:  # Start of on-bout
-                block.bouts.append(niq_classes.Bout(gui, block.start, verts[0].index, 0))
-                block.off_count += 1
-
-    # Acquire full bouts
-    for i, cur_vert in enumerate(verts[:-1]):
-        cur_type = cur_vert.vert_type
-        block.bouts.append(niq_classes.Bout(gui, cur_vert.index, verts[i + 1].index, cur_type))
-
-        if cur_type == 0:
-            block.off_count += 1
-        elif cur_type == 1:
-            block.on_count += 1
-
-    if gui.count_partial_BV.get():
-        # Handle last bout
-        if (block.stop - verts[-1].index) > dur_thresh:
-            if verts[-1].vert_type == 0:  # Start of off-bout
-                block.bouts.append(niq_classes.Bout(gui, verts[-1].index, block.stop, 0))
-                block.off_count += 1
-            elif verts[-1].vert_type == 1:  # Start of on-bout
-                block.bouts.append(niq_classes.Bout(gui, verts[-1].index, block.stop, 1))
-                block.on_count += 1
 
 
 def get_day_night_pairs(gui, days_list, nights_list):
@@ -457,6 +412,8 @@ def get_day_night_pairs(gui, days_list, nights_list):
 					days_list (list): collection of all day blocks for the current input file
 					nights_list (list): collection of all night blocks for the current input file
 	"""
+    if len(days_list) < 1 or len(nights_list) < 1:
+        return []
 
     day_night_pairs_list = []
 
@@ -476,33 +433,25 @@ def get_day_night_pairs(gui, days_list, nights_list):
 
 def write_stats(gui, days, nights, day_night_pairs, master_block):
     """
-			Calculates and gathers several statistics and subsequently dumps them into the individual
-			statistics file and/or the multi-input file statistics file depending on the user's requested
-			output.
+        Calculates and gathers several statistics and subsequently dumps them into the individual
+        statistics file and/or the multi-input file statistics file depending on the user's requested
+        output.
 
-			Args:
-					gui (GUIClass)
-					days (BlockGroup): contains every day object and information about the group as a whole
-					nights (BlockGroup): contains every night object and information about the group as a whole
-					day_night_pairs (BlockGroup): contains every day/night pair object and information about the group as a whole
-					master_block (block): block built from the entire input file
+        Args:
+            gui (GUIClass)
+            days (BlockGroup): contains every day object and information about the group as a whole
+            nights (BlockGroup): contains every night object and information about the group as a whole
+            day_night_pairs (BlockGroup): contains every day/night pair object and information about the group as a whole
+            master_block (block): block built from the entire input file
 	"""
 
-    all_egg_tempers, all_air_tempers = [], []
-    master_time_above_temper, master_time_below_temper = 0, 0
+    all_egg_tempers = gui.master_df.loc[:, "egg_temper"]
+    all_air_tempers = gui.master_df.loc[:, "air_temper"]
 
-    if gui.get_stats_BV.get() or gui.multi_in_stats_BV.get():
-        # Compile all egg and air temperatures
-        all_egg_tempers += gui.master_df.loc[:, "egg_temper"].tolist()
-        all_air_tempers += gui.master_df.loc[:, "air_temper"].tolist()
-
-        # Get time exceeding critical temperatures
-        for temper in all_egg_tempers:
-            if temper > float(gui.time_above_temper_E.get()):
-                master_time_above_temper += gui.time_interval
-
-            if temper < float(gui.time_below_temper_E.get()):
-                master_time_below_temper += gui.time_interval
+    above_filt = all_egg_tempers > float(gui.time_above_temper_E.get())
+    below_filt = all_egg_tempers < float(gui.time_below_temper_E.get())
+    master_time_above_temper = len(all_egg_tempers[above_filt]) * gui.time_interval
+    master_time_below_temper = len(all_egg_tempers[below_filt]) * gui.time_interval
 
     if gui.get_stats_BV.get():
         out_file = gui.stats_file_E.get()
@@ -793,25 +742,25 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
         summary_row += f"{nights.max_egg_temper},"
 
     if gui.mean_temper_dn_BV.get():
-        summary_row += f"{round(statistics.mean(all_egg_tempers), 3)},"
+        summary_row += f"{all_egg_tempers.mean().round(3)},"
     if gui.mean_temper_dn_sd_BV.get():
-        summary_row += f"{round(statistics.stdev(all_egg_tempers), 3)},"
+        summary_row += f"{all_egg_tempers.std().round(3)},"
     if gui.median_temper_dn_BV.get():
-        summary_row += f"{round(statistics.median(all_egg_tempers), 3)},"
+        summary_row += f"{all_egg_tempers.median().round(3)},"
     if gui.min_temper_dn_BV.get():
-        summary_row += f"{min(all_egg_tempers)},"
+        summary_row += f"{all_egg_tempers.min()},"
     if gui.max_temper_dn_BV.get():
-        summary_row += f"{max(all_egg_tempers)},"
+        summary_row += f"{all_egg_tempers.max()},"
 
     if gui.air_valid:
         if gui.mean_air_temper_BV.get():
-            summary_row += f"{round(statistics.mean(all_air_tempers), 3)},"
+            summary_row += f"{all_air_tempers.mean().round(3)},"
         if gui.mean_air_temper_sd_BV.get():
-            summary_row += f"{round(statistics.stdev(all_air_tempers), 3)},"
+            summary_row += f"{all_air_tempers.std().round(3)},"
         if gui.min_air_temper_BV.get():
-            summary_row += f"{min(all_air_tempers)},"
+            summary_row += f"{all_air_tempers.min()},"
         if gui.max_air_temper_BV.get():
-            summary_row += f"{max(all_air_tempers)},"
+            summary_row += f"{all_air_tempers.max()},"
 
     summary_row += "\n\n"
 
@@ -849,7 +798,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
     if gui.restrict_search_BV.get():
         bouts += [bout for day in days.block_list for bout in day.bouts]
     else:
-        bouts = master_block.bouts
+        bouts += master_block.bouts
 
     bout_rows = []
     cur_date = ""
@@ -1139,6 +1088,12 @@ def get_verts_from_master_df(master_df):
         row = master_df.loc[index]
         vertices.append(niq_classes.Vertex(index, row["egg_temper"], int(row["bout_state"] == "on")))
 
+    # Add vertices at begining and end of data set
+    last = len(master_df) - 1
+    vertices.append(niq_classes.Vertex(0, master_df.loc[0, "egg_temper"], int(master_df.loc[0, "bout_state"] == "on")))
+    vertices.append(niq_classes.Vertex(last, master_df.loc[last, "egg_temper"], int(master_df.loc[last, "bout_state"] == "on")))
+
+    vertices.sort(key=lambda x: x.index)
     return vertices
 
 
@@ -1161,17 +1116,21 @@ def filter_by_dur(master_df, dur_thresh):
     cur_state = master_array[0, 6]
     last_count, count = 0, 0
     bouts_dropped_locs = set()
-    for row, state in enumerate(master_array[:, 6]):
+    for row_num, state in enumerate(master_array[:, 6]):
+        # If state is same as previous data point (still in same bout)
         if state == cur_state:
             count += 1
+        # If state has changed (end of bout) and bout is greater than dur_thresh
         elif count >= dur_thresh:
             last_count = count
             count = 0
             cur_state = state
+        # If state has changed and bout is less than dur_thresh
         elif count < dur_thresh:
+            # Change previous bout to other state
             cur_state = abs(cur_state - 1)
-            master_array[row - count - 2 : row + 1, 6] = cur_state
-            bouts_dropped_locs.add(row)
+            master_array[row_num - count - 2 : row_num + 1, 6] = cur_state
+            bouts_dropped_locs.add(row_num)
             count += last_count
 
     master_df.loc[:, "bout_state"] = master_array[:, 6]
@@ -1301,3 +1260,25 @@ def df_to_array(df):
         mod_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2], inplace=True)
 
     return mod_df.to_numpy()
+
+
+def get_bouts_from_verts(gui, verts):
+    """
+            Extracts bout objects based on vertex locations.
+
+            Args:
+                    gui (GUIClass)
+    """
+
+    # Return if insufficient number of vertices supplied
+    if verts == None or len(verts) < 2:
+        return
+
+    bouts = []
+    # Create bout objects
+    cur_vert = verts[0]
+    for next_vert in verts[1:]:
+        bouts.append(niq_classes.Bout(gui, cur_vert.index, next_vert.index, cur_vert.vert_type))        
+        cur_vert = next_vert
+
+    return bouts

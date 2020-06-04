@@ -10,7 +10,7 @@ class Vertex:
             Atributes:
                     index (int)
                     egg_temper (float): egg temperature at the point of transition
-                    vert_type (int): 0 if vertex represents transition from on=bout to off-bout
+                    vert_type (int): 0 if vertex represents transition from on-bout to off-bout
                                                      1 if vertex represents transition from off-bout to on-bout
 
     """
@@ -19,6 +19,9 @@ class Vertex:
         self.index = int(index_)
         self.egg_temper = float(egg_temper_)
         self.vert_type = vert_type_
+
+    def __str__(self):
+        return f"Index: {self.index}"
 
 
 class Bout:
@@ -43,17 +46,15 @@ class Bout:
         self.dur = gui.time_interval * (stop_ - start_)
         self.mean_egg_temper = None
         self.mean_air_temper = None
-        self.egg_tempers = []
-        air_tempers = []
 
-        self.egg_tempers += gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
+        # Flag convert to series
+        self.egg_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
         self.mean_egg_temper = round(np.mean(self.egg_tempers), 3)
-
-        air_tempers += gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
-        self.mean_air_temper = round(np.mean(air_tempers), 3)
-
+        self.air_tempers = gui.master_df.loc[self.start : self.stop, "egg_temper"].tolist()
+        self.mean_air_temper = round(np.mean(self.air_tempers), 3)
         self.temper_change = gui.master_df.loc[self.stop, "egg_temper"] - gui.master_df.loc[self.start, "egg_temper"]
 
+        self.start_date = gui.master_df.loc[self.start, "date_time"]
 
 class Block:
     """
@@ -150,6 +151,9 @@ class Block:
         on_incs = []
         on_tempers = []
 
+        self.off_count = len([bout for bout in self.bouts if bout.bout_type == 0])
+        self.on_count = len([bout for bout in self.bouts if bout.bout_type == 1])
+                
         self.date = gui.master_df.loc[self.start, "date_time"].strftime(r"%m/%d/%Y")
 
         # This sets the temper containers to Series
@@ -321,6 +325,8 @@ class BlockGroup:
         self.time_below_temper = 0
         self.bouts_dropped = 0
 
+        self.get_stats(gui)
+
     def get_stats(self, gui):
         """
                 Calculate and store various statistics for this BlockGroup.
@@ -378,15 +384,15 @@ class BlockGroup:
                 self.on_inc_stdev = round(np.std(bulk_on_incs), 3)
 
         # Calculate temperature statistics for all blocks
-        self.mean_egg_temper = round(np.mean(self.egg_tempers), 3)
-        if len(self.egg_tempers) > 1:
+        if len(self.egg_tempers) > 2:
+            self.mean_egg_temper = round(np.mean(self.egg_tempers), 3)
             self.egg_temper_stdev = round(np.std(self.egg_tempers), 3)
 
-        self.median_temper = round(np.median(self.egg_tempers), 3)
-        self.min_egg_temper = min(self.egg_tempers)
-        self.max_egg_temper = max(self.egg_tempers)
+            self.median_temper = round(np.median(self.egg_tempers), 3)
+            self.min_egg_temper = min(self.egg_tempers)
+            self.max_egg_temper = max(self.egg_tempers)
 
-        if gui.air_valid:
+        if gui.air_valid and len(self.air_tempers) > 2:
             self.mean_air_temper = round(np.mean(self.air_tempers), 3)
             self.air_temper_stdev = round(np.std(self.air_tempers), 3)
             self.min_air_temper = min(self.air_tempers)
