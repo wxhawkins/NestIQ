@@ -1969,6 +1969,7 @@ class GUIClass:
         self.root.quit()
         self.root.destroy()
 
+    # Flag Destroy this when the time comes, Wayne will give the signal
     def set_nighttime_state(self, nights_list, master_df):
         """
             Sets state of nightime data points to "nonsense" value of 2. These points will be ignored for the
@@ -1982,6 +1983,22 @@ class GUIClass:
         if self.restrict_search_BV.get():
             for night in nights_list:
                 master_df.loc[night.start : night.stop - 1, "bout_state"] = "None"
+
+        return master_df
+
+    def erase_nighttime_state(self, master_df):
+        """
+            Sets state of nightime data points to "nonsense" value of 2. These points will be ignored for the
+            majority of downstream statistical calculations.
+
+            Args:
+                nights_list (list of blocks): used to get boudaries for nightime data points
+                master_df (DataFrame): master DataFrame which will have states column modified
+		"""
+
+        if self.restrict_search_BV.get():
+            filt = master_df["is_daytime"] == False
+            master_df.loc[filt, "bout_state"] = "None"
 
         return master_df
 
@@ -2068,6 +2085,9 @@ def main(gui):
         Args:
             gui (GUIClass)
 	"""
+    
+    gui.master_df = niq_misc.add_daytime(gui, gui.master_df)
+    gui.master_df = gui.erase_nighttime_state(gui.master_df)
 
     # Store all vertices in master block object for later allocation
     gui.master_block = niq_classes.Block(gui, 0, (len(gui.master_df) - 1), False)

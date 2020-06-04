@@ -10,8 +10,7 @@ class Vertex:
             Atributes:
                     index (int)
                     egg_temper (float): egg temperature at the point of transition
-                    vert_type (int): 0 if vertex represents transition from on-bout to off-bout
-                                                     1 if vertex represents transition from off-bout to on-bout
+                    vert_type (str): off, on, or None (start of night)
 
     """
 
@@ -31,8 +30,7 @@ class Bout:
             Atributes:
                     start (int): index where the bout begins
                     stop (int): index where the bout ends
-                    bout_type (int): 0 if off-bout
-                                                     1 if on-bout
+                    bout_type (int): off or on
                     dur (int): duration in number of data points
                     mean_egg_temper (float)
                     mean_air_temper (float)
@@ -42,7 +40,9 @@ class Bout:
     def __init__(self, gui, start_, stop_, bout_type_):
         self.start = start_
         self.stop = stop_
+        self.middle = round(np.mean([start_, stop_]))
         self.bout_type = bout_type_
+        self.is_daytime = gui.master_df.loc[self.middle, "is_daytime"]
         self.dur = gui.time_interval * (stop_ - start_)
         self.mean_egg_temper = None
         self.mean_air_temper = None
@@ -151,8 +151,8 @@ class Block:
         on_incs = []
         on_tempers = []
 
-        self.off_count = len([bout for bout in self.bouts if bout.bout_type == 0])
-        self.on_count = len([bout for bout in self.bouts if bout.bout_type == 1])
+        self.off_count = len([bout for bout in self.bouts if bout.bout_type == "off"])
+        self.on_count = len([bout for bout in self.bouts if bout.bout_type == "on"])
                 
         self.date = gui.master_df.loc[self.start, "date_time"].strftime(r"%m/%d/%Y")
 
@@ -171,12 +171,12 @@ class Block:
 
 
         for bout in self.bouts:
-            if bout.bout_type == 0:
+            if bout.bout_type == "off":
                 # Compile off-bout data
                 off_durs.append(bout.dur)
                 off_decs.append(bout.temper_change)
                 off_tempers += bout.egg_tempers
-            elif bout.bout_type == 1:
+            elif bout.bout_type == "on":
                 # Compile on-bout data
                 on_durs.append(bout.dur)
                 on_incs.append(bout.temper_change)
@@ -237,10 +237,10 @@ class Block:
 
         # Compile various data for all block periods
         for bout in self.bouts:
-            if bout.bout_type == 0:
+            if bout.bout_type == "off":
                 bulk_off_durs.append(bout.dur)
                 bulk_off_decs.append(bout.temper_change)
-            elif bout.bout_type == 1:
+            elif bout.bout_type == "on":
                 bulk_on_durs.append(bout.dur)
                 bulk_on_incs.append(bout.temper_change)
 
@@ -355,11 +355,11 @@ class BlockGroup:
             self.bouts_dropped += block.bouts_dropped
 
             for bout in block.bouts:
-                if bout.bout_type == 0:
+                if bout.bout_type == "off":
                     bulk_off_durs.append(bout.dur)
                     bulk_off_decs.append(bout.temper_change)
                     bulk_off_tempers += bout.egg_tempers
-                elif bout.bout_type == 1:
+                elif bout.bout_type == "on":
                     bulk_on_durs.append(bout.dur)
                     bulk_on_incs.append(bout.temper_change)
                     bulk_on_tempers += bout.egg_tempers

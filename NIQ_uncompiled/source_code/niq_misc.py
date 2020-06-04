@@ -153,6 +153,39 @@ def split_days(gui):
 
     return days_list, nights_list
 
+def add_daytime(gui, master_df):
+    """
+        Analyze dates of master DataFrame and parse row data into daytime and nighttime block objects.
+    """
+
+    def is_daytime(date_time):
+        """
+            Check if a given time falls within the daytime period defined by the user.
+
+            Args:
+                    date_time (datetime.datetime)
+        """
+
+        time = date_time.time()
+        # When the start of daytime is earlier in the day than the start of nighttime
+        if day_start < night_start:
+            if time >= day_start and time < night_start:
+                return True
+        # When the start of nighttime is earlier in the day than the start of daytime
+        elif night_start < day_start:
+            if not (time >= night_start and time < day_start):
+                return True
+
+        return False
+
+    # Create time objects from entry box values
+    day_start = convert_to_datetime(f"01/01/2020 {str(gui.day_start_E.get())}").time()
+    night_start = convert_to_datetime(f"01/01/2020 {str(gui.night_start_E.get())}").time()
+
+    master_df["is_daytime"] = master_df["date_time"].apply(is_daytime)
+
+    return master_df
+
 
 
 def get_day_dur(day_start, night_start):
@@ -362,13 +395,13 @@ def get_verts_from_html(gui, in_file, alt=False):
     # (FLAG) may lead to some issues due to invalid assumption
     first_vert_temper = gui.master_df.loc[vertex_data_points[0] - delta, "egg_temper"]
     second_vert_temper = gui.master_df.loc[vertex_data_points[1] - delta, "egg_temper"]
-    vert_type = 0 if first_vert_temper > second_vert_temper else 1
+    vert_type = "off" if first_vert_temper > second_vert_temper else "on"
 
     # Generate vertices
     for data_point in vertex_data_points:
         index = data_point - delta
         vertices.append(niq_classes.Vertex(index, gui.master_df.loc[index, "egg_temper"], vert_type))
-        vert_type = abs(vert_type - 1)
+        vert_type = "on" if vert_type == "off" else "off"
 
     return vertices
 
@@ -814,7 +847,7 @@ def write_stats(gui, days, nights, date_blocks, master_block):
         row += "," if this_date == cur_date else f"{this_date},"
         cur_date = this_date
 
-        row += "Off," if bout.bout_type == 0 else "On,"
+        row += bout.bout_type
 
         row += (
             f"{gui.master_df.loc[bout.start, 'date_time'].strftime(r'%H:%M')},"
@@ -1078,7 +1111,7 @@ def get_verts_from_master_df(master_df):
     int_states = temp_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2])
 
     # Create Boolean Series that stores if the state has changed
-    state_changed = int_states.diff().apply(abs).astype(bool)
+    state_changed = int_states.diff().astype(bool)
     state_changed.iloc[0] = False
 
     # Extract indices of rows where the state changes
@@ -1091,12 +1124,12 @@ def get_verts_from_master_df(master_df):
     vertices = []
     for index in vert_indices:
         row = master_df.loc[index]
-        vertices.append(niq_classes.Vertex(index, row["egg_temper"], int(row["bout_state"] == "on")))
+        vertices.append(niq_classes.Vertex(index, row["egg_temper"], row["bout_state"]))
 
     # Add vertices at begining and end of data set
     last = len(master_df) - 1
-    vertices.append(niq_classes.Vertex(0, master_df.loc[0, "egg_temper"], int(master_df.loc[0, "bout_state"] == "on")))
-    vertices.append(niq_classes.Vertex(last, master_df.loc[last, "egg_temper"], int(master_df.loc[last, "bout_state"] == "on")))
+    vertices.append(niq_classes.Vertex(0, master_df.loc[0, "egg_temper"], master_df.loc[0, "bout_state"]))
+    vertices.append(niq_classes.Vertex(last, master_df.loc[last, "egg_temper"], master_df.loc[last, "bout_state"]))
 
     vertices.sort(key=lambda x: x.index)
     return vertices
@@ -1274,16 +1307,19 @@ def get_bouts_from_verts(gui, verts):
             Args:
                     gui (GUIClass)
     """
+    bouts = []
 
     # Return if insufficient number of vertices supplied
     if verts == None or len(verts) < 2:
-        return
+        return bouts
 
-    bouts = []
     # Create bout objects
     cur_vert = verts[0]
     for next_vert in verts[1:]:
-        bouts.append(niq_classes.Bout(gui, cur_vert.index, next_vert.index, cur_vert.vert_type))        
+        # Skip if cur_vert is start of nighttime period
+        if cur_vert.vert_type != "None":
+            bouts.append(niq_classes.Bout(gui, cur_vert.index, next_vert.index, cur_vert.vert_type)) 
+                   
         cur_vert = next_vert
 
     return bouts

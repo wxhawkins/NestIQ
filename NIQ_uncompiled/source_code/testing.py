@@ -50,7 +50,7 @@ def master_test(gui):
             labels = ref_lines[1].strip().split(",")
             ref_vals = ref_lines[10].strip().split(",")
             # test_vals = test_file.readlines()[10].strip().split(",")
-            test_vals = test_file.read().split("\n")[10].strip().split(",")
+            test_vals = test_file.read().split("\n")[12].strip().split(",")
 
         # Compare values
         for i, label in enumerate(labels):
