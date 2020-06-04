@@ -58,7 +58,7 @@ class Bout:
 
 class Block:
     """
-            Descrete section of time such as a single daytime period, nightime period, or day-night pair (24 hr period).
+            Descrete section of time such as a single daytime period, nightime period, or date.
 
             Atributes:
                     start (int): index where the block begins
@@ -217,7 +217,7 @@ class Block:
             self.max_air_temper = max(self.air_tempers)
 
         for index in gui.bouts_dropped_locs:
-            if index > self.start and index < self.stop:
+            if index >= self.start and index < self.stop:
                 self.bouts_dropped += 1
 
         return True
@@ -255,7 +255,7 @@ class Block:
 class BlockGroup:
     """
             Stores information about all blocks of a single type such as daytime blocks, nightime
-            blocks, or day-night pair blocks.
+            blocks, or date blocks.
 
             Atributes:
                     block_list (list of Blocks)

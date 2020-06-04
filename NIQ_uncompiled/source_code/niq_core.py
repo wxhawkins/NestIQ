@@ -2062,9 +2062,8 @@ def main(gui):
     """
         Performs some final data reorganization and then executes all of the core data analyzation
         function. Vertex locations are initially collected for the entire file. These vertices are later
-        allocated to individual day and night objects. Day/night pairs are grouped to represent full
-        24 hr periods. Finally, "BlockGroup" objects are created for each of these three categories
-        for the calculation of broader statistics.
+        allocated to individual day and night objects. Finally, "BlockGroup" objects are created for each
+        of these three categories for the calculation of broader statistics.
 
         Args:
             gui (GUIClass)
@@ -2101,23 +2100,23 @@ def main(gui):
         night.get_stats(gui)
         gui.multi_in_night_tempers += night.egg_tempers
 
-    # Create blocks for day/night pairs
-    pairs_list = []
-    pairs_list = niq_misc.get_day_night_pairs(gui, days_list, nights_list)
-    for pair in pairs_list:
-        pair.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, pair.start, pair.stop)
-        pair.get_stats(gui)
+    # Create blocks each date represented in input file
+    date_block_list = []
+    date_block_list = niq_misc.get_date_blocks(gui)
+    for date_block in date_block_list:
+        date_block.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, date_block.start, date_block.stop)
+        date_block.get_stats(gui)
 
-    # Create BlockGroup objects to get day, night and pair cumulative statistics
+    # Create BlockGroup objects to get day, night and date block cumulative statistics
     days = niq_classes.BlockGroup(gui, days_list)
     nights = niq_classes.BlockGroup(gui, nights_list)
-    pairs_block_group = niq_classes.BlockGroup(gui, pairs_list)
+    date_blocks = niq_classes.BlockGroup(gui, date_block_list)
 
     # Plot and write stats file if requested
     if gui.make_plot_BV.get():
         niq_misc.generate_plot(gui, gui.master_df, days_list, gui.mon_dims)
     if gui.get_stats_BV.get():
-        niq_misc.write_stats(gui, days, nights, pairs_block_group, gui.master_block)
+        niq_misc.write_stats(gui, days, nights, date_blocks, gui.master_block)
 
 
 if __name__ == "__main__":

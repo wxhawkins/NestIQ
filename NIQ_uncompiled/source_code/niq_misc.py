@@ -39,6 +39,26 @@ def convert_to_datetime(dt_string):
 
     return dt
 
+def is_partial(df, start_index, end_index, expected_dur):
+    """
+        Checks if given range of indices represents a complete daytime or nighttime period.
+
+        Args:
+                df (pd.DataFrame)
+                start_index (int)
+                end_index (int):
+                expected_dur (int): expected duration in seconds
+    """
+
+    # Allow 5 min (300 sec) of discrepency from expected durration
+    block_dur_thresh = expected_dur - 300
+    start_time = df.loc[start_index, "date_time"]
+    end_time = df.loc[end_index, "date_time"]
+    block_dur = end_time - start_time
+    if block_dur > datetime.timedelta(seconds=block_dur_thresh):
+        return False
+
+    return True
 
 
 def split_days(gui):
@@ -90,26 +110,6 @@ def split_days(gui):
 
         return day_dur, night_dur
 
-    def is_partial(df, start_index, end_index, block_type):
-        """
-            Checks if given range of indices represents a complete daytime or nighttime period.
-
-            Args:
-                    df (pd.DataFrame)
-                    start_index (int)
-                    end_index (int):
-                    block_type (str): "day" or "night"
-        """
-
-        # Allow 5 min of discrepency from full durrations
-        day_dur_thresh = day_dur - 300 if block_type == "day" else night_dur - 300
-        start_time = df.loc[start_index, "date_time"]
-        end_time = df.loc[end_index, "date_time"]
-        block_dur = end_time - start_time
-        if block_dur > datetime.timedelta(seconds=day_dur_thresh):
-            return False
-
-        return True
 
     # Create time objects from entry box values
     day_start = convert_to_datetime(f"01/01/2020 {str(gui.day_start_E.get())}").time()
@@ -135,14 +135,20 @@ def split_days(gui):
 
     # Construct day and night blocks from transition points
     days_list, nights_list = [], []
-    block_type = "day" if is_daytime(temp_df.loc[0, "date_time"]) else "night"
+    if is_daytime(temp_df.loc[0, "date_time"]):
+        block_list = days_list
+        block_dur_thresh = day_dur
+    else:
+        block_list = nights_list
+        block_dur_thresh = night_dur
+
     cur_index = 0
     for next_index in transition_indices:
-        block_list = days_list if block_type == "day" else nights_list
-        partial = is_partial(temp_df, cur_index, next_index - 1, block_type)
+        partial = is_partial(temp_df, cur_index, next_index - 1, block_dur_thresh)
         block_list.append(niq_classes.Block(gui, cur_index, (next_index - 1), partial))
 
-        block_type = "day" if block_type == "night" else "night"
+        block_dur_thresh = day_dur if block_dur_thresh == night_dur else night_dur
+        block_list = days_list if block_list == nights_list else nights_list
         cur_index = next_index
 
     return days_list, nights_list
@@ -402,36 +408,30 @@ def extract_bouts_in_range(gui, total_bouts, start_index, stop_index):
 
 
 
-def get_day_night_pairs(gui, days_list, nights_list):
+def get_date_blocks(gui):
     """
-			Pairs one day block object and one night block object to create one block object representing
-			a complete 24 hr period.
+        Creates Block objects for each date represented in the input file provided.
 
-			Args:
-					gui (GUIClass)
-					days_list (list): collection of all day blocks for the current input file
-					nights_list (list): collection of all night blocks for the current input file
+        Args:
+            gui (GUIClass)
 	"""
-    if len(days_list) < 1 or len(nights_list) < 1:
-        return []
 
-    day_night_pairs_list = []
+    # Get unique dates
+    date_blocks = []
+    dates = gui.master_df["date_time"].apply(datetime.datetime.date).unique()
+    
+    # Get data points corrisponding to each date
+    for date in dates:
+        sub_df = gui.master_df[gui.master_df["date_time"].apply(datetime.datetime.date) == date]
+        # 86400 = number of seconds in 24 hr
+        partial = is_partial(gui.master_df, sub_df.index.min(), sub_df.index.max(), 86400)
+        # Create Block object
+        date_blocks.append(niq_classes.Block(gui, sub_df.index.min(), sub_df.index.max(), partial))
 
-    # Set modifier based on if day or night comes first
-    modifier = 1 if days_list[0].start > nights_list[0].start else 0
-
-    # Checks for a night corresponding to day at index i and creates a pair if both are complete
-    for i in range(len(days_list)):
-        if (i + modifier) >= (len(nights_list)):
-            break
-
-        if not days_list[i].partial_day and not nights_list[i + modifier].partial_day:
-            day_night_pairs_list.append(niq_classes.Block(gui, days_list[i].start, nights_list[i + modifier].stop, False))
-
-    return day_night_pairs_list
+    return date_blocks
 
 
-def write_stats(gui, days, nights, day_night_pairs, master_block):
+def write_stats(gui, days, nights, date_blocks, master_block):
     """
         Calculates and gathers several statistics and subsequently dumps them into the individual
         statistics file and/or the multi-input file statistics file depending on the user's requested
@@ -441,7 +441,7 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
             gui (GUIClass)
             days (BlockGroup): contains every day object and information about the group as a whole
             nights (BlockGroup): contains every night object and information about the group as a whole
-            day_night_pairs (BlockGroup): contains every day/night pair object and information about the group as a whole
+            date_blocks (BlockGroup): contains every date Block which cary informationa bout data for each date
             master_block (block): block built from the entire input file
 	"""
 
@@ -554,85 +554,92 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
 
     # -----------------------------------------------------------------------------------------------
 
-    if len(days.block_list) > 0 and len(nights.block_list) > 0:
-        # Set modifier based on if day or night comes first
-        modifier = 1 if days.block_list[0].start > nights.block_list[0].start else 0
-        full_day_counter = 0
+    try:
+        # Set date_modifier based on if a date_block exists before the first day block
+        date_modifier = 0 if date_blocks.block_list[0].date == days.block_list[0].date else 1
+        # Set night_modifier based on if day or night comes first
+        night_modifier = 1 if days.block_list[0].start > nights.block_list[0].start else 0
+    except IndexError:
+        date_modifier, night_modifier = 0, 0
 
-        day_rows = []
-        # Print individual day stats
-        for i, cur_day in enumerate(days.block_list):
-            day_row = ""
+    day_rows = []
+    # Print individual day stats
+    for i in range(len(days.block_list)):
+        cur_day = days.block_list[i]
+        cur_date_block = date_blocks.block_list[i + date_modifier]
 
-            # Check if there are any night blocks left
-            if (i + modifier) >= (len(nights.block_list)):
-                break
+        # Check if there are any night blocks left
+        if len(nights.block_list) > i + night_modifier:
+            cur_night = nights.block_list[i + night_modifier]
+        else:
+            cur_night = None
 
-            cur_night = nights.block_list[i + modifier]
 
-            # Only report on complete days
-            if cur_day.partial_day or cur_night.partial_day:
-                continue
+        # Pull stats from only daytime period if restriction was requested
+        if gui.restrict_search_BV.get():
+            core_block = cur_day
+            partial = " (Partial)" if cur_day.partial_day else ""
+        # Else take from entire date
+        else:
+            core_block = cur_date_block
+            partial = " (Partial)" if cur_date_block.partial_day else ""
 
-            # Pull stats from only daytime period if restriction was requested
-            if gui.restrict_search_BV.get():
-                core_block = cur_day
-            else:
-                core_block = day_night_pairs.block_list[full_day_counter]
+        day_row = ""
 
-            if gui.day_num_BV.get():
-                day_row += f"{full_day_counter + 1},"
-            if gui.date_BV.get():
-                day_row += f"{core_block.date},"
+        if gui.day_num_BV.get():
+            day_row += f"{i + 1}{partial},"
+        if gui.date_BV.get():
+            day_row += f"{core_block.date},"
 
-            if gui.off_count_BV.get():
-                day_row += f"{core_block.off_count},"
-            if gui.off_dur_BV.get():
-                day_row += f"{core_block.mean_off_dur},"
-            if gui.off_dur_sd_BV.get():
-                day_row += f"{core_block.off_dur_stdev},"
-            if gui.off_dec_BV.get():
-                day_row += f"{core_block.mean_off_dec},"
-            if gui.off_dec_sd_BV.get():
-                day_row += f"{core_block.off_dec_stdev},"
-            if gui.mean_off_temper_BV.get():
-                day_row += f"{core_block.mean_off_temper},"
-            if gui.off_time_sum_BV.get():
-                day_row += f"{core_block.off_time_sum},"
+        if gui.off_count_BV.get():
+            day_row += f"{core_block.off_count},"
+        if gui.off_dur_BV.get():
+            day_row += f"{core_block.mean_off_dur},"
+        if gui.off_dur_sd_BV.get():
+            day_row += f"{core_block.off_dur_stdev},"
+        if gui.off_dec_BV.get():
+            day_row += f"{core_block.mean_off_dec},"
+        if gui.off_dec_sd_BV.get():
+            day_row += f"{core_block.off_dec_stdev},"
+        if gui.mean_off_temper_BV.get():
+            day_row += f"{core_block.mean_off_temper},"
+        if gui.off_time_sum_BV.get():
+            day_row += f"{core_block.off_time_sum},"
 
-            if gui.on_count_BV.get():
-                day_row += f"{core_block.on_count},"
-            if gui.on_dur_BV.get():
-                day_row += f"{core_block.mean_on_dur},"
-            if gui.on_dur_sd_BV.get():
-                day_row += f"{core_block.on_dur_stdev},"
-            if gui.on_inc_BV.get():
-                day_row += f"{core_block.mean_on_inc},"
-            if gui.on_inc_sd_BV.get():
-                day_row += f"{core_block.on_inc_stdev},"
-            if gui.mean_on_temper_BV.get():
-                day_row += f"{core_block.mean_on_temper},"
-            if gui.on_time_sum_BV.get():
-                day_row += f"{core_block.on_time_sum},"
+        if gui.on_count_BV.get():
+            day_row += f"{core_block.on_count},"
+        if gui.on_dur_BV.get():
+            day_row += f"{core_block.mean_on_dur},"
+        if gui.on_dur_sd_BV.get():
+            day_row += f"{core_block.on_dur_stdev},"
+        if gui.on_inc_BV.get():
+            day_row += f"{core_block.mean_on_inc},"
+        if gui.on_inc_sd_BV.get():
+            day_row += f"{core_block.on_inc_stdev},"
+        if gui.mean_on_temper_BV.get():
+            day_row += f"{core_block.mean_on_temper},"
+        if gui.on_time_sum_BV.get():
+            day_row += f"{core_block.on_time_sum},"
 
-            if gui.time_above_temper_BV.get():
-                day_row += f"{day_night_pairs.block_list[full_day_counter].time_above_temper},"
-            if gui.time_below_temper_BV.get():
-                day_row += f"{day_night_pairs.block_list[full_day_counter].time_below_temper},"
-            if gui.bouts_dropped_BV.get():
-                day_row += f"{core_block.bouts_dropped},"
+        if gui.time_above_temper_BV.get():
+            day_row += f"{cur_date_block.time_above_temper},"
+        if gui.time_below_temper_BV.get():
+            day_row += f"{cur_date_block.time_below_temper},"
+        if gui.bouts_dropped_BV.get():
+            day_row += f"{core_block.bouts_dropped},"
 
-            if gui.mean_temper_d_BV.get():
-                day_row += f"{cur_day.mean_egg_temper},"
-            if gui.mean_temper_d_sd_BV.get():
-                day_row += f"{cur_day.egg_temper_stdev},"
-            if gui.median_temper_d_BV.get():
-                day_row += f"{cur_day.median_temper},"
-            if gui.min_temper_d_BV.get():
-                day_row += f"{cur_day.min_egg_temper},"
-            if gui.max_temper_d_BV.get():
-                day_row += f"{cur_day.max_egg_temper},"
+        if gui.mean_temper_d_BV.get():
+            day_row += f"{cur_day.mean_egg_temper},"
+        if gui.mean_temper_d_sd_BV.get():
+            day_row += f"{cur_day.egg_temper_stdev},"
+        if gui.median_temper_d_BV.get():
+            day_row += f"{cur_day.median_temper},"
+        if gui.min_temper_d_BV.get():
+            day_row += f"{cur_day.min_egg_temper},"
+        if gui.max_temper_d_BV.get():
+            day_row += f"{cur_day.max_egg_temper},"
 
+        if cur_night:
             if gui.mean_temper_n_BV.get():
                 day_row += f"{cur_night.mean_egg_temper},"
             if gui.mean_temper_n_sd_BV.get():
@@ -644,32 +651,30 @@ def write_stats(gui, days, nights, day_night_pairs, master_block):
             if gui.max_temper_n_BV.get():
                 day_row += f"{cur_night.max_egg_temper},"
 
-            if gui.mean_temper_dn_BV.get():
-                day_row += f"{day_night_pairs.block_list[full_day_counter].mean_egg_temper},"
-            if gui.mean_temper_dn_sd_BV.get():
-                day_row += f"{day_night_pairs.block_list[full_day_counter].egg_temper_stdev},"
-            if gui.median_temper_dn_BV.get():
-                day_row += f"{day_night_pairs.block_list[full_day_counter].median_temper},"
-            if gui.min_temper_dn_BV.get():
-                day_row += f"{day_night_pairs.block_list[full_day_counter].min_egg_temper},"
-            if gui.max_temper_dn_BV.get():
-                day_row += f"{day_night_pairs.block_list[full_day_counter].max_egg_temper},"
+        if gui.mean_temper_dn_BV.get():
+            day_row += f"{cur_date_block.mean_egg_temper},"
+        if gui.mean_temper_dn_sd_BV.get():
+            day_row += f"{cur_date_block.egg_temper_stdev},"
+        if gui.median_temper_dn_BV.get():
+            day_row += f"{cur_date_block.median_temper},"
+        if gui.min_temper_dn_BV.get():
+            day_row += f"{cur_date_block.min_egg_temper},"
+        if gui.max_temper_dn_BV.get():
+            day_row += f"{cur_date_block.max_egg_temper},"
 
-            if gui.air_valid:
-                if gui.mean_air_temper_BV.get():
-                    day_row += f"{day_night_pairs.block_list[full_day_counter].mean_air_temper},"
-                if gui.mean_air_temper_sd_BV.get():
-                    day_row += f"{day_night_pairs.block_list[full_day_counter].air_temper_stdev},"
-                if gui.min_air_temper_BV.get():
-                    day_row += f"{day_night_pairs.block_list[full_day_counter].min_air_temper},"
-                if gui.max_air_temper_BV.get():
-                    day_row += f"{day_night_pairs.block_list[full_day_counter].max_air_temper},"
+        if gui.air_valid:
+            if gui.mean_air_temper_BV.get():
+                day_row += f"{cur_date_block.mean_air_temper},"
+            if gui.mean_air_temper_sd_BV.get():
+                day_row += f"{cur_date_block.air_temper_stdev},"
+            if gui.min_air_temper_BV.get():
+                day_row += f"{cur_date_block.min_air_temper},"
+            if gui.max_air_temper_BV.get():
+                day_row += f"{cur_date_block.max_air_temper},"
 
-            full_day_counter += 1
+        day_rows.append(day_row)
 
-            day_rows.append(day_row)
-
-        gui.multi_in_full_day_count += full_day_counter
+    gui.multi_in_full_day_count += len(date_blocks.block_list)
 
     # -----------------------------------------------------------------------------------------------
 
