@@ -464,7 +464,7 @@ def get_date_blocks(gui):
     return date_blocks
 
 
-def write_stats(gui, days, nights, date_blocks, master_block):
+def write_stats(gui, date_blocks, master_block):
     """
         Calculates and gathers several statistics and subsequently dumps them into the individual
         statistics file and/or the multi-input file statistics file depending on the user's requested
@@ -587,131 +587,103 @@ def write_stats(gui, days, nights, date_blocks, master_block):
 
     # -----------------------------------------------------------------------------------------------
 
-    try:
-        # Set date_modifier based on if a date_block exists before the first day block
-        date_modifier = 0 if date_blocks.block_list[0].date == days.block_list[0].date else 1
-        # Set night_modifier based on if day or night comes first
-        night_modifier = 1 if days.block_list[0].first > nights.block_list[0].last else 0
-    except IndexError:
-        date_modifier, night_modifier = 0, 0
-
     day_rows = []
     # Print individual day stats
-    for i in range(len(days.block_list)):
-        cur_day = days.block_list[i]
-        cur_date_block = date_blocks.block_list[i + date_modifier]
-
-        # Check if there are any night blocks left
-        if len(nights.block_list) > i + night_modifier:
-            cur_night = nights.block_list[i + night_modifier]
-        else:
-            cur_night = None
-
-
-        # Pull stats from only daytime period if restriction was requested
-        if gui.restrict_search_BV.get():
-            core_block = cur_day
-            partial = " (Partial)" if cur_day.partial_day else ""
-        # Else take from entire date
-        else:
-            core_block = cur_date_block
-            partial = " (Partial)" if cur_date_block.partial_day else ""
-
+    for i, block in enumerate(date_blocks):
         day_row = ""
+
+        partial = " (Partial)" if block.partial_day else ""
 
         if gui.day_num_BV.get():
             day_row += f"{i + 1}{partial},"
         if gui.date_BV.get():
-            day_row += f"{core_block.date},"
+            day_row += f"{block.date},"
 
         if gui.off_count_BV.get():
-            day_row += f"{core_block.off_count},"
+            day_row += f"{block.off_count},"
         if gui.off_dur_BV.get():
-            day_row += f"{core_block.mean_off_dur},"
+            day_row += f"{block.mean_off_dur},"
         if gui.off_dur_sd_BV.get():
-            day_row += f"{core_block.off_dur_stdev},"
+            day_row += f"{block.off_dur_stdev},"
         if gui.off_dec_BV.get():
-            day_row += f"{core_block.mean_off_dec},"
+            day_row += f"{block.mean_off_dec},"
         if gui.off_dec_sd_BV.get():
-            day_row += f"{core_block.off_dec_stdev},"
+            day_row += f"{block.off_dec_stdev},"
         if gui.mean_off_temper_BV.get():
-            day_row += f"{core_block.mean_off_temper},"
+            day_row += f"{block.mean_off_temper},"
         if gui.off_time_sum_BV.get():
-            day_row += f"{core_block.off_time_sum},"
+            day_row += f"{block.off_time_sum},"
 
         if gui.on_count_BV.get():
-            day_row += f"{core_block.on_count},"
+            day_row += f"{block.on_count},"
         if gui.on_dur_BV.get():
-            day_row += f"{core_block.mean_on_dur},"
+            day_row += f"{block.mean_on_dur},"
         if gui.on_dur_sd_BV.get():
-            day_row += f"{core_block.on_dur_stdev},"
+            day_row += f"{block.on_dur_stdev},"
         if gui.on_inc_BV.get():
-            day_row += f"{core_block.mean_on_inc},"
+            day_row += f"{block.mean_on_inc},"
         if gui.on_inc_sd_BV.get():
-            day_row += f"{core_block.on_inc_stdev},"
+            day_row += f"{block.on_inc_stdev},"
         if gui.mean_on_temper_BV.get():
-            day_row += f"{core_block.mean_on_temper},"
+            day_row += f"{block.mean_on_temper},"
         if gui.on_time_sum_BV.get():
-            day_row += f"{core_block.on_time_sum},"
+            day_row += f"{block.on_time_sum},"
 
         if gui.time_above_temper_BV.get():
-            day_row += f"{cur_date_block.time_above_temper},"
+            day_row += f"{block.time_above_temper},"
         if gui.time_below_temper_BV.get():
-            day_row += f"{cur_date_block.time_below_temper},"
+            day_row += f"{block.time_below_temper},"
         if gui.bouts_dropped_BV.get():
-            day_row += f"{core_block.bouts_dropped},"
+            day_row += f"{block.bouts_dropped},"
 
         if gui.mean_temper_d_BV.get():
-            day_row += f"{cur_day.mean_egg_temper},"
+            day_row += f"{block.mean_egg_temper_day},"
         if gui.mean_temper_d_sd_BV.get():
-            day_row += f"{cur_day.egg_temper_stdev},"
+            day_row += f"{block.egg_temper_stdev_day},"
         if gui.median_temper_d_BV.get():
-            day_row += f"{cur_day.median_temper},"
+            day_row += f"{block.median_egg_temper_day},"
         if gui.min_temper_d_BV.get():
-            day_row += f"{cur_day.min_egg_temper},"
+            day_row += f"{block.min_egg_temper_day},"
         if gui.max_temper_d_BV.get():
-            day_row += f"{cur_day.max_egg_temper},"
+            day_row += f"{block.max_egg_temper_day},"
 
-        if cur_night:
-            if gui.mean_temper_n_BV.get():
-                day_row += f"{cur_night.mean_egg_temper},"
-            if gui.mean_temper_n_sd_BV.get():
-                day_row += f"{cur_night.egg_temper_stdev},"
-            if gui.median_temper_n_BV.get():
-                day_row += f"{cur_night.median_temper},"
-            if gui.min_temper_n_BV.get():
-                day_row += f"{cur_night.min_egg_temper},"
-            if gui.max_temper_n_BV.get():
-                day_row += f"{cur_night.max_egg_temper},"
+        if gui.mean_temper_n_BV.get():
+            day_row += f"{block.mean_egg_temper_night},"
+        if gui.mean_temper_n_sd_BV.get():
+            day_row += f"{block.egg_temper_stdev_night},"
+        if gui.median_temper_n_BV.get():
+            day_row += f"{block.median_egg_temper_night},"
+        if gui.min_temper_n_BV.get():
+            day_row += f"{block.min_egg_temper_night},"
+        if gui.max_temper_n_BV.get():
+            day_row += f"{block.max_egg_temper_night},"
 
         if gui.mean_temper_dn_BV.get():
-            day_row += f"{cur_date_block.mean_egg_temper},"
+            day_row += f"{block.mean_egg_temper},"
         if gui.mean_temper_dn_sd_BV.get():
-            day_row += f"{cur_date_block.egg_temper_stdev},"
+            day_row += f"{block.egg_temper_stdev},"
         if gui.median_temper_dn_BV.get():
-            day_row += f"{cur_date_block.median_temper},"
+            day_row += f"{block.median_temper},"
         if gui.min_temper_dn_BV.get():
-            day_row += f"{cur_date_block.min_egg_temper},"
+            day_row += f"{block.min_egg_temper},"
         if gui.max_temper_dn_BV.get():
-            day_row += f"{cur_date_block.max_egg_temper},"
+            day_row += f"{block.max_egg_temper},"
 
         if gui.air_valid:
             if gui.mean_air_temper_BV.get():
-                day_row += f"{cur_date_block.mean_air_temper},"
+                day_row += f"{block.mean_air_temper},"
             if gui.mean_air_temper_sd_BV.get():
-                day_row += f"{cur_date_block.air_temper_stdev},"
+                day_row += f"{block.air_temper_stdev},"
             if gui.min_air_temper_BV.get():
-                day_row += f"{cur_date_block.min_air_temper},"
+                day_row += f"{block.min_air_temper},"
             if gui.max_air_temper_BV.get():
-                day_row += f"{cur_date_block.max_air_temper},"
+                day_row += f"{block.max_air_temper},"
 
         day_rows.append(day_row)
 
-    gui.multi_in_full_day_count += len(date_blocks.block_list)
+    gui.multi_in_full_day_count += len(date_blocks)
 
     # -----------------------------------------------------------------------------------------------
-
-    block_group = days if gui.restrict_search_BV.get() else master_block
 
     # Output stats summary for entire input file
     summary_row = ""
@@ -721,84 +693,84 @@ def write_stats(gui, days, nights, date_blocks, master_block):
         summary_row += f"ALL DATA,"
 
     if gui.off_count_BV.get():
-        summary_row += f"{block_group.off_count},"
+        summary_row += f"{master_block.off_count},"
     if gui.off_dur_BV.get():
-        summary_row += f"{block_group.mean_off_dur},"
+        summary_row += f"{master_block.mean_off_dur},"
     if gui.off_dur_sd_BV.get():
-        summary_row += f"{block_group.off_dur_stdev},"
+        summary_row += f"{master_block.off_dur_stdev},"
     if gui.off_dec_BV.get():
-        summary_row += f"{block_group.mean_off_dec},"
+        summary_row += f"{master_block.mean_off_dec},"
     if gui.off_dec_sd_BV.get():
-        summary_row += f"{block_group.off_dec_stdev},"
+        summary_row += f"{master_block.off_dec_stdev},"
     if gui.mean_off_temper_BV.get():
-        summary_row += f"{block_group.mean_off_temper},"
+        summary_row += f"{master_block.mean_off_temper},"
     if gui.off_time_sum_BV.get():
-        summary_row += f"{block_group.off_time_sum},"
+        summary_row += f"{master_block.off_time_sum},"
 
     if gui.on_count_BV.get():
-        summary_row += f"{block_group.on_count},"
+        summary_row += f"{master_block.on_count},"
     if gui.on_dur_BV.get():
-        summary_row += f"{block_group.mean_on_dur},"
+        summary_row += f"{master_block.mean_on_dur},"
     if gui.on_dur_sd_BV.get():
-        summary_row += f"{block_group.on_dur_stdev},"
+        summary_row += f"{master_block.on_dur_stdev},"
     if gui.on_inc_BV.get():
-        summary_row += f"{block_group.mean_on_inc},"
+        summary_row += f"{master_block.mean_on_inc},"
     if gui.on_inc_sd_BV.get():
-        summary_row += f"{block_group.on_inc_stdev},"
+        summary_row += f"{master_block.on_inc_stdev},"
     if gui.mean_on_temper_BV.get():
-        summary_row += f"{block_group.mean_on_temper},"
+        summary_row += f"{master_block.mean_on_temper},"
     if gui.on_time_sum_BV.get():
-        summary_row += f"{block_group.on_time_sum},"
+        summary_row += f"{master_block.on_time_sum},"
 
     if gui.time_above_temper_BV.get():
-        summary_row += f"{master_time_above_temper},"
+        summary_row += f"{master_block.time_above_temper},"
     if gui.time_below_temper_BV.get():
-        summary_row += f"{master_time_below_temper},"
+        summary_row += f"{master_block.time_below_temper},"
     if gui.bouts_dropped_BV.get():
-        summary_row += f"{block_group.bouts_dropped},"
+        summary_row += f"{master_block.bouts_dropped},"
 
     if gui.mean_temper_d_BV.get():
-        summary_row += f"{days.mean_egg_temper},"
+        summary_row += f"{master_block.mean_egg_temper_day},"
     if gui.mean_temper_d_sd_BV.get():
-        summary_row += f"{days.egg_temper_stdev},"
+        summary_row += f"{master_block.egg_temper_stdev_day},"
     if gui.median_temper_d_BV.get():
-        summary_row += f"{days.median_temper},"
+        summary_row += f"{master_block.median_egg_temper_day},"
     if gui.min_temper_d_BV.get():
-        summary_row += f"{days.min_egg_temper},"
+        summary_row += f"{master_block.min_egg_temper_day},"
     if gui.max_temper_d_BV.get():
-        summary_row += f"{days.max_egg_temper},"
+        summary_row += f"{master_block.max_egg_temper_day},"
 
     if gui.mean_temper_n_BV.get():
-        summary_row += f"{nights.mean_egg_temper},"
+        summary_row += f"{master_block.mean_egg_temper_night},"
     if gui.mean_temper_n_sd_BV.get():
-        summary_row += f"{nights.egg_temper_stdev},"
+        summary_row += f"{master_block.egg_temper_stdev_night},"
     if gui.median_temper_n_BV.get():
-        summary_row += f"{nights.median_temper},"
+        summary_row += f"{master_block.median_egg_temper_night},"
     if gui.min_temper_n_BV.get():
-        summary_row += f"{nights.min_egg_temper},"
+        summary_row += f"{master_block.min_egg_temper_night},"
     if gui.max_temper_n_BV.get():
-        summary_row += f"{nights.max_egg_temper},"
+        summary_row += f"{master_block.max_egg_temper_night},"
 
     if gui.mean_temper_dn_BV.get():
-        summary_row += f"{all_egg_tempers.mean().round(3)},"
+        summary_row += f"{master_block.mean_egg_temper},"
     if gui.mean_temper_dn_sd_BV.get():
-        summary_row += f"{all_egg_tempers.std().round(3)},"
+        summary_row += f"{master_block.egg_temper_stdev},"
     if gui.median_temper_dn_BV.get():
-        summary_row += f"{all_egg_tempers.median().round(3)},"
+        summary_row += f"{master_block.median_temper},"
     if gui.min_temper_dn_BV.get():
-        summary_row += f"{all_egg_tempers.min()},"
+        summary_row += f"{master_block.min_egg_temper},"
     if gui.max_temper_dn_BV.get():
-        summary_row += f"{all_egg_tempers.max()},"
+        summary_row += f"{master_block.max_egg_temper},"
 
     if gui.air_valid:
         if gui.mean_air_temper_BV.get():
-            summary_row += f"{all_air_tempers.mean().round(3)},"
+            summary_row += f"{master_block.mean_air_temper},"
         if gui.mean_air_temper_sd_BV.get():
-            summary_row += f"{all_air_tempers.std().round(3)},"
+            summary_row += f"{master_block.air_temper_stdev},"
         if gui.min_air_temper_BV.get():
-            summary_row += f"{all_air_tempers.min()},"
+            summary_row += f"{master_block.min_air_temper},"
         if gui.max_air_temper_BV.get():
-            summary_row += f"{all_air_tempers.max()},"
+            summary_row += f"{master_block.max_air_temper},"
 
     summary_row += "\n\n"
 
@@ -831,12 +803,7 @@ def write_stats(gui, days, nights, date_blocks, master_block):
     if gui.air_valid:
         indi_header += "Start Air Temp, End Air Temp, Mean Air Temp"
 
-    # If restricted, take only bouts from daytime periods, else take all bouts
-    bouts = []
-    if gui.restrict_search_BV.get():
-        bouts += [bout for day in days.block_list for bout in day.bouts]
-    else:
-        bouts += master_block.bouts
+    bouts = master_block.bouts
 
     bout_rows = []
     cur_date = ""

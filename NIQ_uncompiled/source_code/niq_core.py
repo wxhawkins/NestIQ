@@ -2090,50 +2090,34 @@ def main(gui):
     gui.master_block = niq_classes.Block(gui, 0, len(gui.master_df) - 1, False)
     gui.master_block.vertices = niq_misc.get_verts_from_master_df(gui.master_df)
     gui.master_block.bouts = niq_misc.get_bouts_from_verts(gui, gui.master_block.vertices)
+    print("len = ", len(gui.master_block.bouts))
     gui.master_block.get_stats(gui)
     file_bouts = gui.master_block.bouts
 
-    # Get parse master_df into day and night blocks
-    days_list, nights_list = niq_misc.split_days(gui)
-    gui.master_df = gui.set_nighttime_state(nights_list, gui.master_df)
+    gui.master_block.deposit_multi_file_stats(gui)
 
-    if not gui.restrict_search_BV.get():
-        gui.master_block.deposit_multi_file_stats(gui)
     if gui.air_valid:
         gui.multi_in_air_tempers += gui.master_block.air_tempers.tolist()
 
     # Get vertices, bouts and stats for day blocks
-    for day in days_list:
-        day.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, day.first, day.last)
-        day.get_stats(gui)
-        gui.multi_in_day_tempers += day.egg_tempers.tolist()
-
-        if gui.restrict_search_BV.get():
-            day.deposit_multi_file_stats(gui)
+    egg_tempers_day = gui.master_block.block_tempers[gui.master_block.block_tempers["is_daytime"] == True]
+    gui.multi_in_day_tempers += egg_tempers_day["egg_temper"].tolist()
 
     # Get vertices, bouts and stats for night blocks
-    for night in nights_list:
-        night.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, night.first, night.last)
-        night.get_stats(gui)
-        gui.multi_in_night_tempers += night.egg_tempers.tolist()
+    egg_tempers_night = gui.master_block.block_tempers[gui.master_block.block_tempers["is_daytime"] == False]
+    gui.multi_in_day_tempers += egg_tempers_night["egg_temper"].tolist()
 
     # Create blocks each date represented in input file
-    date_block_list = []
     date_block_list = niq_misc.get_date_blocks(gui)
     for date_block in date_block_list:
         date_block.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, date_block.first, date_block.last)
         date_block.get_stats(gui)
 
-    # Create BlockGroup objects to get day, night and date block cumulative statistics
-    days = niq_classes.BlockGroup(gui, days_list)
-    nights = niq_classes.BlockGroup(gui, nights_list)
-    date_blocks = niq_classes.BlockGroup(gui, date_block_list)
-
     # Plot and write stats file if requested
     if gui.make_plot_BV.get():
-        niq_misc.generate_plot(gui, gui.master_df, days_list, gui.mon_dims)
+        niq_misc.generate_plot(gui, gui.master_df, date_block_list, gui.mon_dims)
     if gui.get_stats_BV.get():
-        niq_misc.write_stats(gui, days, nights, date_blocks, gui.master_block)
+        niq_misc.write_stats(gui, date_block_list, gui.master_block)
 
 
 if __name__ == "__main__":

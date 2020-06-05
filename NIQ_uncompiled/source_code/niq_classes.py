@@ -110,6 +110,7 @@ class Block:
         self.bouts = []
         self.bout_df = pd.DataFrame()
         self.bout_tempers = pd.DataFrame()
+        self.block_tempers = pd.DataFrame()
 
         self.off_count = 0
         self.mean_off_dur = None
@@ -138,6 +139,18 @@ class Block:
         self.min_air_temper = None
         self.max_air_temper = None
 
+        self.mean_egg_temper_day = None
+        self.median_egg_temper_day = None
+        self.min_egg_temper_day = None
+        self.max_egg_temper_day = None
+        self.egg_temper_stdev_day = None
+
+        self.mean_egg_temper_night = None
+        self.median_egg_temper_night = None
+        self.min_egg_temper_night = None
+        self.max_egg_temper_night = None
+        self.egg_temper_stdev_night = None
+
         self.time_above_temper = 0
         self.time_below_temper = 0
         self.bouts_dropped = 0
@@ -152,10 +165,15 @@ class Block:
                 type
                 is_daytime
             
-            bout_temper columns:
+            bout_tempers columns:
                 egg_temper
                 air_temper
                 type
+                is_daytime
+
+            block_tempers columns:
+                egg_temper
+                air_temper
                 is_daytime
         """
 
@@ -169,7 +187,13 @@ class Block:
         self.bout_tempers["egg_temper"] = [temper for bout in self.bouts for temper in bout.egg_tempers]
         self.bout_tempers["air_temper"] = [temper for bout in self.bouts for temper in bout.air_tempers]
         self.bout_tempers["type"] = [bout.bout_type for bout in self.bouts for _ in range(len(bout.egg_tempers))]
-        self.bout_tempers["is_daytime"] = gui.master_df[self.first:self.last]["is_daytime"]
+        # self.bout_tempers["is_daytime"] = gui.master_df[self.bouts[0].first:self.bouts[-1].last + 1]["is_daytime"].tolist()
+
+        self.block_tempers["egg_temper"] = gui.master_df[self.first:self.last + 1]["egg_temper"]
+        self.block_tempers["air_temper"] = gui.master_df[self.first:self.last + 1]["air_temper"]
+        self.block_tempers["is_daytime"] = gui.master_df[self.first:self.last + 1]["is_daytime"]
+
+        # print("daytime =\n", self.bout_tempers["is_daytime"].value_counts())
 
     def get_stats(self, gui):
         """
@@ -210,30 +234,30 @@ class Block:
             on_bout_df = self.bout_df[self.bout_df["type"] == "on"]
             on_tempers_df = self.bout_tempers[self.bout_tempers["type"] == "on"]
             self.mean_on_dur = on_bout_df["duration"].mean().round(2)
-            self.mean_on_dec = on_bout_df["temper_change"].mean().round(3)
+            self.mean_on_inc = on_bout_df["temper_change"].mean().round(3)
             self.mean_on_temper = on_tempers_df["egg_temper"].mean().round(3)
             self.on_time_sum = on_bout_df["duration"].sum().mean().round(2)
             if self.on_count > 1:
                 self.on_dur_stdev = on_bout_df["duration"].std().round(2)
-                self.on_dec_stdev = on_bout_df["temper_change"].std().round(3)
+                self.on_inc_stdev = on_bout_df["temper_change"].std().round(3)
 
         # Calculate egg temperature statistics
-        if len(self.bout_tempers) > 1:
-            self.mean_egg_temper = self.bout_tempers["egg_temper"].mean().round(3)
-            self.median_temper = self.bout_tempers["egg_temper"].median().round(3)
-            self.min_egg_temper = self.bout_tempers["egg_temper"].min()
-            self.max_egg_temper = self.bout_tempers["egg_temper"].max()
-            self.egg_temper_stdev = self.bout_tempers["egg_temper"].std().round(3)
+        if len(self.block_tempers) > 1:
+            self.mean_egg_temper = self.block_tempers["egg_temper"].mean().round(3)
+            self.median_temper = self.block_tempers["egg_temper"].median().round(3)
+            self.min_egg_temper = self.block_tempers["egg_temper"].min()
+            self.max_egg_temper = self.block_tempers["egg_temper"].max()
+            self.egg_temper_stdev = self.block_tempers["egg_temper"].std().round(3)
 
         # Calculate air temperature statistics
-        if gui.air_valid and len(self.bout_tempers) > 1:
-            self.mean_air_temper = self.bout_tempers["air_temper"].mean().round(3)
-            self.min_air_temper = self.bout_tempers["air_temper"].min()
-            self.max_air_temper = self.bout_tempers["air_temper"].max()
-            self.air_temper_stdev = self.bout_tempers["air_temper"].std().round(3)
+        if gui.air_valid and len(self.block_tempers) > 1:
+            self.mean_air_temper = self.block_tempers["air_temper"].mean().round(3)
+            self.min_air_temper = self.block_tempers["air_temper"].min()
+            self.max_air_temper = self.block_tempers["air_temper"].max()
+            self.air_temper_stdev = self.block_tempers["air_temper"].std().round(3)
 
         # Calculate daytime egg temperature statistics
-        egg_tempers_day = self.bout_tempers[self.bout_tempers["is_daytime"] == True]
+        egg_tempers_day = self.block_tempers[self.block_tempers["is_daytime"] == True]
         if len(egg_tempers_day) > 1:
             self.mean_egg_temper_day = egg_tempers_day["egg_temper"].mean().round(3)
             self.median_egg_temper_day = egg_tempers_day["egg_temper"].median().round(3)
@@ -242,7 +266,7 @@ class Block:
             self.egg_temper_stdev_day = egg_tempers_day["egg_temper"].std().round(3)
 
         # Calculate nighttime egg temperature statistics
-        egg_tempers_night = self.bout_tempers[self.bout_tempers["is_daytime"] == False]
+        egg_tempers_night = self.block_tempers[self.block_tempers["is_daytime"] == False]
         if len(egg_tempers_night) > 1:
             self.mean_egg_temper_night = egg_tempers_night["egg_temper"].mean().round(3)
             self.median_egg_temper_night = egg_tempers_night["egg_temper"].median().round(3)
@@ -256,7 +280,6 @@ class Block:
 
         return True
 
-    # Flag - can possibly simplify by just using off_decs list etc
     def deposit_multi_file_stats(self, gui):
         """
                 Deposits information about this block into GUI variables that can later be used to 
