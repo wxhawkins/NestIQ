@@ -2100,13 +2100,13 @@ def main(gui):
     if not gui.restrict_search_BV.get():
         gui.master_block.deposit_multi_file_stats(gui)
     if gui.air_valid:
-        gui.multi_in_air_tempers += gui.master_block.air_tempers
+        gui.multi_in_air_tempers += gui.master_block.air_tempers.tolist()
 
     # Get vertices, bouts and stats for day blocks
     for day in days_list:
         day.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, day.first, day.last)
         day.get_stats(gui)
-        gui.multi_in_day_tempers += day.egg_tempers
+        gui.multi_in_day_tempers += day.egg_tempers.tolist()
 
         if gui.restrict_search_BV.get():
             day.deposit_multi_file_stats(gui)
@@ -2115,7 +2115,7 @@ def main(gui):
     for night in nights_list:
         night.bouts = niq_misc.extract_bouts_in_range(gui, file_bouts, night.first, night.last)
         night.get_stats(gui)
-        gui.multi_in_night_tempers += night.egg_tempers
+        gui.multi_in_night_tempers += night.egg_tempers.tolist()
 
     # Create blocks each date represented in input file
     date_block_list = []

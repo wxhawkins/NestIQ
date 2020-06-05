@@ -847,7 +847,7 @@ def write_stats(gui, days, nights, date_blocks, master_block):
         row += "," if this_date == cur_date else f"{this_date},"
         cur_date = this_date
 
-        row += bout.bout_type
+        row += f"{bout.bout_type},"
 
         row += (
             f"{gui.master_df.loc[bout.first, 'date_time'].strftime(r'%H:%M')},"
@@ -1318,7 +1318,7 @@ def get_bouts_from_verts(gui, verts):
     for next_vert in verts[1:]:
         # Skip if cur_vert is start of nighttime period
         if cur_vert.vert_type != "None":
-            bouts.append(niq_classes.Bout(gui, cur_vert.index, next_vert.index, cur_vert.vert_type)) 
+            bouts.append(niq_classes.Bout(gui, cur_vert.index, next_vert.index - 1, cur_vert.vert_type)) 
 
         cur_vert = next_vert
 
