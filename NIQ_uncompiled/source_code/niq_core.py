@@ -1263,11 +1263,11 @@ class GUIClass:
             entry_path = Path(self.out_path_E.get()) / Path(entry.get()).with_suffix(ext)
 
             # Check if plot file already exists and if so, ask to override
-            if entry_path.exists() and self.show_warns_BV.get():
-                if messagebox.askyesno("Override?", f"The file '{entry.get()}' already exists.  Do you want to override?"):
-                    entry_path.unlink()
-                else:
-                    return False
+            if entry_path.exists():
+                if self.show_warns_BV.get():
+                    if not messagebox.askyesno("Override?", f"The file '{entry.get()}' already exists.  Do you want to override?"):
+                        return False
+                entry_path.unlink()
 
             try:
                 with open(entry.get(), "a+") as _:
@@ -1643,47 +1643,6 @@ class GUIClass:
 
         niq_misc.remove_curly(entry)
 
-    def append_multi_file_stats(self):
-        """
-						Dumps cumulative, multi-file statistics into compiled stats file.
-		"""
-
-        with open(self.multi_in_stats_file_E.get(), "a") as compiled_stats_file:
-            # Used to indictate scope of certain statistics
-            qualifier = "(D)," if self.restrict_search_BV.get() else "(DN),"
-
-            print("Cumulative Summary", file=compiled_stats_file)
-
-            print("Off-Bout Count", qualifier, str(len(self.multi_file_off_durs)), file=compiled_stats_file)
-            print("Mean Off Dur", qualifier, str(round(np.mean(self.multi_file_off_durs), 2)), file=compiled_stats_file)
-            print("Off Dur StDev", qualifier, str(round(np.std(self.multi_file_off_durs), 2)), file=compiled_stats_file)
-            print("Mean Off Temp Drop", qualifier, str(round(np.mean(self.multi_file_off_decs), 3)), file=compiled_stats_file)
-            print("Off Drop StDev", qualifier, str(round(np.std(self.multi_file_off_decs), 3)), file=compiled_stats_file)
-
-            print("On-Bout Count", qualifier, str(len(self.multi_file_on_durs)), file=compiled_stats_file)
-            print("Mean On Dur", qualifier, str(round(np.mean(self.multi_file_on_durs), 2)), file=compiled_stats_file)
-            print("On Dur StDev", qualifier, str(round(np.std(self.multi_file_on_durs), 2)), file=compiled_stats_file)
-            print("Mean On Temp Rise", qualifier, str(round(np.mean(self.multi_in_on_incs), 3)), file=compiled_stats_file)
-            print("On Rise StDev", qualifier, str(round(np.std(self.multi_in_on_incs), 3)), file=compiled_stats_file)
-
-            print("Full Day Count,", str(self.multi_in_full_day_count), file=compiled_stats_file)
-            print("Mean Egg Temp,", str(round(np.mean((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
-            print("Egg Temp StDev,", str(round(np.std((self.multi_in_day_tempers + self.multi_in_night_tempers)), 3)), file=compiled_stats_file)
-            print("Mean Daytime Egg Temp,", str(round(np.mean(self.multi_in_day_tempers), 3)), file=compiled_stats_file)
-            print("Day Egg Temp StDev,", str(round(np.std(self.multi_in_day_tempers), 3)), file=compiled_stats_file)
-            print("Mean Nighttime Egg Temp,", str(round(np.mean(self.multi_in_night_tempers), 3)), file=compiled_stats_file)
-            print("Night Egg Temp StDev,", str(round(np.std(self.multi_in_night_tempers), 3)), file=compiled_stats_file)
-            print("Min Egg Temp,", str(min(self.multi_in_day_tempers + self.multi_in_night_tempers)), file=compiled_stats_file)
-            print("Max Egg Temp,", str(max(self.multi_in_day_tempers + self.multi_in_night_tempers)), file=compiled_stats_file)
-
-            if self.air_valid:
-                print("Mean Air Temp,", str(round(np.mean(self.multi_in_air_tempers), 3)), file=compiled_stats_file)
-                print("Air Temp StDev,", str(round(np.std(self.multi_in_air_tempers), 3)), file=compiled_stats_file)
-                print("Min Air Temp,", str(min(self.multi_in_air_tempers)), file=compiled_stats_file)
-                print("Max Air Temp,", str(max(self.multi_in_air_tempers)), file=compiled_stats_file)
-
-            print("\n\n", file=compiled_stats_file)
-
     def reset_multi_file_var(self):
         """
 						Resets variables used to store data across multiple input files.
@@ -1892,12 +1851,13 @@ class GUIClass:
             print("Running NestIQ")
 
             in_file_paths = self.parse_input_file_entry()
-            self.reset_multi_file_var()
+            self.multi_file_stats = niq_classes.MultiFileStats(self)
+
+            self.air_valid = True   
 
             for file_num, path in enumerate(in_file_paths, 1):
                 self.set_active_input(path, replace_out=(len(in_file_paths) > 1))
                 self.run = True
-                self.air_valid = True
 
                 self.run_B["text"] = f"Running {file_num}..."
                 self.run_B.config(bg="gray", fg="white", width=15, height=1)
@@ -1939,7 +1899,7 @@ class GUIClass:
                     break
 
             if self.multi_in_stats_BV.get():
-                self.append_multi_file_stats()
+                self.multi_file_stats.write(self)
 
             replace_entry(self.input_file_E, "|".join([str(path) for path in in_file_paths]))
 
@@ -2074,38 +2034,31 @@ class GUIClass:
 
 def main(gui):
     """
-        Performs some final data reorganization and then executes all of the core data analyzation
-        function. Vertex locations are initially collected for the entire file. These vertices are later
-        allocated to individual day and night objects. Finally, "BlockGroup" objects are created for each
-        of these three categories for the calculation of broader statistics.
+        Pior to entering this function, master_df has be fully constructed including the annotation of bout_state,
+        and daytime/nighttime status for the entiere dataset, regardless of daytime restriction. First, any data points
+        corrisponding to nighttime have their bout_state set to None. A master block is constructed which covers the
+        entire dataset. The vertices for this Block are acquired by searching for changes in bout state (e.g. "off" to 
+        "on" or "on" to None). Bouts are subsequently extracted from these vertices. Statistics for this block represent
+        the dataset as a whole. Later individual Blocks are created for each date represented in the input data. These 
+        blocks have their bouts extracted from the pool of bouts already identified in the master_block.
 
         Args:
             gui (GUIClass)
 	"""
     
-    gui.master_df = niq_misc.add_daytime(gui, gui.master_df)
     gui.master_df = gui.erase_nighttime_state(gui.master_df)
 
     # Store all vertices in master block object for later allocation
     gui.master_block = niq_classes.Block(gui, 0, len(gui.master_df) - 1, False)
     gui.master_block.vertices = niq_misc.get_verts_from_master_df(gui.master_df)
     gui.master_block.bouts = niq_misc.get_bouts_from_verts(gui, gui.master_block.vertices)
-    print("len = ", len(gui.master_block.bouts))
     gui.master_block.get_stats(gui)
     file_bouts = gui.master_block.bouts
 
-    gui.master_block.deposit_multi_file_stats(gui)
+    gui.multi_file_stats.add_block(gui.master_block)
 
     if gui.air_valid:
         gui.multi_in_air_tempers += gui.master_block.air_tempers.tolist()
-
-    # Get vertices, bouts and stats for day blocks
-    egg_tempers_day = gui.master_block.block_tempers[gui.master_block.block_tempers["is_daytime"] == True]
-    gui.multi_in_day_tempers += egg_tempers_day["egg_temper"].tolist()
-
-    # Get vertices, bouts and stats for night blocks
-    egg_tempers_night = gui.master_block.block_tempers[gui.master_block.block_tempers["is_daytime"] == False]
-    gui.multi_in_day_tempers += egg_tempers_night["egg_temper"].tolist()
 
     # Create blocks each date represented in input file
     date_block_list = niq_misc.get_date_blocks(gui)

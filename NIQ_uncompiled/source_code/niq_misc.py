@@ -311,6 +311,8 @@ def get_master_df(gui, source_path):
     # Set first cell equal to second
     df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
 
+    df = add_daytime(gui, df)
+
     # Set indices to data_point column
     # df.set_index("data_point", inplace=True)
 
@@ -425,13 +427,13 @@ def extract_bouts_in_range(gui, total_bouts, first_index, last_index):
 
     # Determine first bout in range
     for i in range(len(total_bouts)):
-        if total_bouts[i].first >= first_index:
+        if total_bouts[i].middle >= first_index:
             left_limit = i
             break
 
     # Determine last bout in range
     for i in range((len(total_bouts) - 1), -1, -1):
-        if total_bouts[i].last <= last_index:
+        if total_bouts[i].middle <= last_index:
             right_limit = i
             break
 
@@ -536,9 +538,9 @@ def write_stats(gui, date_blocks, master_block):
         header += "On-Bout Time Sum" + qualifier
 
     if gui.time_above_temper_BV.get():
-        header += "Time above (minutes) " + gui.time_above_temper_E.get() + ","
+        header += "Time above " + gui.time_above_temper_E.get() + " (minutes),"
     if gui.time_below_temper_BV.get():
-        header += "Time below (minutes) " + gui.time_below_temper_E.get() + ","
+        header += "Time below " + gui.time_below_temper_E.get() + " (minutes),"
     if gui.bouts_dropped_BV.get():
         header += "Vertices Dropped" + qualifier
 
@@ -592,7 +594,7 @@ def write_stats(gui, date_blocks, master_block):
     for i, block in enumerate(date_blocks):
         day_row = ""
 
-        partial = " (Partial)" if block.partial_day else ""
+        partial = " (Partial)" if block.partial_day else " (Full)"
 
         if gui.day_num_BV.get():
             day_row += f"{i + 1}{partial},"
@@ -940,7 +942,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
         alpha_ = 1
     else:
         # Set color based on bout state
-        bout_state_col_num = gui.master_df.columns.get_loc("bout_state") - 1
+        bout_state_col_num = 6
         color_key = {0: gui.off_point_color.get(), 1: gui.on_point_color.get(), 2: "lightgray"}
         color_ = np.vectorize(color_key.get)(master_array[:, bout_state_col_num])
         alpha_key = {0: 1, 1: 1, 2: 1}
@@ -1257,12 +1259,13 @@ def df_to_array(df):
     if type(df) == np.ndarray:
         return df
 
-    # Remove date_time column as this data is not compatable with numpy arrays
-    mod_df = df.drop("date_time", axis=1)
-
-    # Convert bout_state values from strings to integers
+    # Grab appropriate columns
     if "bout_state" in df.columns:
+        mod_df = df[["data_point", "egg_temper", "air_temper", "adj_temper", "smoothed_adj_temper", "delta_temper", "bout_state"]]
+        # Convert bout stats to integers
         mod_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2], inplace=True)
+    else:
+        mod_df = df[["data_point", "egg_temper", "air_temper", "adj_temper", "smoothed_adj_temper", "delta_temper"]]
 
     return mod_df.to_numpy()
 

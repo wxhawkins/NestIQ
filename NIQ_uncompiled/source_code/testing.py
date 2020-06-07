@@ -25,6 +25,7 @@ def test_run(gui):
     # Modified plot
     replace_entry(gui.mod_plot_E, test_dir_path / "input" / "mod_plot.html")
 
+
 def master_test(gui):
     """
         Run automated tests for unrestricted plotting/statistics, restricted plotting/statistics,
