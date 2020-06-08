@@ -233,8 +233,9 @@ def get_master_df(gui, source_path):
                     egg_temper = egg temperature
                     air_temper = ambient air temperature
                     adj_temper = adjusted temperature (egg - air temperature)
+                    smoothed_egg_temper = egg_temper with rolling mean applied
                     smoothed_adj_temper = adj_temper with rolling mean applied
-                    delta_temper = change in smoothed_adj_temper from the previous row
+                    delta_temper = change in smoothed_adj_temper or smoothed_egg_temper
 
 			Args:
 					df (DataFrame): Contains all information for the array in DataFrame form
@@ -300,13 +301,15 @@ def get_master_df(gui, source_path):
     # Add adjusted (egg - air temperature) temperatures column
     df["adj_temper"] = (df["egg_temper"] - df["air_temper"]).round(4)
 
-    # Add smoothed, adjusted temperatures column
+    # Add smoothed temperatures columns
     radius = int(gui.smoothing_radius_E.get())
+    df["smoothed_egg_temper"] = smooth_series(radius, df["egg_temper"]).round(4)
     df["smoothed_adj_temper"] = smooth_series(radius, df["adj_temper"]).round(4)
 
     # Add column storing difference in adjusted temperature from previous entry to current
     df["delta_temper"] = np.zeros(df.shape[0])
-    df.iloc[1:, df.columns.get_loc("delta_temper")] = df["smoothed_adj_temper"].diff()
+    emission_source = "smoothed_adj_temper" if int(gui.train_from_IV.get()) == 1 else "smoothed_egg_temper"
+    df.iloc[1:, df.columns.get_loc("delta_temper")] = df[emission_source].diff()
 
     # Set first cell equal to second
     df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
@@ -942,7 +945,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
         alpha_ = 1
     else:
         # Set color based on bout state
-        bout_state_col_num = 6
+        bout_state_col_num = 2
         color_key = {0: gui.off_point_color.get(), 1: gui.on_point_color.get(), 2: "lightgray"}
         color_ = np.vectorize(color_key.get)(master_array[:, bout_state_col_num])
         alpha_key = {0: 1, 1: 1, 2: 1}
@@ -1086,10 +1089,6 @@ def get_verts_from_master_df(master_df):
     # Extract indices of rows where the state changes
     vert_indices = master_df[state_changed].index.tolist()
 
-    # Create and append verticies
-    master_array = df_to_array(master_df)
-    cur_state = master_array[0, 6]
-
     vertices = []
     for index in vert_indices:
         row = master_df.loc[index]
@@ -1111,19 +1110,19 @@ def replace_entry(entry, new_value):
 
 def filter_by_dur(master_df, dur_thresh):
     """
-			Purges the master array of state clusters failing to meet a given duration threshold.
+			Purges the master df of state clusters failing to meet a given duration threshold.
 
 			Args:
-					master_array (numpy array)
+					master_df (pd.DataFrame)
 					dur_thresh (int): minimum duration for a cluster of state values to not be erased
 	"""
 
-    master_array = df_to_array(master_df)
-
-    cur_state = master_array[0, 6]
+    states = master_df["bout_state"].tolist()
+    cur_state = states[0]
     last_count, count = 0, 0
     bouts_dropped_locs = set()
-    for row_num, state in enumerate(master_array[:, 6]):
+
+    for row_num, state in enumerate(states):
         # If state is same as previous data point (still in same bout)
         if state == cur_state:
             count += 1
@@ -1135,14 +1134,13 @@ def filter_by_dur(master_df, dur_thresh):
         # If state has changed and bout is less than dur_thresh
         elif count < dur_thresh:
             # Change previous bout to other state
-            cur_state = abs(cur_state - 1)
-            master_array[row_num - count - 2 : row_num + 1, 6] = cur_state
+            cur_state = "on" if cur_state == "off" else "off"
+            master_df.iloc[row_num - count - 2 : row_num + 1, master_df.columns.get_loc("bout_state")] = cur_state
             bouts_dropped_locs.add(row_num)
             count += last_count
 
-    master_df.loc[:, "bout_state"] = master_array[:, 6]
-    master_df.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
     return master_df, bouts_dropped_locs
+
 
 
 def set_unique_path(entry, file_name, dir_path=Path.cwd(), ext=""):
@@ -1171,21 +1169,6 @@ def set_unique_path(entry, file_name, dir_path=Path.cwd(), ext=""):
 
     replace_entry(entry, file_path.name)
 
-
-def extract_in_files(in_file_string):
-    """
-			Parses sting of paths for individual input files.
-
-			Args:
-					in_file_string (str): collection of paths
-	"""
-
-    split_list = in_file_string.split(".csv")
-    in_file_tup = ()
-    for num, path in enumerate(split_list):
-        in_file_tup += (path[1:] + ".csv",) if num != 0 else (path + ".csv",)
-
-    return in_file_tup[:-1]
 
 
 def add_states(df, verts=None, states=None):
@@ -1253,6 +1236,11 @@ def remove_curly(*entries, string=False):
 def df_to_array(df):
     """
         Convert master DataFrame to numpy array.
+
+        Columns:
+            0 - data point
+            1 - delta temper (emision), change in smoothed_egg_temper or smoothed_adj_temper depending on user setting
+            2 - bout state
     """
 
     # If array is passed, just return
@@ -1261,11 +1249,11 @@ def df_to_array(df):
 
     # Grab appropriate columns
     if "bout_state" in df.columns:
-        mod_df = df[["data_point", "egg_temper", "air_temper", "adj_temper", "smoothed_adj_temper", "delta_temper", "bout_state"]]
+        mod_df = df[["data_point", "delta_temper", "bout_state"]]
         # Convert bout stats to integers
         mod_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2], inplace=True)
     else:
-        mod_df = df[["data_point", "egg_temper", "air_temper", "adj_temper", "smoothed_adj_temper", "delta_temper"]]
+        mod_df = df[["data_point", "delta_temper"]]
 
     return mod_df.to_numpy()
 

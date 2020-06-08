@@ -190,9 +190,15 @@ class GUIClass:
         self.dur_thresh_E = tk.Entry(tab1, width=5)
         self.dur_thresh_E.grid(row=24, sticky="W", padx=207)
 
-        self.count_partial_BV = tk.BooleanVar()
-        self.count_partial_CB = tk.Checkbutton(tab1, text="Count partial bouts", variable=self.count_partial_BV, font=STANDARD_FONT)
-        self.count_partial_CB.grid(row=25, sticky="W", padx=10, pady=10)
+        # ----- Training (emission) values -----
+        train_from_L = tk.Label(tab1, text="Train from:", font=STANDARD_FONT)
+        train_from_L.grid(row=25, sticky="W", padx=10)
+
+        self.train_from_IV = tk.IntVar()
+        egg_RB = tk.Radiobutton(tab1, text="Egg temperature", variable=self.train_from_IV, value=0)
+        egg_RB.grid(row=26, sticky="W", padx=30)
+        adj_RB = tk.Radiobutton(tab1, text="Adjusted temperature", variable=self.train_from_IV, value=1)
+        adj_RB.grid(row=27, sticky="W", padx=30)
 
         # Display and retract file entry boxes based on selection status
         def main_tab_callback(*args):
@@ -876,7 +882,7 @@ class GUIClass:
             self.restrict_search_CB.select() if self.config.get(
                 "Main Settings", "restrict_bout_search"
             ).lower() == "true" else self.restrict_search_CB.deselect()
-            self.count_partial_CB.select() if self.config.get("Main Settings", "count_partial_bouts").lower() == "true" else self.count_partial_CB.deselect()
+            self.train_from_IV.set(0) if self.config.get("Main Settings", "train_from").lower() == "0" else self.train_from_IV.set(1)
             self.UL_default_CB.select() if self.config.get("Advanced Settings", "run_unsup_by_default").lower() == "true" else self.UL_default_CB.deselect()
             replace_entry(self.day_start_E, self.config.get("Main Settings", "day_Start_Time"))
             replace_entry(self.night_start_E, self.config.get("Main Settings", "night_Start_Time"))
@@ -988,7 +994,7 @@ class GUIClass:
                 self.config.read(self.master_dir_path / "config_files" / "backup_config.ini")
                 self.load_config(program_startup=True)
             else:
-                messagebox.showerror(("Config File Loading Error"), config_file + " could not be read.")
+                messagebox.showerror(("Config File Loading Error"), str(config_file) + " could not be read.")
                 traceback.print_exc()
 
     def set_defaults(self):
@@ -1281,11 +1287,11 @@ class GUIClass:
 
         def check_time(time, DN):
             """
-							Checks if times provided for daytime start and nighttime start are valid.
+                Checks if times provided for daytime start and nighttime start are valid.
 
-							Args:
-											time (string): string provided in the entry box
-											DN (string): "day" or "night" depending on entry box being analyzed
+                Args:
+                    time (string): string provided in the entry box
+                    DN (string): "day" or "night" depending on entry box being analyzed
 			"""
 
             time_re = re.search(r"(\d+)(:)(\d+)", time)
@@ -1665,6 +1671,9 @@ class GUIClass:
 
         days_list = []
         ori_verts_ = None
+        
+        in_file_paths = self.parse_input_file_entry()
+        self.set_active_input(in_file_paths[0], replace_out=False)
 
         if not all((self.check_valid_plot_ops(), self.check_valid_main(check_output=False), self.check_valid_adv())):
             return
@@ -1726,10 +1735,11 @@ class GUIClass:
         self.config.set("Main Settings", "day_start_time", self.day_start_E.get())
         self.config.set("Main Settings", "night_start_time", self.night_start_E.get())
         self.config.set("Main Settings", "restrict_bout_search", self.restrict_search_BV.get())
-        self.config.set("Main Settings", "count_partial_bouts", self.count_partial_BV.get())
 
         self.config.set("Main Settings", "smoothing_radius", self.smoothing_radius_E.get())
         self.config.set("Main Settings", "duration_threshold", self.dur_thresh_E.get())
+        self.config.set("Main Settings", "train_from", int(self.train_from_IV.get()))
+
 
         self.config.set("Advanced Settings", "run_unsup_by_default", self.UL_default_BV.get())
         self.config.set("Advanced Settings", "off_bout_initial", self.init_off_E.get())
@@ -1972,8 +1982,10 @@ class GUIClass:
         self.run_B.config(bg="gray", fg="white", width=10, height=1)
         self.root.update()
 
-        input_ = niq_misc.extract_in_files(self.input_file_E.get())
-        if len(input_) > 1:
+        in_file_paths = self.parse_input_file_entry()
+        self.set_active_input(in_file_paths[0], replace_out=False)
+
+        if len(in_file_paths) > 1:
             messagebox.showerror(
                 ("Unsupervised Learning Error"), "Multiple input files provided. Unsupervised learning currently only supports single input files."
             )
@@ -2005,29 +2017,32 @@ class GUIClass:
         self.run_B.config(bg="red4", fg="white", width=10, height=1)
         self.run = False
 
+
     def supervised_learning(self):
         """
 		    Calculates model parameters from user-provided vertex locations.
 		"""
 
-        input_ = niq_misc.extract_in_files(self.input_file_E.get())
-        if len(input_) > 1:
+        in_file_paths = self.parse_input_file_entry()
+        self.set_active_input(in_file_paths[0], replace_out=False)
+
+        if len(in_file_paths) > 1:
             messagebox.showerror(
                 ("Supervised Learning Error"), "Multiple input files provided. Please provide the single input file used to generate the vertex selection file."
             )
 
             return False
 
-        self.master_hmm = niq_hmm.HMM()
-
-        if not self.check_vertex_file():
+        if not self.check_vertex_file() or not self.check_valid_main(check_output=False):
             return
 
         self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
 
         training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
+        self.master_hmm = niq_hmm.HMM()
         self.master_df = niq_misc.add_states(self.master_df, verts=training_verts)
-        self.master_hmm.extract_params_from_verts(self.master_df)
+        reduced_df = self.master_df.iloc[training_verts[0].index:training_verts[-1].index + 1]
+        self.master_hmm.extract_params_from_verts(reduced_df)
         self.master_hmm.normalize_params(self)
         self.master_hmm.populate_hmm_entries(self)
 

@@ -93,13 +93,16 @@ class HMM(object):
 
         for state in self._hidden_states:
             self._emissions[state] = {}
-            self._emissions[state]["mean"] = statistics.mean(row[5] for row in master_array if row[6] == state)
-            self._emissions[state]["stdev"] = statistics.stdev(row[5] for row in master_array if row[6] == state)
+            self._emissions[state]["mean"] = statistics.mean(row[1] for row in master_array if row[2] == state)
+            self._emissions[state]["stdev"] = statistics.stdev(row[1] for row in master_array if row[2] == state)
+
+            self._emissions[state]["mean"] = np.mean([row[1] for row in master_array if row[2] == state])
+            self._emissions[state]["stdev"] = np.std([row[1] for row in master_array if row[2] == state])
 
         trans_probs = {outer_state: {inner_state: 0 for inner_state in self._hidden_states} for outer_state in self._hidden_states}
 
-        prev_state = int(master_array[0, 6])
-        for state in master_array[1:, 6]:
+        prev_state = int(master_array[0, 2])
+        for state in master_array[1:, 2]:
             trans_probs[prev_state][int(state)] += 1
             prev_state = state
 
@@ -138,10 +141,10 @@ class HMM(object):
         """
 
         counts = []
-        cur_state = master_array[0, 6]
+        cur_state = master_array[0, 2]
         count = 0
 
-        for state in master_array[:, 6]:
+        for state in master_array[:, 2]:
             if state == cur_state:
                 count += 1
             else:
@@ -255,7 +258,7 @@ class HMM(object):
                     cur_prob[cur_state] = previous[cur_state] + np.log10(self._trans_probs[cur_state][next_state])
 
                 origin = max(cur_prob, key=cur_prob.get)
-                next_prob[next_state] = np.log10(get_cumu_prob(self, next_state, row[5])) + cur_prob[origin]
+                next_prob[next_state] = np.log10(get_cumu_prob(self, next_state, row[1])) + cur_prob[origin]
                 tb[next_state] = origin
 
             return next_prob, tb
@@ -268,8 +271,8 @@ class HMM(object):
         # Avoid divide by 0 warning
         init_0 = self._initial[0] if self._initial[0] != 0 else 1e-10
         init_1 = self._initial[1] if self._initial[1] != 0 else 1e-10
-        previous[0] = np.log10(init_0) + np.log10(get_cumu_prob(self, 0, first_row[5]))
-        previous[1] = np.log10(init_1) + np.log10(get_cumu_prob(self, 1, first_row[5]))
+        previous[0] = np.log10(init_0) + np.log10(get_cumu_prob(self, 0, first_row[1]))
+        previous[1] = np.log10(init_1) + np.log10(get_cumu_prob(self, 1, first_row[1]))
 
         for row in master_array[1:, :]:
             update_previous, update_tb = update_probs(row, previous)
