@@ -68,9 +68,8 @@ def master_test(gui):
             Compare two configuration files line by line and store discrepencies.
 
             Args:
-                    ref_path (pathlib.Path): Path to reference configuration file
-                    test_path (pathlib.Path): Path to test configuration file
-
+                ref_path (pathlib.Path): Path to reference configuration file
+                test_path (pathlib.Path): Path to test configuration file
         """
 
         with open(ref_path, "r") as ref_file, open(test_path, "r") as test_file:

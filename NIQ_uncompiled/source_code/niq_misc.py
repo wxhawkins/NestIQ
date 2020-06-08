@@ -1230,7 +1230,7 @@ def df_to_array(df):
 
     # Grab appropriate columns
     if "bout_state" in df.columns:
-        mod_df = df[["data_point", "delta_temper", "bout_state"]]
+        mod_df = df.loc[:, ["data_point", "delta_temper", "bout_state"]].copy()
         # Convert bout stats to integers
         mod_df.loc[:, "bout_state"].replace(["off", "on", "None"], [0, 1, 2], inplace=True)
     else:
@@ -1263,4 +1263,3 @@ def get_bouts_from_verts(gui, verts):
 
     bouts.sort(key=lambda x: x.first)
     return bouts
-    
