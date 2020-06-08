@@ -1,4 +1,3 @@
-import pytest
 import niq_core
 import niq_misc
 import niq_classes

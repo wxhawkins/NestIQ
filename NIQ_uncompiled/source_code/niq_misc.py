@@ -1,10 +1,7 @@
 import datetime
-import os
 import re
-import statistics
 import time
 from pathlib import Path
-from tkinter import messagebox
 
 import numpy as np
 import pandas as pd
@@ -38,6 +35,7 @@ def convert_to_datetime(dt_string):
     dt = datetime.datetime(*time_struct[0:6])
 
     return dt
+
 
 def is_partial(df, first_index, last_index, expected_dur):
     """
@@ -482,14 +480,6 @@ def write_stats(gui, date_blocks, master_block):
             date_blocks (BlockGroup): contains every date Block which cary informationa bout data for each date
             master_block (block): block built from the entire input file
 	"""
-
-    all_egg_tempers = gui.master_df.loc[:, "egg_temper"]
-    all_air_tempers = gui.master_df.loc[:, "air_temper"]
-
-    above_filt = all_egg_tempers > float(gui.time_above_temper_E.get())
-    below_filt = all_egg_tempers < float(gui.time_below_temper_E.get())
-    master_time_above_temper = len(all_egg_tempers[above_filt]) * gui.time_interval
-    master_time_below_temper = len(all_egg_tempers[below_filt]) * gui.time_interval
 
     if gui.get_stats_BV.get():
         out_file = gui.stats_file_E.get()
@@ -1108,39 +1098,30 @@ def replace_entry(entry, new_value):
     entry.insert(0, new_value)
 
 
-def filter_by_dur(master_df, dur_thresh):
+def filter_by_dur(gui):
     """
 			Purges the master df of state clusters failing to meet a given duration threshold.
 
 			Args:
-					master_df (pd.DataFrame)
-					dur_thresh (int): minimum duration for a cluster of state values to not be erased
+					gui (GUI)
 	"""
 
-    states = master_df["bout_state"].tolist()
-    cur_state = states[0]
-    last_count, count = 0, 0
+    dur_thresh = int(gui.dur_thresh_E.get())
+    df = gui.master_df
     bouts_dropped_locs = set()
 
-    for row_num, state in enumerate(states):
-        # If state is same as previous data point (still in same bout)
-        if state == cur_state:
-            count += 1
-        # If state has changed (end of bout) and bout is greater than dur_thresh
-        elif count >= dur_thresh:
-            last_count = count
-            count = 0
-            cur_state = state
-        # If state has changed and bout is less than dur_thresh
-        elif count < dur_thresh:
-            # Change previous bout to other state
-            cur_state = "on" if cur_state == "off" else "off"
-            master_df.iloc[row_num - count - 2 : row_num + 1, master_df.columns.get_loc("bout_state")] = cur_state
-            bouts_dropped_locs.add(row_num)
-            count += last_count
+    for bout in gui.master_block.bouts:
+        dur = bout.last - bout.first
+        # If duration threshold not met
+        if dur < dur_thresh:
+            # Set bout_state for corrisponding rows to that of adjacent row
+            new_state = "on" if bout.bout_type == "off" else "off"
+            df.loc[bout.first:bout.last, "bout_state"] = new_state
+            bouts_dropped_locs.add(bout.middle)
+            # Delete bout
+            gui.master_block.bouts.remove(bout)
 
-    return master_df, bouts_dropped_locs
-
+    return df, bouts_dropped_locs
 
 
 def set_unique_path(entry, file_name, dir_path=Path.cwd(), ext=""):
@@ -1268,7 +1249,7 @@ def get_bouts_from_verts(gui, verts):
     bouts = []
 
     # Return if insufficient number of vertices supplied
-    if verts == None or len(verts) < 2:
+    if verts is None or len(verts) < 2:
         return bouts
 
     # Create bout objects
@@ -1280,4 +1261,6 @@ def get_bouts_from_verts(gui, verts):
 
         cur_vert = next_vert
 
+    bouts.sort(key=lambda x: x.first)
     return bouts
+    

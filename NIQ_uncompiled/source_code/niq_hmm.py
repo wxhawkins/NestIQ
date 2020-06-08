@@ -1,6 +1,5 @@
 import math
 import statistics
-import time
 
 import numpy as np
 from hmmlearn import hmm

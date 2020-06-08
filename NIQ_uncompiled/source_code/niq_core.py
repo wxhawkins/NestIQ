@@ -1,21 +1,14 @@
 import configparser
-import csv
-import datetime
 import os
 import re
 import subprocess
-import sys
 import time
 import tkinter as tk
 import traceback
 from pathlib import Path
-from random import randint
 from shutil import copyfile
 from tkinter import filedialog, font, messagebox, ttk
 
-import colorama
-import numpy as np
-from bs4 import BeautifulSoup
 from PIL import Image, ImageTk
 from termcolor import colored
 
@@ -1696,7 +1689,7 @@ class GUIClass:
                 return False
             try:
                 ori_verts_ = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
-            except Exception as e:
+            except Exception:
                 traceback.print_exc()
                 messagebox.showerror(("Input File Error (Edit tab)"), "Original plot file could not be read.")
 
@@ -1739,7 +1732,6 @@ class GUIClass:
         self.config.set("Main Settings", "smoothing_radius", self.smoothing_radius_E.get())
         self.config.set("Main Settings", "duration_threshold", self.dur_thresh_E.get())
         self.config.set("Main Settings", "train_from", int(self.train_from_IV.get()))
-
 
         self.config.set("Advanced Settings", "run_unsup_by_default", self.UL_default_BV.get())
         self.config.set("Advanced Settings", "off_bout_initial", self.init_off_E.get())
@@ -1900,8 +1892,6 @@ class GUIClass:
 
                     # Adds state column to master_df of input file
                     self.master_df = self.master_hmm.decode(self.master_df)
-                    dur_thresh = int(self.dur_thresh_E.get())
-                    self.master_df, self.bouts_dropped_locs = niq_misc.filter_by_dur(self.master_df, dur_thresh)
                 try:
                     main(self)
                 except:
@@ -2067,6 +2057,7 @@ def main(gui):
     gui.master_block = niq_classes.Block(gui, 0, len(gui.master_df) - 1, False)
     gui.master_block.vertices = niq_misc.get_verts_from_master_df(gui.master_df)
     gui.master_block.bouts = niq_misc.get_bouts_from_verts(gui, gui.master_block.vertices)
+    gui.master_df, gui.bouts_dropped_locs = niq_misc.filter_by_dur(gui)
     gui.master_block.get_stats(gui)
     file_bouts = gui.master_block.bouts
 

@@ -1,5 +1,4 @@
 import numpy as np
-import re
 import pandas as pd
 from pathlib import Path
 
@@ -42,7 +41,7 @@ class Bout:
     def __init__(self, gui, first_, last_, bout_type_):
         self.first = first_
         self.last = last_
-        self.middle = round(np.mean([first_, last_]))
+        self.middle = int(round(np.mean([first_, last_])))
         self.bout_type = bout_type_
         self.is_daytime = gui.master_df.loc[self.middle, "is_daytime"]
         self.dur = gui.time_interval * (last_ - first_)
