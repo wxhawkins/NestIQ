@@ -973,7 +973,7 @@ class GUIClass:
             replace_entry(self.time_above_temper_E, self.config.get("Stats Options", "custom_time_above_temperature"))
             replace_entry(self.time_below_temper_E, self.config.get("Stats Options", "custom_time_below_temperature"))
 
-        except Exception:
+        except:
             if program_startup:
                 messagebox.showerror(("Config File Loading Error"), "default_config.ini could not be read, reverting to backup config file.")
                 traceback.print_exc()
@@ -1698,15 +1698,17 @@ class GUIClass:
         """
             Initializes GUI from backup_config.ini.  backup_config.ini is used as a backup if anything goes wrong.
 		"""
+        
         self.config = configparser.RawConfigParser()
 
         config_default_path = Path(self.master_dir_path / "config_files" / "default_config.ini")
         backup_config_path = Path(self.master_dir_path / "config_files" / "backup_config.ini")
 
-        if not config_default_path.exists():
+        try:
+            self.config.read(str(config_default_path))
+        except configparser.ParsingError:
             copyfile(backup_config_path, config_default_path)
-
-        self.config.read(config_default_path)
+            self.config.read(str(config_default_path))
 
     def update_config(self, config_file=None):
         """
