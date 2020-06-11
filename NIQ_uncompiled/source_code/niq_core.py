@@ -826,10 +826,7 @@ class GUIClass:
 		"""
 
         if out_file is None:
-            out_file = filedialog.asksaveasfilename()
-
-        if not re.search(r"\.ini", out_file):
-            out_file = out_file + ".ini"
+            out_file = Path(filedialog.asksaveasfilename()).with_suffix(".ini")
 
         # Copy over defualt_backup as template
         copyfile(self.master_dir_path / "config_files" / "backup_config.ini", out_file)
@@ -978,13 +975,13 @@ class GUIClass:
 
         except Exception:
             if program_startup:
-                messagebox.showerror(("Config File Loading Error"), "backup_config.ini could not be read, reverting to backup config file.")
+                messagebox.showerror(("Config File Loading Error"), "default_config.ini could not be read, reverting to backup config file.")
                 traceback.print_exc()
 
                 # If an error is encountered, try loading "backup_config.ini"
-                copyfile(self.master_dir_path / "config_files" / "default_backup.ini", self.master_dir_path / "config_files" / "backup_config.ini")
+                copyfile(self.master_dir_path / "config_files" / "backup_config.ini", self.master_dir_path / "config_files" / "default_config.ini")
 
-                self.config.read(self.master_dir_path / "config_files" / "backup_config.ini")
+                self.config.read(self.master_dir_path / "config_files" / "default_config.ini")
                 self.load_config(program_startup=True)
             else:
                 messagebox.showerror(("Config File Loading Error"), str(config_file) + " could not be read.")
@@ -997,7 +994,7 @@ class GUIClass:
 
         try:
             self.update_config()
-            messagebox.showinfo("Default Parameters Saved", "defaultParameters.ini has been updated.")
+            messagebox.showinfo("Default Parameters Saved", "default_config.ini has been updated.")
         except:
             messagebox.showerror(
                 ("Default Settings Error"), "An error was encountered while updating default parameters.  Check if provided parameters are valid."
@@ -1703,7 +1700,7 @@ class GUIClass:
 		"""
         self.config = configparser.RawConfigParser()
 
-        config_default_path = Path(self.master_dir_path / "config_files" / "backup_config.ini")
+        config_default_path = Path(self.master_dir_path / "config_files" / "default_config.ini")
         backup_config_path = Path(self.master_dir_path / "config_files" / "backup_config.ini")
 
         if not config_default_path.exists():
@@ -1714,14 +1711,14 @@ class GUIClass:
     def update_config(self, config_file=None):
         """
             Generates a configuration file from the current GUI parameters. If no file name if provided,
-            this function saves to backup_config.ini, resetting the default parameters for NestIQ.
+            this function saves to default_config.ini, resetting the default parameters for NestIQ.
 
             Args:
                 config_file (string): path to and name of file to be saved
 		"""
 
         if config_file is None:
-            config_file = Path(self.master_dir_path / "config_files" / "backup_config.ini")
+            config_file = Path(self.master_dir_path / "config_files" / "default_config.ini")
 
         self.config.set("Main Settings", "output_dir", self.out_path_E.get())
         self.config.set("Main Settings", "show_warnings", self.show_warns_BV.get())
