@@ -14,7 +14,6 @@ from bs4 import BeautifulSoup
 
 import niq_classes
 
-
 def convert_to_datetime(dt_string):
     """
         Converts Date/Time cell from master DataFrame to datetime.datetime object.
@@ -185,25 +184,6 @@ def add_daytime(gui, master_df):
     return master_df
 
 
-
-def get_day_dur(day_start, night_start):
-    """
-			Finds the duration of the daytime period specified by the user.
-
-			Args:
-					day_start (str): start of daytime period
-					night_start (str): end of daytime period
-	"""
-
-    day = re.search(r"(\d+)(:)(\d+)", day_start)
-    day_float = float(day.group(1)) + (float(day.group(3)) / 60)
-
-    night = re.search(r"(\d+)(:)(\d+)", night_start)
-    night_float = float(night.group(1)) + (float(night.group(3)) / 60)
-
-    return (night_float - day_float) * 60
-
-
 def smooth_series(radius, col):
     """
         Generates "smoothed" copy of input data by applying a rolling mean of the requested radius.
@@ -367,7 +347,7 @@ def get_verts_from_html(gui, in_file, alt=False):
                 dp_list.append(selected.group(1))
         except AttributeError:
             # Fall back to regex method
-            dp_list = re.search(r'"data"\:\{"x":\[([^\]]*)', content).group(1).split(",")
+            dp_list = re.search(r'"data":\{"x":\[([^\]]*)', content).group(1).split(",")
 
         for hit in dp_list:
             # Clean hits and append
@@ -392,7 +372,7 @@ def get_verts_from_html(gui, in_file, alt=False):
     # Search for gap between index value and corresponding datapoint
     filt = gui.master_df.loc[:, "data_point"] == vertex_data_points[0]
     first_dp_index = gui.master_df.loc[filt].index
-    delta = int((gui.master_df.loc[first_dp_index, "data_point"] - first_dp_index) - 1)
+    delta = int(gui.master_df.loc[first_dp_index, "data_point"] - first_dp_index)
 
     # Determine if first vertex is an off start or on start
     # (FLAG) may lead to some issues due to invalid assumption
@@ -772,9 +752,9 @@ def write_stats(gui, date_blocks, master_block):
     # Determine what files to write day statistics to
     out_paths = []
     if gui.get_stats_BV.get():
-        out_paths.append(Path(gui.stats_file_E.get()))
+        out_paths.append(Path(gui.out_path_E.get()) / gui.stats_file_E.get())
     if gui.multi_in_stats_BV.get():
-        out_paths.append(Path(gui.multi_in_stats_file_E.get()))
+        out_paths.append(Path(gui.out_path_E.get()) / gui.multi_in_stats_file_E.get())
 
     # Write day statistics
     for path in out_paths:
@@ -844,14 +824,14 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 					mon_dims (tuple): x and y dimensions of main display
 					select_mode (bool): generates a modified plot that allows for vertex placement
 	"""
-
+    
     # Clears previous plots from memory
     reset_output()
 
     master_array = df_to_array(master_df)
 
     # Set output file
-    output_file(Path(gui.plot_file_E.get()))
+    output_file(Path(gui.out_path_E.get()) / gui.plot_file_E.get())
 
     if select_mode:
         output_file(gui.master_dir_path / "misc_files" / "temp_plot.html")
@@ -1256,7 +1236,7 @@ def get_bouts_from_verts(gui, verts):
     cur_vert = verts[0]
     for next_vert in verts[1:]:
         # Skip if cur_vert is start of nighttime period
-        if cur_vert.vert_type != "None":
+        if cur_vert.vert_type != "None" and cur_vert.index != next_vert.index:
             bouts.append(niq_classes.Bout(gui, cur_vert.index, next_vert.index - 1, cur_vert.vert_type)) 
 
         cur_vert = next_vert

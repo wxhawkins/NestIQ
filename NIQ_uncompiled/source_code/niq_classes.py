@@ -50,6 +50,7 @@ class Bout:
         self.mean_air_temper = None
 
         # Flag convert to series
+        
         self.egg_tempers = gui.master_df.loc[self.first : self.last, "egg_temper"].tolist()
         self.mean_egg_temper = round(np.mean(self.egg_tempers), 3)
         self.air_tempers = gui.master_df.loc[self.first : self.last, "air_temper"].tolist()
@@ -223,58 +224,58 @@ class Block:
         if self.off_count > 0:
             off_bout_df = self.bout_df[self.bout_df["type"] == "off"]
             off_tempers_df = self.bout_tempers[self.bout_tempers["type"] == "off"]
-            self.mean_off_dur = off_bout_df["duration"].mean().round(2)
-            self.mean_off_dec = off_bout_df["temper_change"].mean().round(3)
-            self.mean_off_temper = off_tempers_df["egg_temper"].mean().round(3)
-            self.off_time_sum = off_bout_df["duration"].sum().mean().round(2)
+            self.mean_off_dur = round(off_bout_df["duration"].mean(), 2)
+            self.mean_off_dec = round(off_bout_df["temper_change"].mean(), 3)
+            self.mean_off_temper = round(off_tempers_df["egg_temper"].mean(), 3)
+            self.off_time_sum = round(off_bout_df["duration"].sum().mean(), 2)
             if self.off_count > 1:
-                self.off_dur_stdev = off_bout_df["duration"].std().round(2)
-                self.off_dec_stdev = off_bout_df["temper_change"].std().round(3)
+                self.off_dur_stdev = round(off_bout_df["duration"].std(), 2)
+                self.off_dec_stdev = round(off_bout_df["temper_change"].std(), 3)
 
         # Get on-bout stats
         if self.on_count > 0:
             on_bout_df = self.bout_df[self.bout_df["type"] == "on"]
             on_tempers_df = self.bout_tempers[self.bout_tempers["type"] == "on"]
-            self.mean_on_dur = on_bout_df["duration"].mean().round(2)
-            self.mean_on_inc = on_bout_df["temper_change"].mean().round(3)
-            self.mean_on_temper = on_tempers_df["egg_temper"].mean().round(3)
-            self.on_time_sum = on_bout_df["duration"].sum().mean().round(2)
+            self.mean_on_dur = round(on_bout_df["duration"].mean(), 2)
+            self.mean_on_inc = round(on_bout_df["temper_change"].mean(), 3)
+            self.mean_on_temper = round(on_tempers_df["egg_temper"].mean(), 3)
+            self.on_time_sum = round(on_bout_df["duration"].sum().mean(), 2)
             if self.on_count > 1:
-                self.on_dur_stdev = on_bout_df["duration"].std().round(2)
-                self.on_inc_stdev = on_bout_df["temper_change"].std().round(3)
+                self.on_dur_stdev = round(on_bout_df["duration"].std(), 2)
+                self.on_inc_stdev = round(on_bout_df["temper_change"].std(), 3)
 
         # Calculate egg temperature statistics
         if len(self.block_tempers) > 1:
-            self.mean_egg_temper = self.block_tempers["egg_temper"].mean().round(3)
-            self.median_temper = self.block_tempers["egg_temper"].median().round(3)
+            self.mean_egg_temper = round(self.block_tempers["egg_temper"].mean(), 3)
+            self.median_temper = round(self.block_tempers["egg_temper"].median(), 3)
             self.min_egg_temper = self.block_tempers["egg_temper"].min()
             self.max_egg_temper = self.block_tempers["egg_temper"].max()
-            self.egg_temper_stdev = self.block_tempers["egg_temper"].std().round(3)
+            self.egg_temper_stdev = round(self.block_tempers["egg_temper"].std(), 3)
 
         # Calculate air temperature statistics
         if gui.air_valid and len(self.block_tempers) > 1:
-            self.mean_air_temper = self.block_tempers["air_temper"].mean().round(3)
+            self.mean_air_temper = round(self.block_tempers["air_temper"].mean(), 3)
             self.min_air_temper = self.block_tempers["air_temper"].min()
             self.max_air_temper = self.block_tempers["air_temper"].max()
-            self.air_temper_stdev = self.block_tempers["air_temper"].std().round(3)
+            self.air_temper_stdev = round(self.block_tempers["air_temper"].std(), 3)
 
         # Calculate daytime egg temperature statistics
         egg_tempers_day = self.block_tempers[self.block_tempers["is_daytime"] == True]
         if len(egg_tempers_day) > 1:
-            self.mean_egg_temper_day = egg_tempers_day["egg_temper"].mean().round(3)
-            self.median_egg_temper_day = egg_tempers_day["egg_temper"].median().round(3)
+            self.mean_egg_temper_day = round(egg_tempers_day["egg_temper"].mean(), 3)
+            self.median_egg_temper_day = round(egg_tempers_day["egg_temper"].median(), 3)
             self.min_egg_temper_day = egg_tempers_day["egg_temper"].min()
             self.max_egg_temper_day = egg_tempers_day["egg_temper"].max()
-            self.egg_temper_stdev_day = egg_tempers_day["egg_temper"].std().round(3)
+            self.egg_temper_stdev_day = round(egg_tempers_day["egg_temper"].std(), 3)
 
         # Calculate nighttime egg temperature statistics
         egg_tempers_night = self.block_tempers[self.block_tempers["is_daytime"] == False]
         if len(egg_tempers_night) > 1:
-            self.mean_egg_temper_night = egg_tempers_night["egg_temper"].mean().round(3)
-            self.median_egg_temper_night = egg_tempers_night["egg_temper"].median().round(3)
+            self.mean_egg_temper_night = round(egg_tempers_night["egg_temper"].mean(), 3)
+            self.median_egg_temper_night = round(egg_tempers_night["egg_temper"].median(), 3)
             self.min_egg_temper_night = egg_tempers_night["egg_temper"].min()
             self.max_egg_temper_night = egg_tempers_night["egg_temper"].max()
-            self.egg_temper_stdev_night = egg_tempers_night["egg_temper"].std().round(3)
+            self.egg_temper_stdev_night = round(egg_tempers_night["egg_temper"].std(), 3)
 
         for index in gui.bouts_dropped_locs:
             if index >= self.first and index <= self.last:
@@ -348,41 +349,41 @@ class MultiFileStats:
         self.off_count = np.sum([block.off_count for block in self.blocks])
         if self.off_count > 1:
             off_bout_df = self.bout_df[self.bout_df["type"] == "off"]
-            self.mean_off_dur = off_bout_df["duration"].mean().round(2)
-            self.off_dur_stdev = off_bout_df["duration"].std().round(2)
-            self.mean_off_temper_change = off_bout_df["temper_change"].mean().round(3)
-            self.off_temper_change_stdev = off_bout_df["temper_change"].std().round(3)
+            self.mean_off_dur = round(off_bout_df["duration"].mean(), 2)
+            self.off_dur_stdev = round(off_bout_df["duration"].std(), 2)
+            self.mean_off_temper_change = round(off_bout_df["temper_change"].mean(), 3)
+            self.off_temper_change_stdev = round(off_bout_df["temper_change"].std(), 3)
 
         self.on_count = np.sum(block.on_count for block in self.blocks)
         if self.on_count > 1:
             on_bout_df = self.bout_df[self.bout_df["type"] == "on"]
-            self.mean_on_dur = on_bout_df["duration"].mean().round(2)
-            self.on_dur_stdev = on_bout_df["duration"].std().round(2)
-            self.mean_on_temper_change = on_bout_df["temper_change"].mean().round(3)
-            self.on_temper_change_stdev = on_bout_df["temper_change"].std().round(3)
+            self.mean_on_dur = round(on_bout_df["duration"].mean(), 2)
+            self.on_dur_stdev = round(on_bout_df["duration"].std(), 2)
+            self.mean_on_temper_change = round(on_bout_df["temper_change"].mean(), 3)
+            self.on_temper_change_stdev = round(on_bout_df["temper_change"].std(), 3)
 
         self.date_count = np.sum([block.date_count for block in self.blocks])
 
         if len(self.block_tempers) > 1:
-            self.mean_egg_temper = self.block_tempers["egg_temper"].mean().round(3)
-            self.egg_temper_stdev = self.block_tempers["egg_temper"].std().round(3)
+            self.mean_egg_temper = round(self.block_tempers["egg_temper"].mean(), 3)
+            self.egg_temper_stdev = round(self.block_tempers["egg_temper"].std(), 3)
             self.min_egg_temper = self.block_tempers["egg_temper"].min()
             self.max_egg_temper = self.block_tempers["egg_temper"].max()
 
         egg_tempers_day = self.block_tempers[self.block_tempers["is_daytime"] == True]
         if len(egg_tempers_day) > 1:
-            self.mean_daytime_egg_temper = egg_tempers_day["egg_temper"].mean().round(3)
-            self.daytime_egg_temper_stdev = egg_tempers_day["egg_temper"].std().round(3)
+            self.mean_daytime_egg_temper = round(egg_tempers_day["egg_temper"].mean(), 3)
+            self.daytime_egg_temper_stdev = round(egg_tempers_day["egg_temper"].std(), 3)
 
         egg_tempers_night = self.block_tempers[self.block_tempers["is_daytime"] == False]
         if len(egg_tempers_night) > 1:
-            self.mean_nighttime_egg_temper = egg_tempers_night["egg_temper"].mean().round(3)
-            self.nighttime_egg_temper_stdev = egg_tempers_night["egg_temper"].std().round(3)
+            self.mean_nighttime_egg_temper = round(egg_tempers_night["egg_temper"].mean(), 3)
+            self.nighttime_egg_temper_stdev = round(egg_tempers_night["egg_temper"].std(), 3)
 
         # Calculate air temperature statistics
         if gui.air_valid and len(self.block_tempers) > 1:
-            self.mean_air_temper = self.block_tempers["air_temper"].mean().round(3)
-            self.air_temper_stdev = self.block_tempers["air_temper"].std().round(3)
+            self.mean_air_temper = round(self.block_tempers["air_temper"].mean(), 3)
+            self.air_temper_stdev = round(self.block_tempers["air_temper"].std(), 3)
             self.min_air_temper = self.block_tempers["air_temper"].min()
             self.max_air_temper = self.block_tempers["air_temper"].max()
 

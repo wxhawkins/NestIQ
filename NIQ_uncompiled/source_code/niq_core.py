@@ -1,5 +1,4 @@
 import configparser
-import os
 import re
 import subprocess
 import time
@@ -26,6 +25,7 @@ SUBHEADER_FONT = "Helvetica 10 bold"
 TITLE_FONT = ("Helvetica", 18)
 
 # root.iconbitmap('favicon.ico')
+
 
 
 class GUIClass:
@@ -770,10 +770,10 @@ class GUIClass:
 
         # -----------------------------------------------------------------------------------------------------------
         # ----- Footer -----
-        path1 = "./../misc_files/NIQ_Sups/uark.png"
-        path2 = "./../misc_files/NIQ_Sups/durant.png"
-        uark_logo = ImageTk.PhotoImage(Image.open(path1))
-        durant_logo = ImageTk.PhotoImage(Image.open(path2))
+        uark_path = str(self.master_dir_path / "misc_files" / "NIQ_Sups" / "uark.png")
+        durant_path = str(self.master_dir_path / "misc_files" / "NIQ_Sups" / "durant.png")
+        uark_logo = ImageTk.PhotoImage(Image.open(uark_path))
+        durant_logo = ImageTk.PhotoImage(Image.open(durant_path))
         uark_logo_L = tk.Label(self.root, background="white", image=uark_logo)
         uark_logo_L.grid(row=29, sticky="W", padx=20)
         durant_logo_L = tk.Label(self.root, background="white", image=durant_logo)
@@ -865,7 +865,6 @@ class GUIClass:
 
         try:
             replace_entry(self.out_path_E, self.config.get("Main Settings", "output_dir"))
-            os.chdir(self.out_path_E.get())
 
             self.time_interval = self.config.get("Main Settings", "data_time_interval")
             self.show_warns_CB.select() if self.config.get("Main Settings", "show_warnings").lower() == "true" else self.show_warns_CB.deselect()
@@ -1265,12 +1264,12 @@ class GUIClass:
                         return False
                 entry_path.unlink()
 
-            try:
-                with open(entry.get(), "a+") as _:
-                    pass
-            except:
-                messagebox.showerror((title + " Error"), "Failed to open file.")
-                return False
+            # try:
+            #     with open(entry.get(), "a+") as _:
+            #         pass
+            # except:
+            #     messagebox.showerror((title + " Error"), "Failed to open file.")
+            #     return False
 
             replace_entry(entry, entry_path)
             return True
@@ -1312,9 +1311,7 @@ class GUIClass:
         niq_misc.remove_curly(self.input_file_E, self.out_path_E, self.plot_file_E, self.stats_file_E)
 
         # Check output directory
-        try:
-            os.chdir(self.out_path_E.get())
-        except:
+        if not Path(self.out_path_E.get()).exists():
             messagebox.showerror(
                 "Output Path Error", "Provided output path could not be found. Ensure the path is to a directory not a file (path should end with a slash)."
             )
@@ -1698,7 +1695,7 @@ class GUIClass:
         """
             Initializes GUI from backup_config.ini.  backup_config.ini is used as a backup if anything goes wrong.
 		"""
-        
+
         self.config = configparser.RawConfigParser()
 
         config_default_path = Path(self.master_dir_path / "config_files" / "default_config.ini")
@@ -1817,8 +1814,8 @@ class GUIClass:
         self.config.set("Stats Options", "custom_time_above_temperature", self.time_above_temper_E.get())
         self.config.set("Stats Options", "custom_time_below_temperature", self.time_below_temper_E.get())
 
-        with open(config_file, "w") as configFile_:
-            self.config.write(configFile_)
+        with open(config_file, "w") as out_file:
+            self.config.write(out_file)
 
     def parse_input_file_entry(self):
         paths = self.input_file_E.get().split("|")

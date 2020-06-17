@@ -1,3 +1,4 @@
+from pathlib import Path
 import re
 from random import randint
 import traceback
@@ -135,8 +136,8 @@ def master_test(gui):
         ref_path = res_ref_stats_path if test_type == "restricted" else unres_ref_stats_path
 
         # Set up output file names
-        test_stats_path = f"{rand_key}_{test_type}.csv"
-        test_plot_path = f"{rand_key}_{test_type}.html"
+        test_stats_path = Path(gui.out_path_E.get()) / f"{rand_key}_{test_type}.csv"
+        test_plot_path = Path(gui.out_path_E.get()) / f"{rand_key}_{test_type}.html"
         replace_entry(gui.stats_file_E, test_stats_path)
         replace_entry(gui.plot_file_E, test_plot_path)
 
