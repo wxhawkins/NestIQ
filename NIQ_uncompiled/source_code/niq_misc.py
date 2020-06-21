@@ -392,13 +392,14 @@ def get_verts_from_html(gui, in_file, alt=False):
     # Search for gap between index value and corresponding datapoint
     filt = gui.master_df.loc[:, "data_point"] == vertex_data_points[0]
     first_dp_index = gui.master_df.loc[filt].index
-    delta = int((gui.master_df.loc[first_dp_index, "data_point"] - first_dp_index) - 1)
+    delta = int(gui.master_df.loc[first_dp_index, "data_point"] - first_dp_index)
 
     # Determine if first vertex is an off start or on start
     # (FLAG) may lead to some issues due to invalid assumption
     first_vert_temper = gui.master_df.loc[vertex_data_points[0] - delta, "egg_temper"]
     second_vert_temper = gui.master_df.loc[vertex_data_points[1] - delta, "egg_temper"]
     vert_type = "off" if first_vert_temper > second_vert_temper else "on"
+
 
     # Generate vertices
     for data_point in vertex_data_points:
@@ -1256,7 +1257,7 @@ def get_bouts_from_verts(gui, verts):
     cur_vert = verts[0]
     for next_vert in verts[1:]:
         # Skip if cur_vert is start of nighttime period
-        if cur_vert.vert_type != "None":
+        if cur_vert.vert_type != "None" and next_vert.index > cur_vert.index:
             bouts.append(niq_classes.Bout(gui, cur_vert.index, next_vert.index - 1, cur_vert.vert_type)) 
 
         cur_vert = next_vert
