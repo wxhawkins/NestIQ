@@ -4,6 +4,7 @@
 */input_files/
 */output_files/
 */testing/temp_output/
+**/temp*
 
 
 NIQ_uncompiled/source_code/.vscode/tasks.json
