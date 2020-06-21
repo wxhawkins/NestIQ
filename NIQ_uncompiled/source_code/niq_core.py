@@ -17,6 +17,7 @@ import niq_misc
 import testing
 from niq_misc import remove_curly, replace_entry, set_unique_path
 
+
 root = tk.Tk()
 STANDARD_FONT = font.Font(size=10)
 HELP_FONT = font.Font(size=8)
