@@ -773,9 +773,9 @@ def write_stats(gui, date_blocks, master_block):
     # Determine what files to write day statistics to
     out_paths = []
     if gui.get_stats_BV.get():
-        out_paths.append(Path(gui.stats_file_E.get()))
+        out_paths.append(Path(gui.out_path_E.get()) / gui.stats_file_E.get())
     if gui.multi_in_stats_BV.get():
-        out_paths.append(Path(gui.multi_in_stats_file_E.get()))
+        out_paths.append(Path(gui.out_path_E.get()) / gui.multi_in_stats_file_E.get())
 
     # Write day statistics
     for path in out_paths:
@@ -829,7 +829,7 @@ def write_stats(gui, date_blocks, master_block):
 
         bout_rows.append(row)
 
-    with open(Path(gui.stats_file_E.get()), "a") as out_file:
+    with open(Path(gui.out_path_E.get()) / gui.stats_file_E.get(), "a") as out_file:
         print(indi_header, end="\n", file=out_file)
         print("\n".join(bout_rows), file=out_file)
 
@@ -852,7 +852,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     master_array = df_to_array(master_df)
 
     # Set output file
-    output_file(Path(gui.plot_file_E.get()))
+    output_file(Path(gui.out_path_E.get()) / gui.plot_file_E.get())
 
     if select_mode:
         output_file(gui.master_dir_path / "misc_files" / "temp_plot.html")
