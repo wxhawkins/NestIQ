@@ -102,6 +102,8 @@ def master_test(gui):
 
     # Initialization
     test_dir_path = gui.master_dir_path / "testing"
+    test_out_dir = test_dir_path / "temp_output"
+
     in_file_path = test_dir_path / "input" / "test_input_long.csv"
 
     # Load config file
@@ -113,14 +115,11 @@ def master_test(gui):
 
     # Set up output
     rand_key = str(randint(1e6, 1e7))
-    out_dir_path = test_dir_path / "temp_output"
-    replace_entry(gui.out_path_E, out_dir_path)
 
     # ---------------------------------Statistics----------------------------------------
     # Declare paths
     unres_ref_stats_path = test_dir_path / "stats" / "ref_stats_unrestricted_long.csv"
     res_ref_stats_path = test_dir_path / "stats" / "ref_stats_restricted_long.csv"
-    test_out_dir = test_dir_path / "temp_output"
 
     # Set up text coloring
     colorama.init()
@@ -138,8 +137,8 @@ def master_test(gui):
         ref_path = res_ref_stats_path if test_type == "restricted" else unres_ref_stats_path
 
         # Set up output file names
-        test_stats_path = Path(gui.out_path_E.get()) / f"{rand_key}_{test_type}.csv"
-        test_plot_path = Path(gui.out_path_E.get()) / f"{rand_key}_{test_type}.html"
+        test_stats_path = test_out_dir / f"{rand_key}_{test_type}.csv"
+        test_plot_path = test_out_dir / f"{rand_key}_{test_type}.html"
         replace_entry(gui.stats_file_E, test_stats_path)
         replace_entry(gui.plot_file_E, test_plot_path)
 

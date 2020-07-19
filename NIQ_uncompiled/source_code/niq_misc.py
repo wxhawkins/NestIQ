@@ -773,9 +773,9 @@ def write_stats(gui, date_blocks, master_block):
     # Determine what files to write day statistics to
     out_paths = []
     if gui.get_stats_BV.get():
-        out_paths.append(Path(gui.out_path_E.get()) / gui.stats_file_E.get())
+        out_paths.append(Path(gui.stats_file_E.get()))
     if gui.multi_in_stats_BV.get():
-        out_paths.append(Path(gui.out_path_E.get()) / gui.multi_in_stats_file_E.get())
+        out_paths.append(Path(gui.multi_in_stats_file_E.get()))
 
     # Write day statistics
     for path in out_paths:
@@ -829,7 +829,7 @@ def write_stats(gui, date_blocks, master_block):
 
         bout_rows.append(row)
 
-    with open(Path(gui.out_path_E.get()) / gui.stats_file_E.get(), "a") as out_file:
+    with open(Path(gui.stats_file_E.get()), "a") as out_file:
         print(indi_header, end="\n", file=out_file)
         print("\n".join(bout_rows), file=out_file)
 
@@ -852,7 +852,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     master_array = df_to_array(master_df)
 
     # Set output file
-    output_file(Path(gui.out_path_E.get()) / gui.plot_file_E.get())
+    output_file(Path(gui.plot_file_E.get()))
 
     if select_mode:
         output_file(gui.master_dir_path / "misc_files" / "temp_plot.html")
@@ -1125,33 +1125,26 @@ def filter_by_dur(gui):
     return df, bouts_dropped_locs
 
 
-def set_unique_path(entry, file_name, dir_path=Path.cwd(), ext=""):
+def set_unique_path(entry, path, ext):
     """
-			Incriments an identificaiton number until a unique file name is found then
-            fills entry box with unique path.
+        Incriments an identificaiton number until a unique file name is found then
+        fills entry box with unique path.
 
-			Args:
-					entry (tk.Entry): entry box being updated
-					file_name (str): base or "stem" of path to be returned
-					dir_path (str or pathlib.Path): path to parent directory
-					ext (str): file extension
+        Args:
+            entry (tk.Entry): entry box being updated
+            path (pathlib.Path): path to check for uniqueness
+            ext (str): file extension
 	"""
 
     counter = 0
-    file_path = Path(dir_path) / file_name
-
-    # Adds appropriate extension if not already present
-    file_path = file_path.parent / (file_path.stem + ext)
-    stem = file_path.stem
+    file_path = Path(path).with_suffix(ext)
 
     # Adds trailing number until unique path is found
     while file_path.exists():
         counter += 1
-        file_path = file_path.parent / (stem + "_" + str(counter).zfill(3) + file_path.suffix)
+        file_path = file_path.parent / (file_path.stem + "_" + str(counter).zfill(3) + file_path.suffix)
 
     replace_entry(entry, file_path.name)
-
-
 
 def add_states(df, verts=None, states=None):
     """

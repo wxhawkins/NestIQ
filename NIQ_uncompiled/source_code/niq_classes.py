@@ -302,7 +302,7 @@ class Block:
 
 class MultiFileStats:
     def __init__(self, gui):
-        self.out_path = Path(gui.out_path_E.get()) / gui.multi_in_stats_file_E.get()
+        self.out_path = Path(gui.multi_in_stats_file_E.get())
 
         # Used to indictate scope of certain statistics
         self.qualifier = "(D)" if gui.restrict_search_BV.get() else "(DN)"

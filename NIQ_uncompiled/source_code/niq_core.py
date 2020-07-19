@@ -110,15 +110,6 @@ class GUIClass:
         self.input_file_B.grid(row=1, sticky="W", padx=285, pady=(10, 0))
         self.input_file_B.configure(background="white")
 
-        # ----- Output path -----
-        output_path_L = tk.Label(tab1, text="Output Folder:", font=STANDARD_FONT)
-        output_path_L.grid(row=5, sticky="W", padx=10, pady=(15, 20))
-        self.out_path_E = tk.Entry(tab1, width=24)
-        self.out_path_E.grid(row=5, sticky="W", padx=98, pady=(15, 20))
-        self.out_path_B = tk.Button(tab1, text="Browse Directory", command=(lambda: self.get_dir(self.out_path_E)))
-        self.out_path_B.grid(row=5, sticky="W", padx=255, pady=(15, 20))
-        self.out_path_B.configure(background="white")
-
         # ----- Plot file -----
         self.make_plot_BV = tk.BooleanVar()
         self.plot_CB = tk.Checkbutton(tab1, text="Generate Plot", variable=self.make_plot_BV, font=STANDARD_FONT)
@@ -126,7 +117,7 @@ class GUIClass:
         self.plot_file_L = tk.Label(tab1, text="File name:", font=STANDARD_FONT)
         self.plot_file_E = tk.Entry(tab1, width=24)
         # self.plot_B = tk.Button(tab1, text="Browse Directory", command=(lambda: self.get_dir(self.plot_file_E)))
-        set_unique_path(self.plot_file_E, "niq_plot", self.out_path_E.get(), ".html")
+        set_unique_path(self.plot_file_E, self.master_dir_path / "output_files" / "niq_plot", ".html")
 
         self.plot_CB.select()
         self.plot_file_L.grid(row=9, sticky="W", padx=32)
@@ -141,7 +132,7 @@ class GUIClass:
         self.stats_file_L = tk.Label(tab1, text="File name:", font=STANDARD_FONT)
         self.stats_file_E = tk.Entry(tab1, width=24)
         # self.stats_B = tk.Button(tab1, text="Browse Directory", command=(lambda: self.get_dir(self.stats_file_E)))
-        set_unique_path(self.stats_file_E, "niq_stats", self.out_path_E.get(), ".csv")
+        set_unique_path(self.stats_file_E, self.master_dir_path / "output_files" / "niq_stats", ".csv")
 
         self.stats_CB.select()
         self.stats_file_L.grid(row=11, sticky="W", padx=32)
@@ -865,8 +856,6 @@ class GUIClass:
             self.config.read(str(config_file))
 
         try:
-            replace_entry(self.out_path_E, self.config.get("Main Settings", "output_dir"))
-
             self.time_interval = self.config.get("Main Settings", "data_time_interval")
             self.show_warns_CB.select() if self.config.get("Main Settings", "show_warnings").lower() == "true" else self.show_warns_CB.deselect()
             self.restrict_search_CB.select() if self.config.get(
@@ -1256,7 +1245,7 @@ class GUIClass:
             elif entry == gui.stats_file_E or entry == gui.multi_in_stats_file_E:
                 ext = ".csv"
 
-            entry_path = Path(self.out_path_E.get()) / Path(entry.get()).with_suffix(ext)
+            entry_path = Path(entry.get()).with_suffix(ext)
 
             # Check if plot file already exists and if so, ask to override
             if entry_path.exists():
@@ -1300,15 +1289,6 @@ class GUIClass:
                 return False
 
             return True
-
-        niq_misc.remove_curly(self.input_file_E, self.out_path_E, self.plot_file_E, self.stats_file_E)
-
-        # Check output directory
-        if not Path(self.out_path_E.get()).exists():
-            messagebox.showerror(
-                "Output Path Error", "Provided output path could not be found. Ensure the path is to a directory not a file (path should end with a slash)."
-            )
-            return False
 
         # Check time entry boxes
         for time_str in (self.day_start_E.get(), self.night_start_E.get()):
@@ -1593,9 +1573,10 @@ class GUIClass:
 
         if len(input_paths) == 1:
             # Update default output file names
-            path = input_paths[0]
-            set_unique_path(self.plot_file_E, (path + "_plot"), self.out_path_E.get(), ".html")
-            set_unique_path(self.stats_file_E, (path + "_stats"), self.out_path_E.get(), ".csv")
+            stem = Path(input_paths[0]).stem
+            out_dir = self.master_dir_path / "output_files"
+            set_unique_path(self.plot_file_E, out_dir / (stem + "_plot"), ".html")
+            set_unique_path(self.stats_file_E, out_dir / (stem + "_stats"), ".csv")
 
     def get_plot_file(self, entry):
         """
@@ -1714,7 +1695,6 @@ class GUIClass:
         if config_file is None:
             config_file = Path(self.master_dir_path / "config_files" / "default_config.ini")
 
-        self.config.set("Main Settings", "output_dir", self.out_path_E.get())
         self.config.set("Main Settings", "show_warnings", self.show_warns_BV.get())
         self.config.set("Main Settings", "day_start_time", self.day_start_E.get())
         self.config.set("Main Settings", "night_start_time", self.night_start_E.get())
@@ -1827,8 +1807,10 @@ class GUIClass:
 
         if replace_out:
             # Update default output file names
-            set_unique_path(self.plot_file_E, (self.input_root + "_plot"), self.out_path_E.get(), ".html")
-            set_unique_path(self.stats_file_E, (self.input_root + "_stats"), self.out_path_E.get(), ".csv")
+            out_dir = self.master_dir_path / "output_files"
+            set_unique_path(self.plot_file_E, out_dir / (path.stem + "_plot"), ".html")
+            set_unique_path(self.stats_file_E, out_dir / (path.stem + "_stats"), ".csv")
+
 
     # Check ensure valid parameters and execute processing
     def trigger_run(self, rerun=False):
