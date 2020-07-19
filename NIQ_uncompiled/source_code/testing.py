@@ -8,6 +8,8 @@ from termcolor import colored
 
 from niq_misc import replace_entry
 
+from tkinter import filedialog
+
 
 def test_run(gui):
     """ Load GUI entry boxes with test files. """

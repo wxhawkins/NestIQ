@@ -316,7 +316,7 @@ class GUIClass:
         self.on_on_trans_E.grid(row=20, sticky="W", padx=220)
 
         # ----- Temperature change distribution -----
-        distrib_params_L = tk.Label(tab2, text="Temperature Change Distribution Parameters:", font=SUBHEADER_FONT)
+        distrib_params_L = tk.Label(tab2, text="Temperature Change Parameters:", font=SUBHEADER_FONT)
         distrib_params_L.grid(row=23, sticky="W", padx=10, pady=(20, 0))
 
         separator = ttk.Separator(tab2, orient="horizontal")
@@ -799,8 +799,8 @@ class GUIClass:
 
         _ = None
         self.root.bind("<Return>", lambda _: self.trigger_run())
-        # Flag
-        self.root.bind("<`>", lambda _: testing.test_run(self))
+
+        # self.root.bind("<`>", lambda _: testing.test_run(self))
         self.root.bind("<Control-`>", lambda _: testing.master_test(self))
 
         self.valid = True
@@ -821,8 +821,8 @@ class GUIClass:
 
     def save_config(self, out_file=None):
         """
-						Prompts user to provide a save file name and location then generates a configuration file from
-						the current GUI settings and statuses.
+            Prompts user to provide a save file name and location then generates a configuration file from
+            the current GUI settings and statuses.
 
 		"""
 
@@ -835,12 +835,12 @@ class GUIClass:
 
     def load_config(self, program_startup=False, config_file_=None):
         """
-						Updates all GUI settings and statuses according to a configuration file. If this file is not immediately
-						provided to the function, the user is prompted to select a file from a dialog box.
+            Updates all GUI settings and statuses according to a configuration file. If this file is not immediately
+            provided to the function, the user is prompted to select a file from a dialog box.
 
-						Args:
-										program_startup (bool): True if is the initial call used to populate GUI upon program startup
-										config_file_ (pathlib.Path): Path to configuration file to be loaded
+            Args:
+                program_startup (bool): True if is the initial call used to populate GUI upon program startup
+                config_file_ (pathlib.Path): Path to configuration file to be loaded
 		"""
 
         # Load config button clicked
@@ -989,7 +989,7 @@ class GUIClass:
 
     def set_defaults(self):
         """
-						Updates default configureation file with current GUI status.
+            Updates default configureation file with current GUI status.
 		"""
 
         try:
@@ -1002,11 +1002,11 @@ class GUIClass:
 
     def check_vertex_file(self):
         """
-						Checks user-provided vertex selection file (HTML) for issues that could cause errors with
-						downstream processes.
+            Checks user-provided vertex selection file (HTML) for issues that could cause errors with
+            downstream processes.
 
-						Returns:
-										True if file passes all tests, else displays error message and returns False
+            Returns:
+                True if file passes all tests, else displays error message and returns False
 		"""
 
         niq_misc.remove_curly(self.vertex_file_E)
@@ -1404,14 +1404,14 @@ class GUIClass:
             (float(mean) for mean in (self.off_mean_E.get(), self.on_mean_E.get()))
 
         except TypeError:
-            messagebox.showerror("Parameter Error (Advanced tab)", "Distribution means must be real numbers.")
+            messagebox.showerror("Parameter Error (Advanced tab)", "Means must be real numbers.")
             return False
         try:
             for stdev in (self.off_stdev_E.get(), self.on_stdev_E.get()):
                 if float(stdev) <= 0:
                     raise ValueError("Standard deviation less than 0 provided.")
         except:
-            messagebox.showerror("Parameter Error (Advanced tab)", "Distribution standard deviations must be real numbers greater than 0.")
+            messagebox.showerror("Parameter Error (Advanced tab)", "Standard deviations must be real numbers greater than 0.")
             return False
 
         return True
@@ -1581,18 +1581,19 @@ class GUIClass:
 
     def get_input_file_name(self):
         """
-						Handles input file browsing and selection.
+            Handles input file browsing and selection.
 		"""
 
-        self.root.update()
-        input_paths = tuple(filedialog.askopenfilename(multiple=True))
-        self.root.update()
+        input_paths = list(filedialog.askopenfilename(multiple=True))
 
-        replace_entry(self.input_file_E, "|".join(input_paths))
+        # Remove curley braces that are sometimes added automatically
+        input_paths = [item.replace("{", "").replace("}", "") for item in input_paths]
+
+        replace_entry(self.input_file_E, " | ".join(input_paths))
 
         if len(input_paths) == 1:
             # Update default output file names
-            path = remove_curly(input_paths[0], string=True)
+            path = input_paths[0]
             set_unique_path(self.plot_file_E, (path + "_plot"), self.out_path_E.get(), ".html")
             set_unique_path(self.stats_file_E, (path + "_stats"), self.out_path_E.get(), ".csv")
 
@@ -1812,11 +1813,14 @@ class GUIClass:
             self.config.write(out_file)
 
     def parse_input_file_entry(self):
-        paths = self.input_file_E.get().split("|")
-        paths = [Path(niq_misc.remove_curly(path.strip(), string=True)) for path in paths]
+        """ Splits input file entry box into individual input paths if present. """
+
+        paths = [Path(path) for path in self.input_file_E.get().split(" | ")]
         return paths
 
     def set_active_input(self, path, replace_out=False):
+        """ Sets parameters based on single input file currently being analyzed. """
+
         replace_entry(self.input_file_E, str(path))
         self.active_input_path = path
         self.input_root = path.stem
@@ -1891,7 +1895,7 @@ class GUIClass:
             if self.multi_in_stats_BV.get():
                 self.multi_file_stats.write(self)
 
-            replace_entry(self.input_file_E, "|".join([str(path) for path in in_file_paths]))
+            replace_entry(self.input_file_E, " | ".join([str(path) for path in in_file_paths]))
 
             self.run_B["text"] = "Run"
             self.run_B.config(bg="red4", fg="white", width=10, height=1)
@@ -1915,23 +1919,6 @@ class GUIClass:
         self.valid = False
         self.root.quit()
         self.root.destroy()
-
-    # Flag Destroy this when the time comes, Wayne will give the signal
-    def set_nighttime_state(self, nights_list, master_df):
-        """
-            Sets state of nightime data points to "nonsense" value of 2. These points will be ignored for the
-            majority of downstream statistical calculations.
-
-            Args:
-                nights_list (list of blocks): used to get boudaries for nightime data points
-                master_df (DataFrame): master DataFrame which will have states column modified
-		"""
-
-        if self.restrict_search_BV.get():
-            for night in nights_list:
-                master_df.loc[night.first : night.last, "bout_state"] = "None"
-
-        return master_df
 
     def erase_nighttime_state(self, master_df):
         """
