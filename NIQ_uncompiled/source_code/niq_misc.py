@@ -188,11 +188,11 @@ def add_daytime(gui, master_df):
 
 def get_day_dur(day_start, night_start):
     """
-			Finds the duration of the daytime period specified by the user.
+        Finds the duration of the daytime period specified by the user.
 
-			Args:
-					day_start (str): start of daytime period
-					night_start (str): end of daytime period
+        Args:
+            day_start (str): start of daytime period
+            night_start (str): end of daytime period
 	"""
 
     day = re.search(r"(\d+)(:)(\d+)", day_start)
@@ -224,19 +224,19 @@ def smooth_series(radius, col):
 
 def get_master_df(gui, source_path):
     """
-			Generates Pandas DataFrame from input CSV. Bout state (on or off bout) column is added later.
+        Generates Pandas DataFrame from input CSV. Bout state (on or off bout) column is added later.
 
-					data_point = data point
-                    date_time = date and time of temperature recording
-                    egg_temper = egg temperature
-                    air_temper = ambient air temperature
-                    adj_temper = adjusted temperature (egg - air temperature)
-                    smoothed_egg_temper = egg_temper with rolling mean applied
-                    smoothed_adj_temper = adj_temper with rolling mean applied
-                    delta_temper = change in smoothed_adj_temper or smoothed_egg_temper
+            data_point = data point
+            date_time = date and time of temperature recording
+            egg_temper = egg temperature
+            air_temper = ambient air temperature
+            adj_temper = adjusted temperature (egg - air temperature)
+            smoothed_egg_temper = egg_temper with rolling mean applied
+            smoothed_adj_temper = adj_temper with rolling mean applied
+            delta_temper = change in smoothed_adj_temper or smoothed_egg_temper
 
-			Args:
-					df (DataFrame): Contains all information for the array in DataFrame form
+        Args:
+            df (DataFrame): Contains all information for the array in DataFrame form
 	"""
 
     def csv_to_df(path):
@@ -322,21 +322,21 @@ def get_master_df(gui, source_path):
 
 def get_verts_from_html(gui, in_file, alt=False):
     """
-			Creates vertex objects from vertices placed by the user in the provided HTML file.
+        Creates vertex objects from vertices placed by the user in the provided HTML file.
 
-			Args:
-					gui (GUIClass)
-					in_file (str): path to and name of HTML file containing user-provided vertex locations
-					alt (Bool): dictates if vertices are extracted from the table or alternative variable in HTML file
+        Args:
+            gui (GUIClass)
+            in_file (str): path to and name of HTML file containing user-provided vertex locations
+            alt (Bool): dictates if vertices are extracted from the table or alternative variable in HTML file
 	"""
 
     def get_data_points_from_html(gui, in_file):
         """
-				Extracts the corresponding data point for each point placed by the user in the HTML file.
+            Extracts the corresponding data point for each point placed by the user in the HTML file.
 
-				Args:
-						gui (GUIClass)
-						in_file (str): path to and name of HTML file containing user-provided vertex locations
+            Args:
+                gui (GUIClass)
+                in_file (str): path to and name of HTML file containing user-provided vertex locations
 		"""
 
         data_point_list = []
@@ -412,13 +412,13 @@ def get_verts_from_html(gui, in_file, alt=False):
 
 def extract_bouts_in_range(gui, total_bouts, first_index, last_index):
     """
-			Extracts vertices falling into a specified window of index values.
+        Extracts vertices falling into a specified window of index values.
 
-			Args:
-					gui (GUIClass)
-					total_bouts (list): every bout identified for the current input file
-					first_index (int)
-					last_index (int)
+        Args:
+            gui (GUIClass)
+            total_bouts (list): every bout identified for the current input file
+            first_index (int)
+            last_index (int)
 	"""
 
     bouts_in_range = []

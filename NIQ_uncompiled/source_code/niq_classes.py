@@ -6,13 +6,13 @@ import pandas as pd
 
 class Vertex:
     """
-            Stores information about a transition point between one bout state to the other.
+        Stores information about a transition point between one bout state to the other.
 
 
-            Atributes:
-                    index (int)
-                    egg_temper (float): egg temperature at the point of transition
-                    vert_type (str): off, on, or None (start of night)
+        Atributes:
+            index (int)
+            egg_temper (float): egg temperature at the point of transition
+            vert_type (str): off, on, or None (start of night)
 
     """
 
@@ -27,16 +27,16 @@ class Vertex:
 
 class Bout:
     """
-            Stores information for a single on or off-bout.
+        Stores information for a single on or off-bout.
 
-            Atributes:
-                    first (int): index where the bout begins
-                    last (int): index where the bout ends
-                    bout_type (int): off or on
-                    dur (int): duration in number of data points
-                    mean_egg_temper (float)
-                    mean_air_temper (float)
-                    egg_tempers (list of floats): list of egg temperatures for each data point in bout
+        Atributes:
+            first (int): index where the bout begins
+            last (int): index where the bout ends
+            bout_type (int): off or on
+            dur (int): duration in number of data points
+            mean_egg_temper (float)
+            mean_air_temper (float)
+            egg_tempers (list of floats): list of egg temperatures for each data point in bout
     """
 
     def __init__(self, gui, first_, last_, bout_type_):
@@ -62,44 +62,44 @@ class Bout:
 
 class Block:
     """
-            Descrete section of time such as a single daytime period, nightime period, or date.
+        Descrete section of time such as a single daytime period, nightime period, or date.
 
-            Atributes:
-                    first (int): index where the block begins
-                    last (int): index where the block ends
-                    partial_day (bool): True if block does not represent a full 24 hr day
-                    date (string)
-                    egg_tempers (list of floats)
-                    air_tempers (list of floats)
-                    vertices (list of Vertices): every Vertex object falling into the scope of this block
-                    bouts (list of Bouts): every Bout object falling into the scope of this block
-                    off_count (int): total number of off-bouts
-                    mean_off_dur (float): mean off-bout duration
-                    off_dur_stdev (float): standard deviation of off-bout durations
-                    mean_off_dec (float): mean egg temperature decrease across off-bouts
-                    off_dec_stdev (float): standard deviation of off-bout egg temperature decreases
-                    mean_off_temper (float): mean egg temperature of all off-bout data points in this block
-                    off_time_sum (float): total time spent as off-bout
-                    on_count (int): total number of on-bouts
-                    mean_on_dur (float): mean on-bout duration
-                    on_dur_stdev (float): standard deviation of on-bout-durations
-                    mean_on_inc (float): mean egg temperature increase across on-bouts
-                    on_inc_stdev (float): standard deviation of on-bout egg temperature increases
-                    mean_on_temper (float): mean egg temperature of all on-bout data points in this block
-                    on_time_sum (float): total time spent as on-bout
-                    mean_egg_temper (float): mean egg temperature across entire block
-                    egg_temper_stdev (float): standard deviation of all egg temperatures in block
-                    median_temper (float): median egg temperature
-                    min_egg_temper (float): lowest egg temperature in block
-                    max_egg_temper (float): highest egg temperature in block
-                    mean_air_temper (float): mean air temeprature across entire block
-                    air_temper_dtdev (float): standard deviation of all air temperatures in block
-                    min_air_temper (float): lowest air temeprature in block
-                    max_air_temper (float): highest air temperature in block
-                    time_above_temper (float): time above the critical temperature provided by the user
-                    time_below_temper (float): time below the critical temperature provided by the user
-                    bouts_dropped (int): number of bouts discarded due to failing to meet one or more thresholds
-                    date_count (int): number of dates represented at least once in this Block
+        Atributes:
+                first (int): index where the block begins
+                last (int): index where the block ends
+                partial_day (bool): True if block does not represent a full 24 hr day
+                date (string)
+                egg_tempers (list of floats)
+                air_tempers (list of floats)
+                vertices (list of Vertices): every Vertex object falling into the scope of this block
+                bouts (list of Bouts): every Bout object falling into the scope of this block
+                off_count (int): total number of off-bouts
+                mean_off_dur (float): mean off-bout duration
+                off_dur_stdev (float): standard deviation of off-bout durations
+                mean_off_dec (float): mean egg temperature decrease across off-bouts
+                off_dec_stdev (float): standard deviation of off-bout egg temperature decreases
+                mean_off_temper (float): mean egg temperature of all off-bout data points in this block
+                off_time_sum (float): total time spent as off-bout
+                on_count (int): total number of on-bouts
+                mean_on_dur (float): mean on-bout duration
+                on_dur_stdev (float): standard deviation of on-bout-durations
+                mean_on_inc (float): mean egg temperature increase across on-bouts
+                on_inc_stdev (float): standard deviation of on-bout egg temperature increases
+                mean_on_temper (float): mean egg temperature of all on-bout data points in this block
+                on_time_sum (float): total time spent as on-bout
+                mean_egg_temper (float): mean egg temperature across entire block
+                egg_temper_stdev (float): standard deviation of all egg temperatures in block
+                median_temper (float): median egg temperature
+                min_egg_temper (float): lowest egg temperature in block
+                max_egg_temper (float): highest egg temperature in block
+                mean_air_temper (float): mean air temeprature across entire block
+                air_temper_dtdev (float): standard deviation of all air temperatures in block
+                min_air_temper (float): lowest air temeprature in block
+                max_air_temper (float): highest air temperature in block
+                time_above_temper (float): time above the critical temperature provided by the user
+                time_below_temper (float): time below the critical temperature provided by the user
+                bouts_dropped (int): number of bouts discarded due to failing to meet one or more thresholds
+                date_count (int): number of dates represented at least once in this Block
     """
 
     def __init__(self, gui, first_, last_, partial_day_):
@@ -200,7 +200,7 @@ class Block:
 
     def get_stats(self, gui):
         """
-                Calculate and store various statistics for this Block.
+            Calculate and store various statistics for this Block.
         """
 
         self.get_sub_dfs(gui)
@@ -287,8 +287,8 @@ class Block:
 
     def deposit_multi_file_stats(self, gui):
         """
-                Deposits information about this block into GUI variables that can later be used to 
-                calculate statistics across multiple input files if multiple are provided by the user.
+            Deposits information about this block into GUI variables that can later be used to 
+            calculate statistics across multiple input files if multiple are provided by the user.
         """
 
         off_bout_df = self.bout_df[self.bout_df["type"] == "off"]
@@ -389,7 +389,7 @@ class MultiFileStats:
 
     def write(self, gui):
         """
-                        Dumps cumulative, multi-file statistics into compiled stats file.
+            Dumps cumulative, multi-file statistics into compiled stats file.
         """
 
         self.get_stats(gui)

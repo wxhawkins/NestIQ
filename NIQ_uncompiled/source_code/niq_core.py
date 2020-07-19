@@ -114,40 +114,47 @@ class GUIClass:
         self.make_plot_BV = tk.BooleanVar()
         self.plot_CB = tk.Checkbutton(tab1, text="Generate Plot", variable=self.make_plot_BV, font=STANDARD_FONT)
         self.plot_CB.grid(row=8, sticky="W", padx=10)
-        self.plot_file_L = tk.Label(tab1, text="File name:", font=STANDARD_FONT)
-        self.plot_file_E = tk.Entry(tab1, width=24)
-        # self.plot_B = tk.Button(tab1, text="Browse Directory", command=(lambda: self.get_dir(self.plot_file_E)))
-        set_unique_path(self.plot_file_E, self.master_dir_path / "output_files" / "niq_plot", ".html")
+        
+        self.plot_file_E = tk.Entry(tab1, width=44)
+        self.plot_file_E.grid(row=9, sticky="W", padx=33)
 
+        self.plot_save_as_B = tk.Button(tab1, text="Save as", command=(lambda: self.handle_save_as(self.plot_file_E)))
+        self.plot_save_as_B.grid(row=9, sticky="W", padx=308)
+        self.plot_save_as_B.configure(background="white")
+
+        # Initialize
+        set_unique_path(self.plot_file_E, self.master_dir_path / "output_files" / "niq_plot", ".html")
         self.plot_CB.select()
-        self.plot_file_L.grid(row=9, sticky="W", padx=32)
-        self.plot_file_E.grid(row=9, sticky="W", padx=102)
-        # self.plot_B.grid(row=9, sticky="W", padx=255)
-        # self.plot_B.configure(background="white")
 
         # ----- Statistics file -----
         self.get_stats_BV = tk.BooleanVar()
         self.stats_CB = tk.Checkbutton(tab1, text="Output Statistics", variable=self.get_stats_BV, font=STANDARD_FONT)
         self.stats_CB.grid(row=10, sticky="NW", padx=10, pady=(10, 0))
-        self.stats_file_L = tk.Label(tab1, text="File name:", font=STANDARD_FONT)
-        self.stats_file_E = tk.Entry(tab1, width=24)
-        # self.stats_B = tk.Button(tab1, text="Browse Directory", command=(lambda: self.get_dir(self.stats_file_E)))
-        set_unique_path(self.stats_file_E, self.master_dir_path / "output_files" / "niq_stats", ".csv")
 
+        self.stats_file_E = tk.Entry(tab1, width=44)
+        self.stats_file_E.grid(row=11, sticky="W", padx=33)
+
+        self.stats_save_as_B = tk.Button(tab1, text="Save as", command=(lambda: self.handle_save_as(self.stats_file_E)))
+        self.stats_save_as_B.grid(row=11, sticky="W", padx=308)
+        self.stats_save_as_B.configure(background="white")
+
+        # Initialize
+        set_unique_path(self.stats_file_E, self.master_dir_path / "output_files" / "niq_stats", ".csv")
         self.stats_CB.select()
-        self.stats_file_L.grid(row=11, sticky="W", padx=32)
-        self.stats_file_E.grid(row=11, sticky="W", padx=102)
-        # self.stats_B.grid(row=11, sticky="W", padx=255)
-        # self.stats_B.configure(background="white")
 
         # ----- Multi-file statistics file -----
         self.multi_in_stats_BV = tk.BooleanVar()
         self.multi_in_stats_CB = tk.Checkbutton(tab1, text="Compile Statistics", variable=self.multi_in_stats_BV, font=STANDARD_FONT)
         self.multi_in_stats_CB.grid(row=12, sticky="W", padx=10, pady=(10, 0))
-        self.multi_in_stats_file_L = tk.Label(tab1, text="File name:", font=STANDARD_FONT)
-        self.multi_in_stats_file_E = tk.Entry(tab1, width=24)
-        self.multi_in_stats_file_E.insert(0, "multi_file_stats.csv")
-        # self.multi_in_stats_B = tk.Button(tab1, text="Browse Directory", command=(lambda: self.get_dir(self.multi_in_stats_file_E)))
+
+        self.multi_in_stats_file_E = tk.Entry(tab1, width=44)
+
+        self.multi_in_stats_save_as_B = tk.Button(tab1, text="Save as", command=(lambda: self.handle_save_as(self.multi_in_stats_file_E)))
+        self.multi_in_stats_save_as_B.grid(row=13, sticky="W", padx=308)
+        self.multi_in_stats_save_as_B.configure(background="white")
+
+        # Initialize
+        set_unique_path(self.multi_in_stats_file_E, self.master_dir_path / "output_files" / "multi_file_stats", ".csv")
 
         ttk.Separator(tab1, orient="horizontal").grid(row=14, sticky="NSEW", pady=(20, 10))
 
@@ -188,34 +195,30 @@ class GUIClass:
         # Display and retract file entry boxes based on selection status
         def main_tab_callback(*args):
             if self.make_plot_BV.get():
-                self.plot_file_L.grid(row=9, sticky="W", padx=30)
-                self.plot_file_E.grid(row=9, sticky="W", padx=102)
-                # self.plot_B.grid(row=9, sticky="W", padx=255)
-                # self.plot_B.configure(background="white")
+                self.plot_file_E.grid(row=9, sticky="W", padx=32)
+                self.plot_save_as_B.grid(row=9, sticky="W", padx=308)
+                self.plot_save_as_B.configure(background="white")
             else:
-                self.plot_file_L.grid_forget()
                 self.plot_file_E.grid_forget()
-                # self.plot_B.grid_forget()
+                self.plot_save_as_B.grid_forget()
 
             if self.get_stats_BV.get():
-                self.stats_file_L.grid(row=11, sticky="W", padx=32)
-                self.stats_file_E.grid(row=11, sticky="W", padx=102)
-                # self.stats_B.grid(row=11, sticky="W", padx=255)
-                # self.stats_B.configure(background="white")
+                self.stats_file_E.grid(row=11, sticky="W", padx=33)
+                self.stats_save_as_B.grid(row=11, sticky="W", padx=308)
+                self.stats_save_as_B.configure(background="white")
+
             else:
-                self.stats_file_L.grid_forget()
                 self.stats_file_E.grid_forget()
-                # self.stats_B.grid_forget()
+                self.stats_save_as_B.grid_forget()
 
             if self.multi_in_stats_BV.get():
-                self.multi_in_stats_file_L.grid(row=13, sticky="W", padx=32)
-                self.multi_in_stats_file_E.grid(row=13, sticky="W", padx=102)
-                # self.multi_in_stats_B.grid(row=13, sticky="W", padx=255)
-                # self.multi_in_stats_B.configure(background="white")
+                self.multi_in_stats_file_E.grid(row=13, sticky="W", padx=33)
+                self.multi_in_stats_save_as_B.grid(row=13, sticky="W", padx=308)
+                self.multi_in_stats_save_as_B.configure(background="white")
+
             else:
                 self.multi_in_stats_file_E.grid_forget()
-                self.multi_in_stats_file_L.grid_forget()
-                # self.multi_in_stats_B.grid_forget()
+                self.multi_in_stats_save_as_B.grid_forget()
 
         main_tab_callback()
 
@@ -1560,9 +1563,7 @@ class GUIClass:
         return True
 
     def get_input_file_name(self):
-        """
-            Handles input file browsing and selection.
-		"""
+        """ Handles input file browsing and selection. """
 
         input_paths = list(filedialog.askopenfilename(multiple=True))
 
@@ -1579,9 +1580,7 @@ class GUIClass:
             set_unique_path(self.stats_file_E, out_dir / (stem + "_stats"), ".csv")
 
     def get_plot_file(self, entry):
-        """
-						Handles plot file browsing and selection
-		"""
+        """ Handles plot file browsing and selection """
 
         self.root.update()
         path_ = filedialog.askopenfilename()
@@ -1592,29 +1591,27 @@ class GUIClass:
 
         niq_misc.remove_curly(entry)
 
-    def get_dir(self, entry):
+    def handle_save_as(self, entry):
         """
-						Handles output file directory browsing and selection.
+            Allows the user to browse the file system and provide a path to 
+            populate the entry box with.
 
-						Args:
-										entry (tk.Entry): output file entry box being activated
+            Args:
+                entry (tk.Entry): Entry box to be populated
 		"""
 
-        entry.delete(0, "end")
-        path_ = ""
-        self.root.update()
-        path_ = filedialog.askdirectory()
-        self.root.update()
-        entry.insert(0, path_)
-        if path_ != "":
-            entry.insert(len(path_), "/")
+        if entry == self.plot_file_E:
+            ext = ".html"
+        elif entry == self.stats_file_E or entry == self.multi_in_stats_file_E:
+            ext = ".csv"
 
-        niq_misc.remove_curly(entry)
+        path = filedialog.asksaveasfilename(initialdir=(self.master_dir_path / "output_files"))
+        replace_entry(entry, str(Path(path).with_suffix(ext)))
 
 
     def reset_multi_file_var(self):
         """
-						Resets variables used to store data across multiple input files.
+            Resets variables used to store data across multiple input files.
 		"""
 
         self.multi_file_off_durs = []
@@ -1628,8 +1625,8 @@ class GUIClass:
 
     def select_vertices(self, mod_plot=False):
         """
-						Generates special plot for the user to select their ideal vertex locations. This plot can be
-						saved and later used for supervised parameter acquisition or manual vertex modification.
+            Generates special plot for the user to select their ideal vertex locations. This plot can be
+            saved and later used for supervised parameter acquisition or manual vertex modification.
 		"""
 
         days_list = []
