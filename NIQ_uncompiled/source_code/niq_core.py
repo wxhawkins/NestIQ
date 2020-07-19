@@ -1606,7 +1606,9 @@ class GUIClass:
             ext = ".csv"
 
         path = filedialog.asksaveasfilename(initialdir=(self.master_dir_path / "output_files"))
-        replace_entry(entry, str(Path(path).with_suffix(ext)))
+        
+        if path != "":
+            replace_entry(entry, str(Path(path).with_suffix(ext)))
 
 
     def reset_multi_file_var(self):
