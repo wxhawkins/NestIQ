@@ -181,10 +181,7 @@ class HMM(object):
         master_array = niq_misc.df_to_array(master_df)
 
         # Run viterbi to get expected states for each input data point
-        results = self.viterbi(master_array)
-
-        master_df = niq_misc.add_states(master_df, states=results)
-        return master_df
+        return self.viterbi(master_array)
 
     def viterbi(self, master_array):
         """ 

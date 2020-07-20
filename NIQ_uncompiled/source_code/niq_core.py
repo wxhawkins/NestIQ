@@ -8,6 +8,8 @@ from pathlib import Path
 from shutil import copyfile
 from tkinter import filedialog, font, messagebox, ttk
 
+import numpy as np
+import pandas as pd
 from PIL import Image, ImageTk
 from termcolor import colored
 
@@ -1605,8 +1607,7 @@ class GUIClass:
             return
 
         try:
-            # self.master_df_ori = niq_misc.get_master_df(self, self.input_file_E.get())
-            self.master_df = niq_classes.MasterDF(self, self.input_file_E.get())
+            self.master_df = self.init_master_df(self.input_file_E.get())
 
             # Get days_list for plotting vertical lines
             days_list = niq_misc.split_days(self)[0]  # Indexing at end excludes nights_list
@@ -1818,11 +1819,11 @@ class GUIClass:
 
                 print("Active file:", path)
 
-                self.master_df = niq_misc.get_master_df(self, path)
+                self.master_df = self.init_master_df(path)
 
                 if rerun:
                     custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
-                    self.master_df = niq_misc.add_states(self.master_df, verts=custom_verts)
+                    self.master_df = self.add_states(verts=custom_verts)
                 else:
                     self.master_hmm = niq_hmm.HMM()
                     self.master_hmm.build_model_from_entries(self)
@@ -1830,7 +1831,9 @@ class GUIClass:
                     self.master_hmm.populate_hmm_entries(self)
 
                     # Adds state column to master_df of input file
-                    self.master_df = self.master_hmm.decode(self.master_df)
+                    results = self.master_hmm.decode(self.master_df)
+                    self.master_df = self.add_states(states=results)
+
                 try:
                     main(self)
                 except:
@@ -1917,7 +1920,7 @@ class GUIClass:
                 return False
 
         in_file = self.input_file_E.get()
-        self.master_df = niq_misc.get_master_df(self, in_file)
+        self.master_df = self.init_master_df(in_file)
 
         self.master_hmm = niq_hmm.HMM()
         emis_arr = self.master_df.loc[:, "delta_temper"].to_numpy()
@@ -1948,15 +1951,188 @@ class GUIClass:
         if not self.check_vertex_file() or not self.check_valid_main(check_output=False):
             return
 
-        self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
+        self.master_df = self.init_master_df(self.input_file_E.get())
 
         training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
         self.master_hmm = niq_hmm.HMM()
-        self.master_df = niq_misc.add_states(self.master_df, verts=training_verts)
+        self.master_df = self.add_states(verts=training_verts)
         reduced_df = self.master_df.iloc[training_verts[0].index:training_verts[-1].index + 1]
         self.master_hmm.extract_params_from_verts(reduced_df)
         self.master_hmm.normalize_params(self)
         self.master_hmm.populate_hmm_entries(self)
+
+    def init_master_df(self, in_path):
+        """
+            Adds all columns barring bout_state
+
+            Args:
+                in_path (str or pathlib.Path): path to input file containing data to be analyzed
+
+            columns:
+                data_point = data point
+                date_time = date and time of temperature recording
+                egg_temper = egg temperature
+                air_temper = ambient air temperature
+                adj_temper = adjusted temperature (egg - air temperature)
+                smoothed_egg_temper = egg_temper with rolling mean applied
+                smoothed_adj_temper = adj_temper with rolling mean applied
+                delta_temper = change in smoothed_adj_temper or smoothed_egg_temper
+                is_daytime = True if datapoint falls in daytime time range
+                bout_state = on, off or None for nighttime data points in a restricted analysis
+        """
+        def add_daytime(df):
+            """
+                Analyze dates of master DataFrame and parse row data into daytime and nighttime block objects.
+            """
+
+            def is_daytime(date_time):
+                """
+                    Check if a given time falls within the daytime period defined by the user.
+
+                    Args:
+                            date_time (datetime.datetime)
+                """
+
+                time = date_time.time()
+                # When the start of daytime is earlier in the day than the start of nighttime
+                if day_start < night_start:
+                    if time >= day_start and time < night_start:
+                        return True
+                # When the start of nighttime is earlier in the day than the start of daytime
+                elif night_start < day_start:
+                    if not (time >= night_start and time < day_start):
+                        return True
+
+                return False
+
+            # Create time objects from entry box values
+            day_start = niq_misc.convert_to_datetime(f"01/01/2020 {str(self.day_start_E.get())}").time()
+            night_start = niq_misc.convert_to_datetime(f"01/01/2020 {str(self.night_start_E.get())}").time()
+
+            df["is_daytime"] = df["date_time"].apply(is_daytime)
+
+            return df
+
+        def csv_to_df(path):
+            try:
+                df = pd.read_csv(path)
+            except UnicodeDecodeError:
+                # Attempt to convert file encoding to UTF-8
+                temp_path = self.master_dir_path / "misc_files" / "temp_input.csv"
+                with open(in_path, "r") as original_file, open(temp_path, "w", encoding="utf8") as mod_file:
+                    mod_file.write(original_file.read())
+
+                df = pd.read_csv(temp_path)
+            
+            return df
+
+        def is_number(string):
+            try:
+                float(string)
+            except ValueError:
+                return False
+
+            return True
+
+        df = csv_to_df(str(in_path))
+
+        # Fill air_temper column with 0's if none provided
+        if not self.air_valid:
+            df.iloc[:, 3] = np.zeros(len(df))
+
+        # Remove any "extra" columns
+        if len(df.columns) > 4:
+            df = df.iloc[:, :4]
+
+        # Rename columns
+        old_col_names = list(df.columns)
+        col_names = ["data_point", "date_time", "egg_temper", "air_temper"]
+        col_rename_dict = {old: new for old, new in zip(old_col_names, col_names)}
+        df.rename(columns=col_rename_dict, inplace=True)
+
+        # Set any data_point, egg_temper or air_temper cells with non-number values to NaN
+        numeric_cols = col_names[:1] + col_names[2:]
+        for col in numeric_cols:
+            filt = df[col].astype(str).apply(is_number)
+            df.loc[~filt, col] = np.NaN
+
+        # Delete any rows containing NaN value
+        df.dropna(inplace=True)
+
+        # Convert column object types
+        df["data_point"] = df["data_point"].astype(int)
+        df["date_time"] = df["date_time"].apply(niq_misc.convert_to_datetime)
+        df["egg_temper"] = df["egg_temper"].astype(float).round(4)
+        df["air_temper"] = df["air_temper"].astype(float).round(4)
+
+        # Reassign data_point column to be continuous
+        start = int(df["data_point"].iloc[0])
+        new_col = range(start, (start + len(df)))
+        df["data_point"] = new_col
+
+        # Add adjusted (egg - air temperature) temperatures column
+        df["adj_temper"] = (df["egg_temper"] - df["air_temper"]).round(4)
+
+        # Add smoothed temperatures columns
+        radius = int(self.smoothing_radius_E.get())
+        df["smoothed_egg_temper"] = niq_misc.smooth_series(radius, df["egg_temper"]).round(4)
+        df["smoothed_adj_temper"] = niq_misc.smooth_series(radius, df["adj_temper"]).round(4)
+
+        # Add column storing difference in adjusted temperature from previous entry to current
+        df["delta_temper"] = np.zeros(df.shape[0])
+        emission_source = "smoothed_adj_temper" if int(self.train_from_IV.get()) == 1 else "smoothed_egg_temper"
+        df.iloc[1:, df.columns.get_loc("delta_temper")] = df[emission_source].diff()
+
+        # Set first cell equal to second
+        df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
+
+        df = add_daytime(df)
+
+        return df.reset_index(drop=True)
+
+    def add_states(self, verts=None, states=None):
+        """
+            Adds bout state column
+
+            Args:   
+                verts (list):
+                states (numpy array):
+
+            Flag: consider adding "partial_bout" argument that dictates if data at extremities of df is classified.
+        """
+
+        # Appends state values based on vertex locations
+        if verts is not None:
+
+            self.master_df["bout_state"] = "None"
+
+            state = "off"  # Assume off-bout start -- is corrected by "swap_params_by_state" if necessary
+
+            # Create list of vertex indices
+            indices = [0]
+            indices += [vert.index for vert in verts]
+            indices.append(len(self.master_df))
+
+            prev_i = indices[0]
+            for next_i in indices[1:]:
+                self.master_df.loc[prev_i : next_i - 1, "bout_state"] = state
+
+                # Set up for next round
+                prev_i = next_i
+                state = "off" if state == "on" else "on"
+
+        # If states are provided, simply append
+        if states is not None:
+            self.master_df.loc[:, "bout_state"] = states
+            self.master_df.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
+
+        # Flip bout states if necessary
+        on_bout_delta_temp = self.master_df.loc[self.master_df["bout_state"] == "on", "delta_temper"].mean()
+        off_bout_delta_temp = self.master_df.loc[self.master_df["bout_state"] == "off", "delta_temper"].mean()
+        if off_bout_delta_temp > on_bout_delta_temp:
+            self.master_df.loc[:, "bout_state"].replace(["off", "on", "None"], ["on", "off", "None"], inplace=True)
+
+        return self.master_df
 
 
 def main(gui):
