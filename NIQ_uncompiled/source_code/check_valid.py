@@ -131,13 +131,10 @@ def check_valid_main(gui, first_in=True, check_output=True):
 
             prev_line = master_list[0]
 
-            if not gui.get_data_time_interval(master_list):
-                return False
-
             if len(prev_line) < 3:
                 gui.air_valid = False
 
-            interval_clock = 0 if gui.time_interval >= 1 else round(1 / gui.time_interval)
+            # interval_clock = 0 if gui.time_interval >= 1 else round(1 / gui.time_interval)
             interval_time = 1
             start_found = False
 
@@ -166,37 +163,37 @@ def check_valid_main(gui, first_in=True, check_output=True):
                     )
                     return False
 
-                # Check for inconsistencies in date/time values
-                datetime_diff = (cur_datetime - prev_datetime).seconds / 60
+                # Flag - delete or do better - Check for inconsistencies in date/time values
+                # datetime_diff = (cur_datetime - prev_datetime).seconds / 60
 
-                if datetime_diff == 0 or datetime_diff == gui.time_interval:
-                    start_found = True
+                # if datetime_diff == 0 or datetime_diff == gui.time_interval:
+                #     start_found = True
 
-                if datetime_valid and start_found:
-                    if cur_datetime == False:
-                        return False
+                # if datetime_valid and start_found:
+                #     if cur_datetime == False:
+                #         return False
 
-                    if datetime_diff != gui.time_interval:
-                        if not interval_clock > 0:
-                            datetime_valid = False
-                        else:
-                            if datetime_diff == 0:
-                                interval_time += 1
-                            elif datetime_diff != 1:
-                                datetime_valid = False
-                            else:
-                                if interval_time == interval_clock:
-                                    interval_time = 1
-                                else:
-                                    datetime_valid = False
+                #     if datetime_diff != gui.time_interval:
+                #         if not interval_clock > 0:
+                #             datetime_valid = False
+                #         else:
+                #             if datetime_diff == 0:
+                #                 interval_time += 1
+                #             elif datetime_diff != 1:
+                #                 datetime_valid = False
+                #             else:
+                #                 if interval_time == interval_clock:
+                #                     interval_time = 1
+                #                 else:
+                #                     datetime_valid = False
 
-                    if not datetime_valid:
-                        if gui.show_warns_BV.get():
-                            messagebox.showwarning(
-                                "Date/time Warning",
-                                f"{file_name_appendage}Discontinuous date/time found for data point "
-                                + f"{line[0]}. The program will continue, but this could cause inaccurate statistical output.",
-                            )
+                #     if not datetime_valid:
+                #         if gui.show_warns_BV.get():
+                #             messagebox.showwarning(
+                #                 "Date/time Warning",
+                #                 f"{file_name_appendage}Discontinuous date/time found for data point "
+                #                 + f"{line[0]}. The program will continue, but this could cause inaccurate statistical output.",
+                #             )
 
                 # Check egg temperatures column
                 try:

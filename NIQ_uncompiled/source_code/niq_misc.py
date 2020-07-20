@@ -24,6 +24,10 @@ def convert_to_datetime(dt_string):
                 dt_string (str): contents of date/time cell of input file provided by user
     """
 
+    # Return input if already datetime object
+    if type(dt_string) == pd._libs.tslibs.timestamps.Timestamp:
+        return dt_string
+
     # Initially include seconds in search, then ommit if not found
     try:
         time_struct = time.strptime(dt_string, r"%m/%d/%Y %H:%M:%S")

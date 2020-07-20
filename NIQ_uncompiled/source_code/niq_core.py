@@ -835,40 +835,6 @@ class GUIClass:
         for option in column:
             option.select() if command == "select" else option.deselect()
 
-
-    def get_data_time_interval(self, master_list):
-        """
-            Attempts to determine the time gap between individual data points and sets self.time_interval
-            accordingly.
-
-            Args:
-                reader (csv.reader): generator-like object used to get individual lines from the input file
-                first_line (list): first line of data from the input file
-		"""
-
-        # Set interval to value provided in the config file if present and valid
-        if self.time_interval != "auto":
-            try:
-                self.time_interval = float(self.time_interval)
-                return True
-            except:
-                if self.show_warns_BV.get():
-                    messagebox.showwarning(
-                        "Data Interval Parameter Error",
-                        "Interval value provided in configuration file is invalid. Automatic detection of data interval will proceed.",
-                    )
-
-        # Convert to datetime objects
-        first_time = niq_misc.convert_to_datetime(master_list[0][1])
-        last_time = niq_misc.convert_to_datetime(master_list[-1][1])
-        # Get average step between data points in seconds
-        delta_sec = (last_time - first_time).total_seconds()
-        interval = delta_sec / len(master_list)
-        # Convert to minutes and round
-        self.time_interval = round(interval / 60, 3)
-
-        return True
-
     def get_input_file_name(self):
         """ Handles input file browsing and selection. """
 
@@ -1040,7 +1006,7 @@ class GUIClass:
                     rerun = True
 
                 if rerun:
-                    custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
+                    custom_verts = niq_misc.get_verts_from_html(self, self.input_file_E.get())
                     self.master_df = self.add_states(verts=custom_verts)
                 else:
                     self.master_hmm = niq_hmm.HMM()
@@ -1258,7 +1224,6 @@ class GUIClass:
                 })
         
             return df
-            
 
 
         def csv_to_df(path):
@@ -1272,40 +1237,6 @@ class GUIClass:
 
                 df = pd.read_csv(temp_path)
 
-            # Fill air_temper column with 0's if none provided
-            if not self.air_valid:
-                df.iloc[:, 3] = np.zeros(len(df))
-
-            # Remove any "extra" columns
-            if len(df.columns) > 4:
-                df = df.iloc[:, :4]
-
-            # Rename columns
-            old_col_names = list(df.columns)
-            col_names = ["data_point", "date_time", "egg_temper", "air_temper"]
-            col_rename_dict = {old: new for old, new in zip(old_col_names, col_names)}
-            df.rename(columns=col_rename_dict, inplace=True)
-
-            # Set any data_point, egg_temper or air_temper cells with non-number values to NaN
-            numeric_cols = col_names[:1] + col_names[2:]
-            for col in numeric_cols:
-                filt = df[col].astype(str).apply(is_number)
-                df.loc[~filt, col] = np.NaN
-
-            # Delete any rows containing NaN value
-            df.dropna(inplace=True)
-
-            # Convert column object types
-            df["data_point"] = df["data_point"].astype(int)
-            df["date_time"] = df["date_time"].apply(niq_misc.convert_to_datetime)
-            df["egg_temper"] = df["egg_temper"].astype(float).round(4)
-            df["air_temper"] = df["air_temper"].astype(float).round(4)
-
-            # Reassign data_point column to be continuous
-            start = int(df["data_point"].iloc[0])
-            new_col = range(start, (start + len(df)))
-            df["data_point"] = new_col
-                
             return df
 
         def is_number(string):
@@ -1322,6 +1253,40 @@ class GUIClass:
             df = csv_to_df(str(in_path))
 
         
+        # Fill air_temper column with 0's if none provided
+        if not self.air_valid:
+            df.iloc[:, 3] = np.zeros(len(df))
+
+        # Remove any "extra" columns
+        if len(df.columns) > 4:
+            df = df.iloc[:, :4]
+
+        # Rename columns
+        old_col_names = list(df.columns)
+        col_names = ["data_point", "date_time", "egg_temper", "air_temper"]
+        col_rename_dict = {old: new for old, new in zip(old_col_names, col_names)}
+        df.rename(columns=col_rename_dict, inplace=True)
+
+        # Set any data_point, egg_temper or air_temper cells with non-number values to NaN
+        numeric_cols = col_names[:1] + col_names[2:]
+        for col in numeric_cols:
+            filt = df[col].astype(str).apply(is_number)
+            df.loc[~filt, col] = np.NaN
+
+        # Delete any rows containing NaN value
+        df.dropna(inplace=True)
+
+        # Convert column object types
+        df["data_point"] = df["data_point"].astype(int)
+        df["date_time"] = df["date_time"].apply(niq_misc.convert_to_datetime)
+        df["egg_temper"] = df["egg_temper"].astype(float).round(4)
+        df["air_temper"] = df["air_temper"].astype(float).round(4)
+
+        # Reassign data_point column to be continuous
+        start = int(df["data_point"].iloc[0])
+        new_col = range(start, (start + len(df)))
+        df["data_point"] = new_col
+            
 
         # Add adjusted (egg - air temperature) temperatures column
         df["adj_temper"] = (df["egg_temper"] - df["air_temper"]).round(4)
@@ -1340,6 +1305,15 @@ class GUIClass:
         df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
 
         df = add_daytime(df)
+
+        # Flag - need to relocate
+        # Set date/time interval (minutes)
+        first = df["date_time"].iloc[0]
+        last = df["date_time"].iloc[-1]
+        delta_sec = (last - first).total_seconds()
+        self.time_interval = round(delta_sec / len(df)) / 60
+
+
 
         return df.reset_index(drop=True)
 
