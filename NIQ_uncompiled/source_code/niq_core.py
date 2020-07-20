@@ -5,7 +5,8 @@ import traceback
 from pathlib import Path
 from shutil import copyfile
 from tkinter import filedialog, font, messagebox, ttk
-
+import json
+import datetime
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageTk
@@ -1032,7 +1033,11 @@ class GUIClass:
 
                 print("Active file:", path)
 
+
                 self.master_df = self.init_master_df(path)
+
+                if path.suffix == ".html":
+                    rerun = True
 
                 if rerun:
                     custom_verts = niq_misc.get_verts_from_html(self, self.mod_plot_E.get())
@@ -1226,6 +1231,36 @@ class GUIClass:
 
             return df
 
+        def html_to_df(path):
+            with open(path, "r") as f:
+                lines = f.readlines()
+
+            i = lines.index("<!--NestIQ input data\n") + 1
+            json_str = lines[i][:-1]
+            input_dict = json.loads(json_str)
+            size = len(input_dict["egg_temper"])
+
+            # Restore data point column
+            dp_start = int(input_dict["first_dp"])
+            dp_stop = dp_start + size
+            input_dict["data_point"] = list(range(dp_start, dp_stop))
+
+            # Restore date/time column
+            first_dt = niq_misc.convert_to_datetime(input_dict["first_dt"])
+            time_d = datetime.timedelta(seconds=int(input_dict["dt_interval"]))
+            input_dict["date_time"] = [first_dt + (x * time_d) for x in range(0, size)]
+
+            df = pd.DataFrame({
+                "data_point": input_dict["data_point"],
+                "date_time": input_dict["date_time"],
+                "egg_temper": input_dict["egg_temper"],
+                "air_temper": input_dict["air_temper"]
+                })
+        
+            return df
+            
+
+
         def csv_to_df(path):
             try:
                 df = pd.read_csv(path)
@@ -1236,7 +1271,41 @@ class GUIClass:
                     mod_file.write(original_file.read())
 
                 df = pd.read_csv(temp_path)
-            
+
+            # Fill air_temper column with 0's if none provided
+            if not self.air_valid:
+                df.iloc[:, 3] = np.zeros(len(df))
+
+            # Remove any "extra" columns
+            if len(df.columns) > 4:
+                df = df.iloc[:, :4]
+
+            # Rename columns
+            old_col_names = list(df.columns)
+            col_names = ["data_point", "date_time", "egg_temper", "air_temper"]
+            col_rename_dict = {old: new for old, new in zip(old_col_names, col_names)}
+            df.rename(columns=col_rename_dict, inplace=True)
+
+            # Set any data_point, egg_temper or air_temper cells with non-number values to NaN
+            numeric_cols = col_names[:1] + col_names[2:]
+            for col in numeric_cols:
+                filt = df[col].astype(str).apply(is_number)
+                df.loc[~filt, col] = np.NaN
+
+            # Delete any rows containing NaN value
+            df.dropna(inplace=True)
+
+            # Convert column object types
+            df["data_point"] = df["data_point"].astype(int)
+            df["date_time"] = df["date_time"].apply(niq_misc.convert_to_datetime)
+            df["egg_temper"] = df["egg_temper"].astype(float).round(4)
+            df["air_temper"] = df["air_temper"].astype(float).round(4)
+
+            # Reassign data_point column to be continuous
+            start = int(df["data_point"].iloc[0])
+            new_col = range(start, (start + len(df)))
+            df["data_point"] = new_col
+                
             return df
 
         def is_number(string):
@@ -1247,41 +1316,12 @@ class GUIClass:
 
             return True
 
-        df = csv_to_df(str(in_path))
+        if in_path.suffix == ".html":
+            df = html_to_df(str(in_path))
+        else:
+            df = csv_to_df(str(in_path))
 
-        # Fill air_temper column with 0's if none provided
-        if not self.air_valid:
-            df.iloc[:, 3] = np.zeros(len(df))
-
-        # Remove any "extra" columns
-        if len(df.columns) > 4:
-            df = df.iloc[:, :4]
-
-        # Rename columns
-        old_col_names = list(df.columns)
-        col_names = ["data_point", "date_time", "egg_temper", "air_temper"]
-        col_rename_dict = {old: new for old, new in zip(old_col_names, col_names)}
-        df.rename(columns=col_rename_dict, inplace=True)
-
-        # Set any data_point, egg_temper or air_temper cells with non-number values to NaN
-        numeric_cols = col_names[:1] + col_names[2:]
-        for col in numeric_cols:
-            filt = df[col].astype(str).apply(is_number)
-            df.loc[~filt, col] = np.NaN
-
-        # Delete any rows containing NaN value
-        df.dropna(inplace=True)
-
-        # Convert column object types
-        df["data_point"] = df["data_point"].astype(int)
-        df["date_time"] = df["date_time"].apply(niq_misc.convert_to_datetime)
-        df["egg_temper"] = df["egg_temper"].astype(float).round(4)
-        df["air_temper"] = df["air_temper"].astype(float).round(4)
-
-        # Reassign data_point column to be continuous
-        start = int(df["data_point"].iloc[0])
-        new_col = range(start, (start + len(df)))
-        df["data_point"] = new_col
+        
 
         # Add adjusted (egg - air temperature) temperatures column
         df["adj_temper"] = (df["egg_temper"] - df["air_temper"]).round(4)

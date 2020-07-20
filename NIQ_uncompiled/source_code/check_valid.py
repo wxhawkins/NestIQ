@@ -92,17 +92,30 @@ def check_valid_main(gui, first_in=True, check_output=True):
 
         if not in_file_path.exists():
             messagebox.showerror("Input File Error", "".join((file_name_appendage, "File with provided path could not be found.")))
-            return False
+            return False 
 
-        if in_file_path.suffix != ".csv":
-            messagebox.showerror("Input File Error", f'{file_name_appendage} Input file must end in ".csv" extension (comma separated value file format).')
-            return False
+        if in_file_path.suffix not in (".csv", ".html"):
+            messagebox.showerror("Input File Error", f'{file_name_appendage} Input file must have "csv" or "html" extension.')
+            return False   
 
         try:
-            with open(in_file_path, "r") as csv_file:
-                csv_lines = csv_file.readlines()
 
-            master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
+            # In the case of an HTML input, simply check for the presence of input file data
+            if in_file_path.suffix == ".html":
+                with open(in_file_path, "r") as f:
+                    content = f.read()
+
+                if "NestIQ input data" in content:
+                    return True
+                else:
+                    # Flag add error message pop up
+                    return False
+            
+            with open(in_file_path, "r") as f:
+                lines = f.readlines()
+
+
+            master_list = [line.strip().rstrip(",").split(",") for line in lines]
 
             pop_indices = []
             # Remove lines not conforming to expected format (such as headers)
@@ -113,6 +126,7 @@ def check_valid_main(gui, first_in=True, check_output=True):
 
             for pop_count, index in enumerate(pop_indices):
                 master_list.pop(index - pop_count)
+
             master_list.pop(len(master_list) - 1)
 
             prev_line = master_list[0]

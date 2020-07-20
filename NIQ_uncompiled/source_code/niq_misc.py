@@ -793,15 +793,16 @@ def generate_plot(gui, days_list, edit_mode=False, out_path=None):
         # Create dictionary summarizing critical input file information
         input_dict = {
             "first_dp": int(df["data_point"].iloc[0]),
+            # Flag allow for seconds
             "first_dt": df["date_time"].iloc[0].strftime(r"%m/%d/%Y %H:%M"),
             "dt_interval": interval,
-            "egg_temper": df["egg_temper"].astype(int).tolist(),
+            "egg_temper": df["egg_temper"].tolist(),
             "air_temper": df["air_temper"].tolist()
         }
 
         # Append input file information to the HTML file
         with open(path, "a") as file:
-            file.write("\n\n<!--Input data\n")
+            file.write("\n\n<!--NestIQ input data\n")
             file.write(json.dumps(input_dict))
             file.write("\n-->\n")
 
