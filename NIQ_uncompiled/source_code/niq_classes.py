@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from niq_misc import convert_to_datetime, smooth_series
 
 class Vertex:
     """
@@ -425,3 +426,183 @@ class MultiFileStats:
 
         with open(self.out_path, "a") as compiled_stats_file:
             compiled_stats_file.write(stats_text)
+
+
+class MasterDF(pd.DataFrame):
+    """
+        columns:
+            data_point = data point
+            date_time = date and time of temperature recording
+            egg_temper = egg temperature
+            air_temper = ambient air temperature
+            adj_temper = adjusted temperature (egg - air temperature)
+            smoothed_egg_temper = egg_temper with rolling mean applied
+            smoothed_adj_temper = adj_temper with rolling mean applied
+            delta_temper = change in smoothed_adj_temper or smoothed_egg_temper
+            is_daytime = True if datapoint falls in daytime time range
+            bout_state = on, off or None for nighttime data points in a restricted analysis
+    """
+
+    def __init__(self, gui, in_path, *args, **kwargs):
+        """
+            Adds all columns barring bout_state
+
+            Args:
+                in_path (str or pathlib.Path): path to input file containing data to be analyzed
+        """
+
+        super().__init__(*args, **kwargs)
+
+        def csv_to_df(path):
+            try:
+                df = pd.read_csv(path)
+            except UnicodeDecodeError:
+                # Attempt to convert file encoding to UTF-8
+                temp_path = gui.master_dir_path / "misc_files" / "temp_input.csv"
+                with open(in_path, "r") as original_file, open(temp_path, "w", encoding="utf8") as mod_file:
+                    mod_file.write(original_file.read())
+
+                df = pd.read_csv(temp_path)
+            
+            return df
+
+        def is_number(string):
+            try:
+                float(string)
+            except ValueError:
+                return False
+
+            return True
+
+        self = csv_to_df(str(in_path))
+
+        # Fill air_temper column with 0's if none provided
+        if not gui.air_valid:
+            self.iloc[:, 3] = np.zeros(len(self))
+
+        # Remove any "extra" columns
+        if len(self.columns) > 4:
+            self = self.iloc[:, :4]
+
+        # Rename columns
+        old_col_names = list(self.columns)
+        col_names = ["data_point", "date_time", "egg_temper", "air_temper"]
+        col_rename_dict = {old: new for old, new in zip(old_col_names, col_names)}
+        self.rename(columns=col_rename_dict, inplace=True)
+
+        # Set any data_point, egg_temper or air_temper cells with non-number values to NaN
+        numeric_cols = col_names[:1] + col_names[2:]
+        for col in numeric_cols:
+            filt = self[col].astype(str).apply(is_number)
+            self.loc[~filt, col] = np.NaN
+
+        # Delete any rows containing NaN value
+        self.dropna(inplace=True)
+
+        # Convert column object types
+        self["data_point"] = self["data_point"].astype(int)
+        self["date_time"] = self["date_time"].apply(convert_to_datetime)
+        self["egg_temper"] = self["egg_temper"].astype(float).round(4)
+        self["air_temper"] = self["air_temper"].astype(float).round(4)
+
+        # Reassign data_point column to be continuous
+        start = int(self["data_point"].iloc[0])
+        new_col = range(start, (start + len(self)))
+        self["data_point"] = new_col
+
+        # Add adjusted (egg - air temperature) temperatures column
+        self["adj_temper"] = (self["egg_temper"] - self["air_temper"]).round(4)
+
+        # Add smoothed temperatures columns
+        radius = int(gui.smoothing_radius_E.get())
+        self["smoothed_egg_temper"] = smooth_series(radius, self["egg_temper"]).round(4)
+        self["smoothed_adj_temper"] = smooth_series(radius, self["adj_temper"]).round(4)
+
+        # Add column storing difference in adjusted temperature from previous entry to current
+        self["delta_temper"] = np.zeros(self.shape[0])
+        emission_source = "smoothed_adj_temper" if int(gui.train_from_IV.get()) == 1 else "smoothed_egg_temper"
+        self.iloc[1:, self.columns.get_loc("delta_temper")] = self[emission_source].diff()
+
+        # Set first cell equal to second
+        self.iloc[0, self.columns.get_loc("delta_temper")] = self.iloc[1, self.columns.get_loc("delta_temper")]
+
+        # self.add_daytime(gui)
+
+        self = self.reset_index(drop=True)
+
+        # super().__init__()
+
+
+    def add_daytime(self, gui):
+        """
+            Analyze dates of master DataFrame and parse row data into daytime and nighttime block objects.
+        """
+
+        def is_daytime(date_time):
+            """
+                Check if a given time falls within the daytime period defined by the user.
+
+                Args:
+                        date_time (datetime.datetime)
+            """
+
+            time = date_time.time()
+            # When the start of daytime is earlier in the day than the start of nighttime
+            if day_start < night_start:
+                if time >= day_start and time < night_start:
+                    return True
+            # When the start of nighttime is earlier in the day than the start of daytime
+            elif night_start < day_start:
+                if not (time >= night_start and time < day_start):
+                    return True
+
+            return False
+
+        # Create time objects from entry box values
+        day_start = convert_to_datetime(f"01/01/2020 {str(gui.day_start_E.get())}").time()
+        night_start = convert_to_datetime(f"01/01/2020 {str(gui.night_start_E.get())}").time()
+
+        self["is_daytime"] = self["date_time"].apply(is_daytime)
+
+
+    def add_states(self, verts=None, states=None):
+        """
+            Adds bout state column
+
+            Args:   
+                verts (list):
+                states (numpy array):
+
+            Flag: consider adding "partial_bout" argument that dictates if data at extremities of df is classified.
+        """
+
+        # Appends state values based on vertex locations
+        if verts is not None:
+
+            self["bout_state"] = "None"
+
+            state = "off"  # Assume off-bout start -- is corrected by "swap_params_by_state" if necessary
+
+            # Create list of vertex indices
+            indices = [0]
+            indices += [vert.index for vert in verts]
+            indices.append(len(self))
+
+            prev_i = indices[0]
+            for next_i in indices[1:]:
+                self.loc[prev_i : next_i - 1, "bout_state"] = state
+
+                # Set up for next round
+                prev_i = next_i
+                state = "off" if state == "on" else "on"
+
+        # If states are provided, simply append
+        if states is not None:
+            self.loc[:, "bout_state"] = states
+            self.loc[:, "bout_state"].replace([0, 1, 2], ["off", "on", "None"], inplace=True)
+
+        # Flip bout states if necessary
+        on_bout_delta_temp = self.loc[self["bout_state"] == "on", "delta_temper"].mean()
+        off_bout_delta_temp = self.loc[self["bout_state"] == "off", "delta_temper"].mean()
+        if off_bout_delta_temp > on_bout_delta_temp:
+            self.loc[:, "bout_state"].replace(["off", "on", "None"], ["on", "off", "None"], inplace=True)

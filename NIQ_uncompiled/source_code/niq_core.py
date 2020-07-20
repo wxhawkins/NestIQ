@@ -31,9 +31,9 @@ TITLE_FONT = ("Helvetica", 18)
 
 class GUIClass:
     """
-					Large class storing all information present on the graphical user interface: parameters, file names,
-					output options, etc. This class also stores a lot of critical information not displayed on the user
-					interface as well as many methods for interacting/altering the GUI.
+        Large class storing all information present on the graphical user interface: parameters, file names,
+        output options, etc. This class also stores a lot of critical information not displayed on the user
+        interface as well as many methods for interacting/altering the GUI.
 	"""
 
     def __init__(self, root):
@@ -1053,37 +1053,35 @@ class GUIClass:
         return True
 
     def help(self):
-        """
-						Launches user manual.
-		"""
+        """ Launches user manual. """
 
         subprocess.Popen(str(self.master_dir_path / "NIQ_manual.pdf"), shell=True)
 
     def toggle_col(self, column, command):
         """
-						Selects or deselects entire columns of Stat Options tab
+            Selects or deselects entire columns of Stat Options tab
 
-						Args:
-										column (list): list of variables to be selected or deselected
-										command (string)
+            Args:
+                column (list): list of variables to be selected or deselected
+                command (string)
 		"""
         for option in column:
             option.select() if command == "select" else option.deselect()
 
     def check_valid_main(self, first_in=True, check_output=True):
         """
-						Checks for valid configuration of all parameters housed on the Main tab.  This includes extensive
-						review of the input file provided.
+            Checks for valid configuration of all parameters housed on the Main tab.  This includes extensive
+            review of the input file provided.
 
-						Args:
-										first_in (bool): False if current file is second or later in a queue of multiple input files
-										check_output (bool): if False, output file names are not examined
+            Args:
+                first_in (bool): False if current file is second or later in a queue of multiple input files
+                check_output (bool): if False, output file names are not examined
 		"""
 
         def check_input_file(self):
             """
-							Checks several aspects of the input file to ensure it is compatable with all downstream processing.
-							Also displays warnings for less severe format violations.
+                Checks several aspects of the input file to ensure it is compatable with all downstream processing.
+                Also displays warnings for less severe format violations.
 			"""
 
             in_file_path = self.active_input_path
@@ -1226,12 +1224,12 @@ class GUIClass:
 
         def check_out_file(gui, entry, title):
             """
-							Checks if the name provided for a given output file is valid.  This includes asking the user if
-							they want to override if a file with the same name already exists.
+                Checks if the name provided for a given output file is valid.  This includes asking the user if
+                they want to override if a file with the same name already exists.
 
-							Args:
-											entry (tk.Entry): entry box being examined
-											title (string): how to reference the current entry box if error messeage is triggered
+                Args:
+                    entry (tk.Entry): entry box being examined
+                    title (string): how to reference the current entry box if error messeage is triggered
 			"""
 
             if entry.get() == "":
@@ -1258,40 +1256,6 @@ class GUIClass:
                     if not messagebox.askyesno("Override?", f"The file '{entry.get()}' already exists.  Do you want to override?"):
                         return False
                 entry_path.unlink()
-
-            return True
-
-        def check_time(time, DN):
-            """
-                Checks if times provided for daytime start and nighttime start are valid.
-
-                Args:
-                    time (string): string provided in the entry box
-                    DN (string): "day" or "night" depending on entry box being analyzed
-			"""
-
-            time_re = re.search(r"(\d+)(:)(\d+)", time)
-            show_default_error = False
-
-            # If time found, store hour and minute values
-            if time_re:
-                hour = int(time_re.group(1))
-                minute = int(time_re.group(3))
-            else:
-                show_default_error = True
-
-            # Detects non-numerical characters (possibly due to use of 12hr, am/pm format)
-            if re.search("([^0-9:])", time):
-                messagebox.showerror("Start Time Error", (DN + " start time must be entered in 24 hr format."))
-                return False
-            elif hour < 0 or hour > 23:
-                show_default_error = True
-            elif minute < 0 or minute > 59:
-                show_default_error = True
-
-            if show_default_error:
-                messagebox.showerror("Start Time Error", ("Invalid " + DN + " start time."))
-                return False
 
             return True
 
@@ -1533,12 +1497,12 @@ class GUIClass:
 
     def get_data_time_interval(self, master_list):
         """
-						Attempts to determine the time gap between individual data points and sets self.time_interval
-						accordingly.
+            Attempts to determine the time gap between individual data points and sets self.time_interval
+            accordingly.
 
-						Args:
-										reader (csv.reader): generator-like object used to get individual lines from the input file
-										first_line (list): first line of data from the input file
+            Args:
+                reader (csv.reader): generator-like object used to get individual lines from the input file
+                first_line (list): first line of data from the input file
 		"""
 
         # Set interval to value provided in the config file if present and valid
@@ -1584,9 +1548,7 @@ class GUIClass:
     def get_plot_file(self, entry):
         """ Handles plot file browsing and selection """
 
-        self.root.update()
         path_ = filedialog.askopenfilename()
-        self.root.update()
 
         if path_ != "":
             replace_entry(entry, path_)
@@ -1643,7 +1605,8 @@ class GUIClass:
             return
 
         try:
-            self.master_df = niq_misc.get_master_df(self, self.input_file_E.get())
+            # self.master_df_ori = niq_misc.get_master_df(self, self.input_file_E.get())
+            self.master_df = niq_classes.MasterDF(self, self.input_file_E.get())
 
             # Get days_list for plotting vertical lines
             days_list = niq_misc.split_days(self)[0]  # Indexing at end excludes nights_list
@@ -1812,7 +1775,7 @@ class GUIClass:
             set_unique_path(self.stats_file_E, out_dir / (path.stem + "_stats"), ".csv")
 
 
-    # Check ensure valid parameters and execute processing
+    # Ensure valid parameters and execute processing
     def trigger_run(self, rerun=False):
         """
             Ensure everything is in order and if so, initiate processing of the input file(s).
