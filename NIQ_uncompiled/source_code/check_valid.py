@@ -1,0 +1,493 @@
+import time
+from pathlib import Path
+from tkinter import messagebox
+import re
+import niq_misc
+import traceback
+
+
+def check_valid_vertex_file(gui):
+    """
+        Checks user-provided vertex selection file (HTML) for issues that could cause errors with
+        downstream processes.
+
+        Returns:
+            True if file passes all tests, else displays error message and returns False
+    """
+
+    niq_misc.remove_curly(gui.vertex_file_E)
+    vertex_path = Path(gui.vertex_file_E.get())
+
+    # Check if path is empty
+    if vertex_path.name == "":
+        messagebox.showerror("Vertex File Error", "Please provide a vertex file.")
+        return False
+
+    # Check if path has invalid path
+    if vertex_path.suffix not in (".html", ""):
+        messagebox.showerror("Vertex Selection Error", r'Vertex selection file must have ".html" extension.')
+        return False
+
+    # Check if path exists
+    if not vertex_path.exists():
+        messagebox.showerror("Vertex Selection Error", "Provided vertex selection file not found.")
+        return False
+
+    with open(vertex_path, "r") as original_file:
+        original_lines = original_file.readlines()
+
+    # Remove extra table data lines if present
+    cleaned_content = str()
+    found = False
+    for line in original_lines:
+        if "<div class" in line:
+            found = True
+        if found:
+            cleaned_content += line
+
+    # Get datapoints
+    tokens = re.finditer(r">([\d\.-]+)</span>", cleaned_content)
+
+    try:
+        # Every other value in tokens will be temperature and so is ignored
+        for counter, match in enumerate(tokens):
+            token_num = counter
+            if not (counter % 2) == 0:
+                round(float(match.group(1)))
+    except:
+        messagebox.showerror(("Vertex File Error"), "Vertex file is unreadable. Please try another.")
+        return False
+
+    if token_num < 2:
+        messagebox.showerror(("Vertex File Error"), "No vertices detected in vertex file.")
+        return False
+
+    return True
+
+
+def check_valid_main(gui, first_in=True, check_output=True):
+    """
+        Checks for valid configuration of all parameters housed on the Main tab.  This includes extensive
+        review of the input file provided.
+
+        Args:
+            first_in (bool): False if current file is second or later in a queue of multiple input files
+            check_output (bool): if False, output file names are not examined
+    """
+
+    def check_input_file(gui):
+        """
+            Checks several aspects of the input file to ensure it is compatable with all downstream processing.
+            Also displays warnings for less severe format violations.
+        """
+
+        in_file_path = gui.active_input_path
+        datetime_valid = True
+
+        file_name_appendage = f"For file: {in_file_path.name} \n\n"
+
+        if in_file_path.name == "":
+            messagebox.showerror("Input error (Main tab)", "No input file provided.")
+            return False
+
+        if not in_file_path.exists():
+            messagebox.showerror("Input File Error", "".join((file_name_appendage, "File with provided path could not be found.")))
+            return False
+
+        if in_file_path.suffix != ".csv":
+            messagebox.showerror("Input File Error", f'{file_name_appendage} Input file must end in ".csv" extension (comma separated value file format).')
+            return False
+
+        try:
+            with open(in_file_path, "r") as csv_file:
+                csv_lines = csv_file.readlines()
+
+            master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
+
+            pop_indices = []
+            # Remove lines not conforming to expected format (such as headers)
+            for i in range(len(master_list[:-1])):
+                # Cells in data point column must contain only numbers
+                if not str(master_list[i][0]).isnumeric():
+                    pop_indices.append(i)
+
+            for pop_count, index in enumerate(pop_indices):
+                master_list.pop(index - pop_count)
+            master_list.pop(len(master_list) - 1)
+
+            prev_line = master_list[0]
+
+            if not gui.get_data_time_interval(master_list):
+                return False
+
+            if len(prev_line) < 3:
+                gui.air_valid = False
+
+            interval_clock = 0 if gui.time_interval >= 1 else round(1 / gui.time_interval)
+            interval_time = 1
+            start_found = False
+
+            for line in master_list[1:]:
+                line = line[:4] if gui.air_valid else line[:3]
+
+                # Check if data points are continuous and sequential
+                try:
+                    if not int(line[0]) == (int(prev_line[0]) + 1):
+                        raise ValueError
+                except:
+                    messagebox.showerror(
+                        "Data Point Error",
+                        f"{file_name_appendage}Error after data point "
+                        + f"{prev_line[0]}. Data point number is not sequential with regard to previous data point.",
+                    )
+                    return False
+
+                # Test conversion of date/time string to datetime object
+                try:
+                    prev_datetime = niq_misc.convert_to_datetime(prev_line[1])
+                    cur_datetime = niq_misc.convert_to_datetime(line[1])
+                except ValueError:
+                    messagebox.showerror(
+                        "Date/Time Error", f"{file_name_appendage}No time found for data point {line[0]}.  Date/Time should be in MM/DD/YYYY HH:MM format."
+                    )
+                    return False
+
+                # Check for inconsistencies in date/time values
+                datetime_diff = (cur_datetime - prev_datetime).seconds / 60
+
+                if datetime_diff == 0 or datetime_diff == gui.time_interval:
+                    start_found = True
+
+                if datetime_valid and start_found:
+                    if cur_datetime == False:
+                        return False
+
+                    if datetime_diff != gui.time_interval:
+                        if not interval_clock > 0:
+                            datetime_valid = False
+                        else:
+                            if datetime_diff == 0:
+                                interval_time += 1
+                            elif datetime_diff != 1:
+                                datetime_valid = False
+                            else:
+                                if interval_time == interval_clock:
+                                    interval_time = 1
+                                else:
+                                    datetime_valid = False
+
+                    if not datetime_valid:
+                        if gui.show_warns_BV.get():
+                            messagebox.showwarning(
+                                "Date/time Warning",
+                                f"{file_name_appendage}Discontinuous date/time found for data point "
+                                + f"{line[0]}. The program will continue, but this could cause inaccurate statistical output.",
+                            )
+
+                # Check egg temperatures column
+                try:
+                    float(line[2])
+                except:
+                    messagebox.showerror("Temperature Error", f"{file_name_appendage}Invalid temperature given for data point {line[0]}.")
+                    return False
+
+                # Check air temperatures column if appropriate
+                if gui.air_valid:
+                    try:
+                        float(line[3])
+                    except (IndexError, ValueError):
+                        gui.air_valid = False
+                        if gui.show_warns_BV.get():
+                            messagebox.showwarning(
+                                "Air Temperature Warning",
+                                f"{file_name_appendage}Invalid air temperature detected for data point "
+                                + f"{line[0]}. Air temperatures will not be plotted or included in statistical output.",
+                            )
+                prev_line = line
+
+            return True
+
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+            messagebox.showerror(
+                "Unknown Error",
+                f"{file_name_appendage}There was an unidentifiable error with the provided input file. "
+                + "This is sometimes the result of 'extra' cells in the input file.\n\n"
+                + "Please reference the NestIQ manual for details regarding proper input file format."
+                + " This can be accessed by clicking 'Help' in the top right.",
+            )
+            return False
+
+    def check_out_file(gui, entry, title):
+        """
+            Checks if the name provided for a given output file is valid.  This includes asking the user if
+            they want to override if a file with the same name already exists.
+
+            Args:
+                entry (tk.Entry): entry box being examined
+                title (string): how to reference the current entry box if error messeage is triggered
+        """
+
+        if entry.get() == "":
+            messagebox.showerror(f"{title} Error", "File name is empty.")
+            return False
+
+        entry_path = Path(entry.get())
+
+        if entry_path.is_dir():
+            messagebox.showerror(f"{title} Error", "Directory provided but no file name.")
+            return False
+
+        # Add extension if not present
+        if entry == gui.plot_file_E:
+            ext = ".html"
+        elif entry == gui.stats_file_E or entry == gui.multi_in_stats_file_E:
+            ext = ".csv"
+
+        entry_path = Path(entry.get()).with_suffix(ext)
+
+        # Check if plot file already exists and if so, ask to override
+        if entry_path.exists():
+            if gui.show_warns_BV.get():
+                if not messagebox.askyesno("Override?", f"The file '{entry.get()}' already exists.  Do you want to override?"):
+                    return False
+            entry_path.unlink()
+
+        return True
+
+    # Check time entry boxes
+    for time_str in (gui.day_start_E.get(), gui.night_start_E.get()):
+        try:
+            time_struct = time.strptime(time_str, "%H:%M")
+        except ValueError:
+            messagebox.showerror("Daytime Start/End Error", f"Provided value of {time_str} is invalid. Please provide times in 24 hr HH:MM format.")
+            return False
+
+    # Check data smoothing box
+    try:
+        if not float(gui.smoothing_radius_E.get()).is_integer():
+            raise ValueError
+
+        if int(gui.smoothing_radius_E.get()) < 0:
+            messagebox.showerror("Data Smoothing Radius Error", "Data smoothing radius must be greater than or equal to zero.")
+            return False
+    except ValueError:
+        messagebox.showerror("Data Smoothing Radius Error", "Data smoothing radius must be an integer.")
+        return False
+
+    # Check duration threshold box
+    try:
+        if int(float(gui.dur_thresh_E.get())) < 0:
+            messagebox.showerror("Duration Threshold Error", "Duration threshold cannot be less than zero.")
+            return False
+    except ValueError:
+        messagebox.showerror("Duration Threshold Error", "Invalid duration threshold (could not convert to integer).")
+        return False
+
+    if not check_input_file(gui):
+        return False
+
+    if check_output:
+        if gui.make_plot_BV.get():
+            if not check_out_file(gui, gui.plot_file_E, "Plot File"):
+                return False
+
+        if gui.get_stats_BV.get():
+            if not check_out_file(gui, gui.stats_file_E, "Stats Output File"):
+                return False
+
+        if gui.multi_in_stats_BV.get() and first_in:
+            if not check_out_file(gui, gui.multi_in_stats_file_E, "Compile Summary"):
+                return False
+
+    return True
+
+def check_valid_adv(gui):
+    """
+                    Checks for valid configuration of all parameters housed on the Advanced tab.
+    """
+
+    def try_autofill():
+        """
+                        Checks if all Markov model parameter boxes are empty and runs unsupervised learning if so.
+        """
+
+        for entry in (
+            gui.init_off_E,
+            gui.init_on_E,
+            gui.off_off_trans_E,
+            gui.off_on_trans_E,
+            gui.on_on_trans_E,
+            gui.on_off_trans_E,
+            gui.off_mean_E,
+            gui.on_mean_E,
+            gui.off_stdev_E,
+            gui.on_stdev_E,
+        ):
+            if entry.get() != "":
+                return False
+
+        gui.unsupervised_learning(auto_run=True)
+        return True
+
+    try:
+        entries = (gui.init_off_E, gui.init_on_E, gui.off_off_trans_E, gui.off_on_trans_E, gui.on_on_trans_E, gui.on_off_trans_E)
+
+        for entry in entries:
+            if float(entry.get()) < 0:
+                raise ValueError("Probability less than 0 provided.")
+    except ValueError:
+        if gui.UL_default_BV.get():
+            if try_autofill():
+                return True
+
+        messagebox.showerror("Parameter Error (Advanced tab)", "Probabilities must be real numbers greater than 0.")
+
+        return False
+
+    try:
+        (float(mean) for mean in (gui.off_mean_E.get(), gui.on_mean_E.get()))
+
+    except TypeError:
+        messagebox.showerror("Parameter Error (Advanced tab)", "Means must be real numbers.")
+        return False
+    try:
+        for stdev in (gui.off_stdev_E.get(), gui.on_stdev_E.get()):
+            if float(stdev) <= 0:
+                raise ValueError("Standard deviation less than 0 provided.")
+    except:
+        messagebox.showerror("Parameter Error (Advanced tab)", "Standard deviations must be real numbers greater than 0.")
+        return False
+
+    return True
+
+def check_valid_plot_ops(gui):
+    """
+                    Checks for valid configuration of all parameters housed on the Plot Options tab.
+    """
+
+    # Check plot dimensions
+    if gui.manual_plot_dims.get():
+        valid = True
+        try:
+            if int(gui.plot_dim_x_E.get()) < 1 or int(gui.plot_dim_y_E.get()) < 1:
+                valid = False
+        except:
+            valid = False
+
+        if not valid:
+            messagebox.showwarning(
+                "Plot Dimensions Warning",
+                ("Provided plot dimensions are not valid; please provide positive integers. Automatic resolution detection will be used."),
+            )
+            gui.manual_plot_dims.set(0)
+
+    try:
+        if float(gui.title_font_size_E.get()) < 0:
+            raise ValueError("Provided plot title font size is less than 0")
+    except ValueError:
+        messagebox.showerror("Plot title Font Size Error (Plot Options tab)", "Invalid plot title font size was provided.")
+        return False
+
+    try:
+        if float(gui.axis_title_font_size_E.get()) < 0:
+            raise ValueError("Provided axis title font size is less than 0")
+    except ValueError:
+        messagebox.showerror("Axis Title Font Size Error (Plot Options tab)", "Invalid axis title font size was provided.")
+        return False
+
+    try:
+        if float(gui.axis_label_font_size_E.get()) < 0:
+            raise ValueError("Provided axis label font size is less than 0")
+    except ValueError:
+        messagebox.showerror("Axis Label Font Size Error (Plot Options tab)", "Invalid axis label font size was provided.")
+        return False
+
+    try:
+        if int(gui.axis_tick_size_E.get()) < 0:
+            raise ValueError("Provided axis tick size is less than 0")
+    except ValueError:
+        messagebox.showerror("Axis Tick Size Error (Plot Options tab)", "Invalid axis tick size was provided.")
+        return False
+
+    try:
+        if float(gui.legend_font_size_E.get()) < 0:
+            raise ValueError("Provided legend font size is less than 0")
+    except ValueError:
+        messagebox.showerror("Legend Font Size Error (Plot Options tab)", "Invalid legend font size was provided.")
+        return False
+
+    # Check plot element sizes/widths
+    try:
+        if float(gui.on_point_size_E.get()) < 0:
+            raise ValueError("Provided on-bout point size is less than 0")
+    except ValueError:
+        messagebox.showerror("Point Size Error (Plot Options tab)", "Invalid on-bout point size was provided.")
+        return False
+
+    try:
+        if float(gui.bout_line_width_E.get()) < 0:
+            raise ValueError("Provided bout line width is less than 0")
+    except ValueError:
+        messagebox.showerror("Line Width Error (Plot Options tab)", "Invalid bout line width was provided.")
+        return False
+
+    try:
+        if float(gui.air_line_width_E.get()) < 0:
+            raise ValueError("Provided air line width is less than 0")
+    except ValueError:
+        messagebox.showerror("Line Width Error (Plot Options tab)", "Invalid air temperature line width was provided.")
+        return False
+
+    if gui.show_day_markers_BV.get():
+        try:
+            if float(gui.day_marker_width_E.get()) < 0:
+                raise ValueError("Provided day marker size is less than 0")
+        except ValueError:
+            messagebox.showerror("Day Marker Size Error (Plot Options tab)", "Invalid day marker size was provided.")
+            return False
+
+    return True
+
+def check_valid_stat_ops(gui):
+    """
+                    Checks for valid configuration of all parameters housed on the Stat Options tab.
+    """
+
+    try:
+        float(gui.time_above_temper_E.get())
+    except:
+        messagebox.showerror("Custom Temperature Error (Stat Options tab)", 'Invalid "Time above" temperature.')
+        return False
+
+    try:
+        float(gui.time_below_temper_E.get())
+    except:
+        messagebox.showerror("Custom Temperature Error (Stat Options tab)", 'Invalid "Time below" temperature.')
+        return False
+
+    return True
+
+def check_valid_edit_ops(gui, rerun=True):
+    """
+                    Checks for valid configuration of all parameters housed on the Edit tab.
+
+                    Args:
+                                    rerun (Bool): Indicates if checking should be performed for modified plot path as well.
+    """
+
+    niq_misc.remove_curly(gui.ori_plot_E, gui.mod_plot_E)
+
+    paths_dict = {"Original Plot": Path(gui.ori_plot_E.get()), "Modified Plot": Path(gui.mod_plot_E.get())}
+
+    # Do not check modified plot path if not performing full rerun
+    if not rerun:
+        del paths_dict["Modified Plot"]
+
+    for name, path in paths_dict.items():
+        if not path.exists():
+            messagebox.showerror(f"{name} File Error (Edit tab)", f"{str(path)}, File with provided path could not be found.")
+            return False
+
+    return True

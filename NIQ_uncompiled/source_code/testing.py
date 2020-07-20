@@ -10,6 +10,8 @@ from niq_misc import replace_entry
 
 from tkinter import filedialog
 
+from configuration import load_config
+
 
 def test_run(gui):
     """ Load GUI entry boxes with test files. """
@@ -108,7 +110,7 @@ def master_test(gui):
 
     # Load config file
     ref_config_path = test_dir_path / "config" / "test_config.ini"
-    gui.load_config(config_file_=ref_config_path)
+    load_config(gui, config_file_=ref_config_path)
 
     # Load testing input file
     replace_entry(gui.input_file_E, in_file_path)

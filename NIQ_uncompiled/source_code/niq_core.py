@@ -1,5 +1,3 @@
-import configparser
-import re
 import subprocess
 import time
 import tkinter as tk
@@ -17,8 +15,11 @@ import niq_classes
 import niq_hmm
 import niq_misc
 import testing
+from check_valid import (check_valid_adv, check_valid_edit_ops,
+                         check_valid_main, check_valid_plot_ops,
+                         check_valid_stat_ops, check_valid_vertex_file)
+from configuration import save_config, load_config, set_defaults, init_config
 from niq_misc import remove_curly, replace_entry, set_unique_path
-
 
 root = tk.Tk()
 STANDARD_FONT = font.Font(size=10)
@@ -27,8 +28,7 @@ HEADER_FONT = font.Font(size=12, weight="bold")
 SUBHEADER_FONT = "Helvetica 10 bold"
 TITLE_FONT = ("Helvetica", 18)
 
-# root.iconbitmap('favicon.ico')
-
+root.iconbitmap(Path.cwd().parent / "misc_files" / "NestIQ.ico")
 
 
 class GUIClass:
@@ -43,7 +43,7 @@ class GUIClass:
 
         # Store core working directory path
         self.master_dir_path = Path.cwd().parent
-        self.init_config()
+        init_config(self)
 
         # Variables used for storing information accross multiple input files
         self.multi_file_off_durs = []
@@ -236,15 +236,15 @@ class GUIClass:
         tab4BG = tk.Label(tab2, text="", bg="red4")
         tab4BG.grid(row=2, sticky="NSEW")
 
-        save_config_B = tk.Button(tab2, text="Save Settings", command=(lambda: self.save_config()))
+        save_config_B = tk.Button(tab2, text="Save Settings", command=(lambda: save_config(self)))
         save_config_B.grid(row=2, sticky="W", padx=10, pady=(10, 10))
         save_config_B.configure(background="white")
 
-        load_config_B = tk.Button(tab2, text="Load Settings", command=(lambda: self.load_config()))
+        load_config_B = tk.Button(tab2, text="Load Settings", command=(lambda: load_config(self)))
         load_config_B.grid(row=2, sticky="W", padx=97, pady=(10, 10))
         load_config_B.configure(background="white")
 
-        save_defaults_B = tk.Button(tab2, text="Set as Default", command=(lambda: self.set_defaults()))
+        save_defaults_B = tk.Button(tab2, text="Set as Default", command=(lambda: set_defaults(self)))
         save_defaults_B.grid(row=2, sticky="W", padx=275, pady=(10, 10))
         save_defaults_B.configure(background="white")
 
@@ -790,7 +790,7 @@ class GUIClass:
         )
         self.show_warns_CB.grid(row=29, sticky="SE", padx=10, pady=(10, 0))
 
-        self.load_config(program_startup=True)
+        load_config(self, program_startup=True)
 
         # Call function to handle user closing GUI window
         self.root.protocol("WM_DELETE_WINDOW", lambda: self.close_niq())
@@ -817,243 +817,6 @@ class GUIClass:
         self.root.update()
         time.sleep(0.01)
 
-    def save_config(self, out_file=None):
-        """
-            Prompts user to provide a save file name and location then generates a configuration file from
-            the current GUI settings and statuses.
-
-		"""
-
-        if out_file is None:
-            out_file = Path(filedialog.asksaveasfilename()).with_suffix(".ini")
-
-        # Copy over defualt_backup as template
-        copyfile(self.master_dir_path / "config_files" / "backup_config.ini", out_file)
-        self.update_config(out_file)
-
-    def load_config(self, program_startup=False, config_file_=None):
-        """
-            Updates all GUI settings and statuses according to a configuration file. If this file is not immediately
-            provided to the function, the user is prompted to select a file from a dialog box.
-
-            Args:
-                program_startup (bool): True if is the initial call used to populate GUI upon program startup
-                config_file_ (pathlib.Path): Path to configuration file to be loaded
-		"""
-
-        # Load config button clicked
-        if not program_startup and config_file_ is None:
-            config_file = filedialog.askopenfilename()
-
-            if config_file == "":
-                return False
-
-            config_file = Path(config_file)
-            if not config_file.exists():
-                messagebox.showerror(("Config File Loading Error"), "Configuration file could not be found.")
-                return False
-
-            try:
-                self.config.read(str(config_file))
-            except:
-                messagebox.showerror(("Config File Loading Error"), "Configuration file appears invalid.  Please try a differnt file.")
-
-        if config_file_ is not None:
-            config_file = config_file_
-            self.config.read(str(config_file))
-
-        try:
-            self.time_interval = self.config.get("Main Settings", "data_time_interval")
-            self.show_warns_CB.select() if self.config.get("Main Settings", "show_warnings").lower() == "true" else self.show_warns_CB.deselect()
-            self.restrict_search_CB.select() if self.config.get(
-                "Main Settings", "restrict_bout_search"
-            ).lower() == "true" else self.restrict_search_CB.deselect()
-            self.train_from_IV.set(0) if self.config.get("Main Settings", "train_from").lower() == "0" else self.train_from_IV.set(1)
-            self.UL_default_CB.select() if self.config.get("Advanced Settings", "run_unsup_by_default").lower() == "true" else self.UL_default_CB.deselect()
-            replace_entry(self.day_start_E, self.config.get("Main Settings", "day_Start_Time"))
-            replace_entry(self.night_start_E, self.config.get("Main Settings", "night_Start_Time"))
-            replace_entry(self.smoothing_radius_E, self.config.get("Main Settings", "smoothing_radius"))
-            replace_entry(self.dur_thresh_E, self.config.get("Main Settings", "duration_threshold"))
-            replace_entry(self.init_off_E, self.config.get("Advanced Settings", "off_bout_initial"))
-            replace_entry(self.init_on_E, self.config.get("Advanced Settings", "on_bout_initial"))
-            replace_entry(self.off_off_trans_E, self.config.get("Advanced Settings", "off_off_trans"))
-            replace_entry(self.off_on_trans_E, self.config.get("Advanced Settings", "off_on_trans"))
-            replace_entry(self.on_on_trans_E, self.config.get("Advanced Settings", "on_on_trans"))
-            replace_entry(self.on_off_trans_E, self.config.get("Advanced Settings", "on_off_trans"))
-            replace_entry(self.off_mean_E, self.config.get("Advanced Settings", "off_bout_emis_mean"))
-            replace_entry(self.off_stdev_E, self.config.get("Advanced Settings", "off_bout_emis_stdev"))
-            replace_entry(self.on_mean_E, self.config.get("Advanced Settings", "on_bout_emis_mean"))
-            replace_entry(self.on_stdev_E, self.config.get("Advanced Settings", "on_bout_emis_stdev"))
-            self.manual_plot_dims.set(0) if self.config.get("Plot Options", "manual_plot_dimensions").lower() == "false" else self.manual_plot_dims.set(1)
-            replace_entry(self.plot_dim_x_E, self.config.get("Plot Options", "plot_x_dim"))
-            replace_entry(self.plot_dim_y_E, self.config.get("Plot Options", "plot_y_dim"))
-            replace_entry(self.title_font_size_E, self.config.get("Plot Options", "title_font_size"))
-            replace_entry(self.axis_title_font_size_E, self.config.get("Plot Options", "axis_title_font_size"))
-            replace_entry(self.axis_label_font_size_E, self.config.get("Plot Options", "axis_label_font_size"))
-            replace_entry(self.axis_tick_size_E, self.config.get("Plot Options", "axis_tick_size"))
-            replace_entry(self.legend_font_size_E, self.config.get("Plot Options", "legend_font_size"))
-            self.plot_egg_CB.select() if self.config.get("Plot Options", "plot_egg_tempers").lower() == "true" else self.plot_egg_CB.deselect()
-            self.plot_air_CB.select() if self.config.get("Plot Options", "plot_air_tempers").lower() == "true" else self.plot_air_CB.deselect()
-            self.plot_adj_CB.select() if self.config.get("Plot Options", "plot_egg_minus_air").lower() == "true" else self.plot_adj_CB.deselect()
-            self.smooth_status_IV.set(0) if self.config.get("Plot Options", "plot_smoothed").lower() == "false" else self.smooth_status_IV.set(1)
-            self.legend_loc.set(self.config.get("Plot Options", "legend_location"))
-            self.on_point_color.set(self.config.get("Plot Options", "on_point_color"))
-            self.off_point_color.set(self.config.get("Plot Options", "off_point_color"))
-            self.bout_line_color.set(self.config.get("Plot Options", "bout_line_color"))
-            self.air_line_color.set(self.config.get("Plot Options", "air_line_color"))
-            self.day_marker_color.set(self.config.get("Plot Options", "day_marker_color"))
-            replace_entry(self.on_point_size_E, self.config.get("Plot Options", "on_point_size"))
-            replace_entry(self.bout_line_width_E, self.config.get("Plot Options", "bout_line_width"))
-            replace_entry(self.air_line_width_E, self.config.get("Plot Options", "air_line_width"))
-            replace_entry(self.day_marker_width_E, self.config.get("Plot Options", "day_marker_width"))
-            self.show_day_markers_CB.select() if self.config.get("Plot Options", "show_day_marker").lower() == "true" else self.show_day_markers_CB.deselect()
-            self.show_grid_CB.select() if self.config.get("Plot Options", "show_grid").lower() == "true" else self.show_grid_CB.deselect()
-            self.day_num_CB.select() if self.config.get("Stats Options", "day_Number").lower() == "true" else self.day_num_CB.deselect()
-            self.date_CB.select() if self.config.get("Stats Options", "date").lower() == "true" else self.date_CB.deselect()
-            self.off_count_CB.select() if self.config.get("Stats Options", "off_Bout_Count").lower() == "true" else self.off_count_CB.deselect()
-            self.off_dur_CB.select() if self.config.get("Stats Options", "mean_Off_Bout_Duration").lower() == "true" else self.off_dur_CB.deselect()
-            self.off_dur_sd_CB.select() if self.config.get("Stats Options", "off_Bout_Duration_StDev").lower() == "true" else self.off_dur_sd_CB.deselect()
-            self.off_dec_CB.select() if self.config.get("Stats Options", "mean_Off_Bout_Temp_Drop").lower() == "true" else self.off_dec_CB.deselect()
-            self.off_dec_sd_CB.select() if self.config.get("Stats Options", "off_Bout_Temp_Drop_StDev").lower() == "true" else self.off_dec_sd_CB.deselect()
-            self.mean_off_temper_CB.select() if self.config.get("Stats Options", "mean_Off_Bout_Temp").lower() == "true" else self.mean_off_temper_CB.deselect()
-            self.off_time_sum_CB.select() if self.config.get("Stats Options", "off_bout_time_sum").lower() == "true" else self.off_time_sum_CB.deselect()
-            self.on_count_CB.select() if self.config.get("Stats Options", "on_Bout_Count").lower() == "true" else self.on_count_CB.deselect()
-            self.on_dur_CB.select() if self.config.get("Stats Options", "mean_On_Bout_Duration").lower() == "true" else self.on_dur_CB.deselect()
-            self.on_dur_sd_CB.select() if self.config.get("Stats Options", "on_Bout_Duration_StDev").lower() == "true" else self.on_dur_sd_CB.deselect()
-            self.on_inc_CB.select() if self.config.get("Stats Options", "mean_On_Bout_Temp_Rise").lower() == "true" else self.on_inc_CB.deselect()
-            self.on_inc_sd_CB.select() if self.config.get("Stats Options", "on_Bout_Temp_Rise_StDev").lower() == "true" else self.on_inc_sd_CB.deselect()
-            self.mean_on_temper_CB.select() if self.config.get("Stats Options", "mean_On_Bout_Temp").lower() == "true" else self.mean_on_temper_CB.deselect()
-            self.on_time_sum_CB.select() if self.config.get("Stats Options", "on_bout_time_sum").lower() == "true" else self.on_time_sum_CB.deselect()
-            self.bouts_dropped_CB.select() if self.config.get("Stats Options", "bouts_Dropped").lower() == "true" else self.bouts_dropped_CB.deselect()
-            self.time_above_temper_CB.select() if self.config.get(
-                "Stats Options", "time_above_critical"
-            ).lower() == "true" else self.time_above_temper_CB.deselect()
-            self.time_below_temper_CB.select() if self.config.get(
-                "Stats Options", "time_below_critical"
-            ).lower() == "true" else self.time_below_temper_CB.deselect()
-            self.mean_temper_d_CB.select() if self.config.get(
-                "Stats Options", "mean_Daytime_Temperature"
-            ).lower() == "true" else self.mean_temper_d_CB.deselect()
-            self.mean_temper_d_sd_CB.select() if self.config.get(
-                "Stats Options", "daytime_Temp_StDev"
-            ).lower() == "true" else self.mean_temper_d_sd_CB.deselect()
-            self.median_temper_d_CB.select() if self.config.get(
-                "Stats Options", "median_Daytime_Temp"
-            ).lower() == "true" else self.median_temper_d_CB.deselect()
-            self.min_temper_d_CB.select() if self.config.get("Stats Options", "min_Daytime_Temp").lower() == "true" else self.min_temper_d_CB.deselect()
-            self.max_temper_d_CB.select() if self.config.get("Stats Options", "max_Daytime_Temp").lower() == "true" else self.max_temper_d_CB.deselect()
-            self.mean_temper_n_CB.select() if self.config.get("Stats Options", "mean_Nighttime_Temp").lower() == "true" else self.mean_temper_n_CB.deselect()
-            self.mean_temper_n_sd_CB.select() if self.config.get(
-                "Stats Options", "nighttime_Temp_StDev"
-            ).lower() == "true" else self.mean_temper_n_sd_CB.deselect()
-            self.median_temper_n_CB.select() if self.config.get(
-                "Stats Options", "median_Nighttime_Temp"
-            ).lower() == "true" else self.median_temper_n_CB.deselect()
-            self.min_temper_n_CB.select() if self.config.get("Stats Options", "min_Nighttime_Temp").lower() == "true" else self.min_temper_n_CB.deselect()
-            self.max_temper_n_CB.select() if self.config.get("Stats Options", "max_Nighttime_Temp").lower() == "true" else self.max_temper_n_CB.deselect()
-            self.mean_temper_dn_CB.select() if self.config.get("Stats Options", "mean_DayNight_Temp").lower() == "true" else self.mean_temper_dn_CB.deselect()
-            self.mean_temper_dn_sd_CB.select() if self.config.get(
-                "Stats Options", "dayNight_Temp_StDev"
-            ).lower() == "true" else self.mean_temper_dn_sd_CB.deselect()
-            self.median_temper_db_CB.select() if self.config.get(
-                "Stats Options", "median_DayNight_Temp"
-            ).lower() == "true" else self.median_temper_db_CB.deselect()
-            self.min_temper_dn_CB.select() if self.config.get("Stats Options", "min_DayNight_Temp").lower() == "true" else self.min_temper_dn_CB.deselect()
-            self.max_temper_dn_CB.select() if self.config.get("Stats Options", "max_DayNight_Temp").lower() == "true" else self.max_temper_dn_CB.deselect()
-            self.mean_air_temper_CB.select() if self.config.get("Stats Options", "mean_air_temp").lower() == "true" else self.mean_air_temper_CB.deselect()
-            self.mean_air_temper_sd_CB.select() if self.config.get(
-                "Stats Options", "mean_air_temp_stdev"
-            ).lower() == "true" else self.mean_air_temper_sd_CB.deselect()
-            self.min_air_temper_CB.select() if self.config.get("Stats Options", "min_air_temp").lower() == "true" else self.min_air_temper_CB.deselect()
-            self.max_air_temper_CB.select() if self.config.get("Stats Options", "max_air_temp").lower() == "true" else self.max_air_temper_CB.deselect()
-            replace_entry(self.time_above_temper_E, self.config.get("Stats Options", "custom_time_above_temperature"))
-            replace_entry(self.time_below_temper_E, self.config.get("Stats Options", "custom_time_below_temperature"))
-
-        except:
-            if program_startup:
-                messagebox.showerror(("Config File Loading Error"), "default_config.ini could not be read, reverting to backup config file.")
-                traceback.print_exc()
-
-                # If an error is encountered, try loading "backup_config.ini"
-                copyfile(self.master_dir_path / "config_files" / "backup_config.ini", self.master_dir_path / "config_files" / "default_config.ini")
-
-                self.config.read(self.master_dir_path / "config_files" / "default_config.ini")
-                self.load_config(program_startup=True)
-            else:
-                messagebox.showerror(("Config File Loading Error"), str(config_file) + " could not be read.")
-                traceback.print_exc()
-
-    def set_defaults(self):
-        """
-            Updates default configureation file with current GUI status.
-		"""
-
-        try:
-            self.update_config()
-            messagebox.showinfo("Default Parameters Saved", "default_config.ini has been updated.")
-        except:
-            messagebox.showerror(
-                ("Default Settings Error"), "An error was encountered while updating default parameters.  Check if provided parameters are valid."
-            )
-
-    def check_vertex_file(self):
-        """
-            Checks user-provided vertex selection file (HTML) for issues that could cause errors with
-            downstream processes.
-
-            Returns:
-                True if file passes all tests, else displays error message and returns False
-		"""
-
-        niq_misc.remove_curly(self.vertex_file_E)
-        vertex_path = Path(self.vertex_file_E.get())
-
-        # Check if path is empty
-        if vertex_path.name == "":
-            messagebox.showerror("Vertex File Error", "Please provide a vertex file.")
-            return False
-
-        # Check if path has invalid path
-        if vertex_path.suffix not in (".html", ""):
-            messagebox.showerror("Vertex Selection Error", r'Vertex selection file must have ".html" extension.')
-            return False
-
-        # Check if path exists
-        if not vertex_path.exists():
-            messagebox.showerror("Vertex Selection Error", "Provided vertex selection file not found.")
-            return False
-
-        with open(vertex_path, "r") as original_file:
-            original_lines = original_file.readlines()
-
-        # Remove extra table data lines if present
-        cleaned_content = str()
-        found = False
-        for line in original_lines:
-            if "<div class" in line:
-                found = True
-            if found:
-                cleaned_content += line
-
-        # Get datapoints
-        tokens = re.finditer(r">([\d\.-]+)</span>", cleaned_content)
-
-        try:
-            # Every other value in tokens will be temperature and so is ignored
-            for counter, match in enumerate(tokens):
-                token_num = counter
-                if not (counter % 2) == 0:
-                    round(float(match.group(1)))
-        except:
-            messagebox.showerror(("Vertex File Error"), "Vertex file is unreadable. Please try another.")
-            return False
-
-        if token_num < 2:
-            messagebox.showerror(("Vertex File Error"), "No vertices detected in vertex file.")
-            return False
-
-        return True
-
     def help(self):
         """ Launches user manual. """
 
@@ -1067,435 +830,10 @@ class GUIClass:
                 column (list): list of variables to be selected or deselected
                 command (string)
 		"""
+
         for option in column:
             option.select() if command == "select" else option.deselect()
 
-    def check_valid_main(self, first_in=True, check_output=True):
-        """
-            Checks for valid configuration of all parameters housed on the Main tab.  This includes extensive
-            review of the input file provided.
-
-            Args:
-                first_in (bool): False if current file is second or later in a queue of multiple input files
-                check_output (bool): if False, output file names are not examined
-		"""
-
-        def check_input_file(self):
-            """
-                Checks several aspects of the input file to ensure it is compatable with all downstream processing.
-                Also displays warnings for less severe format violations.
-			"""
-
-            in_file_path = self.active_input_path
-            datetime_valid = True
-
-            file_name_appendage = f"For file: {in_file_path.name} \n\n"
-
-            if in_file_path.name == "":
-                messagebox.showerror("Input error (Main tab)", "No input file provided.")
-                return False
-
-            if not in_file_path.exists():
-                messagebox.showerror("Input File Error", "".join((file_name_appendage, "File with provided path could not be found.")))
-                return False
-
-            if in_file_path.suffix != ".csv":
-                messagebox.showerror("Input File Error", f'{file_name_appendage} Input file must end in ".csv" extension (comma separated value file format).')
-                return False
-
-            try:
-                with open(in_file_path, "r") as csv_file:
-                    csv_lines = csv_file.readlines()
-
-                master_list = [line.strip().rstrip(",").split(",") for line in csv_lines]
-
-                pop_indices = []
-                # Remove lines not conforming to expected format (such as headers)
-                for i in range(len(master_list[:-1])):
-                    # Cells in data point column must contain only numbers
-                    if not str(master_list[i][0]).isnumeric():
-                        pop_indices.append(i)
-
-                for pop_count, index in enumerate(pop_indices):
-                    master_list.pop(index - pop_count)
-                master_list.pop(len(master_list) - 1)
-
-                prev_line = master_list[0]
-
-                if not self.get_data_time_interval(master_list):
-                    return False
-
-                if len(prev_line) < 3:
-                    self.air_valid = False
-
-                interval_clock = 0 if self.time_interval >= 1 else round(1 / self.time_interval)
-                interval_time = 1
-                start_found = False
-
-                for line in master_list[1:]:
-                    line = line[:4] if self.air_valid else line[:3]
-
-                    # Check if data points are continuous and sequential
-                    try:
-                        if not int(line[0]) == (int(prev_line[0]) + 1):
-                            raise ValueError
-                    except:
-                        messagebox.showerror(
-                            "Data Point Error",
-                            f"{file_name_appendage}Error after data point "
-                            + f"{prev_line[0]}. Data point number is not sequential with regard to previous data point.",
-                        )
-                        return False
-
-                    # Test conversion of date/time string to datetime object
-                    try:
-                        prev_datetime = niq_misc.convert_to_datetime(prev_line[1])
-                        cur_datetime = niq_misc.convert_to_datetime(line[1])
-                    except ValueError:
-                        messagebox.showerror(
-                            "Date/Time Error", f"{file_name_appendage}No time found for data point {line[0]}.  Date/Time should be in MM/DD/YYYY HH:MM format."
-                        )
-                        return False
-
-                    # Check for inconsistencies in date/time values
-                    datetime_diff = (cur_datetime - prev_datetime).seconds / 60
-
-                    if datetime_diff == 0 or datetime_diff == self.time_interval:
-                        start_found = True
-
-                    if datetime_valid and start_found:
-                        if cur_datetime == False:
-                            return False
-
-                        if datetime_diff != self.time_interval:
-                            if not interval_clock > 0:
-                                datetime_valid = False
-                            else:
-                                if datetime_diff == 0:
-                                    interval_time += 1
-                                elif datetime_diff != 1:
-                                    datetime_valid = False
-                                else:
-                                    if interval_time == interval_clock:
-                                        interval_time = 1
-                                    else:
-                                        datetime_valid = False
-
-                        if not datetime_valid:
-                            if self.show_warns_BV.get():
-                                messagebox.showwarning(
-                                    "Date/time Warning",
-                                    f"{file_name_appendage}Discontinuous date/time found for data point "
-                                    + f"{line[0]}. The program will continue, but this could cause inaccurate statistical output.",
-                                )
-
-                    # Check egg temperatures column
-                    try:
-                        float(line[2])
-                    except:
-                        messagebox.showerror("Temperature Error", f"{file_name_appendage}Invalid temperature given for data point {line[0]}.")
-                        return False
-
-                    # Check air temperatures column if appropriate
-                    if self.air_valid:
-                        try:
-                            float(line[3])
-                        except (IndexError, ValueError):
-                            self.air_valid = False
-                            if self.show_warns_BV.get():
-                                messagebox.showwarning(
-                                    "Air Temperature Warning",
-                                    f"{file_name_appendage}Invalid air temperature detected for data point "
-                                    + f"{line[0]}. Air temperatures will not be plotted or included in statistical output.",
-                                )
-                    prev_line = line
-
-                return True
-
-            except Exception as e:
-                print(e)
-                traceback.print_exc()
-                messagebox.showerror(
-                    "Unknown Error",
-                    f"{file_name_appendage}There was an unidentifiable error with the provided input file. "
-                    + "This is sometimes the result of 'extra' cells in the input file.\n\n"
-                    + "Please reference the NestIQ manual for details regarding proper input file format."
-                    + " This can be accessed by clicking 'Help' in the top right.",
-                )
-                return False
-
-        def check_out_file(gui, entry, title):
-            """
-                Checks if the name provided for a given output file is valid.  This includes asking the user if
-                they want to override if a file with the same name already exists.
-
-                Args:
-                    entry (tk.Entry): entry box being examined
-                    title (string): how to reference the current entry box if error messeage is triggered
-			"""
-
-            if entry.get() == "":
-                messagebox.showerror(f"{title} Error", "File name is empty.")
-                return False
-
-            entry_path = Path(entry.get())
-
-            if entry_path.is_dir():
-                messagebox.showerror(f"{title} Error", "Directory provided but no file name.")
-                return False
-
-            # Add extension if not present
-            if entry == gui.plot_file_E:
-                ext = ".html"
-            elif entry == gui.stats_file_E or entry == gui.multi_in_stats_file_E:
-                ext = ".csv"
-
-            entry_path = Path(entry.get()).with_suffix(ext)
-
-            # Check if plot file already exists and if so, ask to override
-            if entry_path.exists():
-                if self.show_warns_BV.get():
-                    if not messagebox.askyesno("Override?", f"The file '{entry.get()}' already exists.  Do you want to override?"):
-                        return False
-                entry_path.unlink()
-
-            return True
-
-        # Check time entry boxes
-        for time_str in (self.day_start_E.get(), self.night_start_E.get()):
-            try:
-                time_struct = time.strptime(time_str, "%H:%M")
-            except ValueError:
-                messagebox.showerror("Daytime Start/End Error", f"Provided value of {time_str} is invalid. Please provide times in 24 hr HH:MM format.")
-                return False
-
-        # Check data smoothing box
-        try:
-            if not float(self.smoothing_radius_E.get()).is_integer():
-                raise ValueError
-
-            if int(self.smoothing_radius_E.get()) < 0:
-                messagebox.showerror("Data Smoothing Radius Error", "Data smoothing radius must be greater than or equal to zero.")
-                return False
-        except ValueError:
-            messagebox.showerror("Data Smoothing Radius Error", "Data smoothing radius must be an integer.")
-            return False
-
-        # Check duration threshold box
-        try:
-            if int(float(self.dur_thresh_E.get())) < 0:
-                messagebox.showerror("Duration Threshold Error", "Duration threshold cannot be less than zero.")
-                return False
-        except ValueError:
-            messagebox.showerror("Duration Threshold Error", "Invalid duration threshold (could not convert to integer).")
-            return False
-
-        if not check_input_file(self):
-            return False
-
-        if check_output:
-            if self.make_plot_BV.get():
-                if not check_out_file(self, self.plot_file_E, "Plot File"):
-                    return False
-
-            if self.get_stats_BV.get():
-                if not check_out_file(self, self.stats_file_E, "Stats Output File"):
-                    return False
-
-            if self.multi_in_stats_BV.get() and first_in:
-                if not check_out_file(self, self.multi_in_stats_file_E, "Compile Summary"):
-                    return False
-
-        return True
-
-    def check_valid_adv(self):
-        """
-						Checks for valid configuration of all parameters housed on the Advanced tab.
-		"""
-
-        def try_autofill():
-            """
-							Checks if all Markov model parameter boxes are empty and runs unsupervised learning if so.
-			"""
-
-            for entry in (
-                self.init_off_E,
-                self.init_on_E,
-                self.off_off_trans_E,
-                self.off_on_trans_E,
-                self.on_on_trans_E,
-                self.on_off_trans_E,
-                self.off_mean_E,
-                self.on_mean_E,
-                self.off_stdev_E,
-                self.on_stdev_E,
-            ):
-                if entry.get() != "":
-                    return False
-
-            self.unsupervised_learning(auto_run=True)
-            return True
-
-        try:
-            entries = (self.init_off_E, self.init_on_E, self.off_off_trans_E, self.off_on_trans_E, self.on_on_trans_E, self.on_off_trans_E)
-
-            for entry in entries:
-                if float(entry.get()) < 0:
-                    raise ValueError("Probability less than 0 provided.")
-        except ValueError:
-            if self.UL_default_BV.get():
-                if try_autofill():
-                    return True
-
-            messagebox.showerror("Parameter Error (Advanced tab)", "Probabilities must be real numbers greater than 0.")
-
-            return False
-
-        try:
-            (float(mean) for mean in (self.off_mean_E.get(), self.on_mean_E.get()))
-
-        except TypeError:
-            messagebox.showerror("Parameter Error (Advanced tab)", "Means must be real numbers.")
-            return False
-        try:
-            for stdev in (self.off_stdev_E.get(), self.on_stdev_E.get()):
-                if float(stdev) <= 0:
-                    raise ValueError("Standard deviation less than 0 provided.")
-        except:
-            messagebox.showerror("Parameter Error (Advanced tab)", "Standard deviations must be real numbers greater than 0.")
-            return False
-
-        return True
-
-    def check_valid_plot_ops(self):
-        """
-						Checks for valid configuration of all parameters housed on the Plot Options tab.
-		"""
-
-        # Check plot dimensions
-        if self.manual_plot_dims.get():
-            valid = True
-            try:
-                if int(self.plot_dim_x_E.get()) < 1 or int(self.plot_dim_y_E.get()) < 1:
-                    valid = False
-            except:
-                valid = False
-
-            if not valid:
-                messagebox.showwarning(
-                    "Plot Dimensions Warning",
-                    ("Provided plot dimensions are not valid; please provide positive integers. Automatic resolution detection will be used."),
-                )
-                self.manual_plot_dims.set(0)
-
-        try:
-            if float(self.title_font_size_E.get()) < 0:
-                raise ValueError("Provided plot title font size is less than 0")
-        except ValueError:
-            messagebox.showerror("Plot title Font Size Error (Plot Options tab)", "Invalid plot title font size was provided.")
-            return False
-
-        try:
-            if float(self.axis_title_font_size_E.get()) < 0:
-                raise ValueError("Provided axis title font size is less than 0")
-        except ValueError:
-            messagebox.showerror("Axis Title Font Size Error (Plot Options tab)", "Invalid axis title font size was provided.")
-            return False
-
-        try:
-            if float(self.axis_label_font_size_E.get()) < 0:
-                raise ValueError("Provided axis label font size is less than 0")
-        except ValueError:
-            messagebox.showerror("Axis Label Font Size Error (Plot Options tab)", "Invalid axis label font size was provided.")
-            return False
-
-        try:
-            if int(self.axis_tick_size_E.get()) < 0:
-                raise ValueError("Provided axis tick size is less than 0")
-        except ValueError:
-            messagebox.showerror("Axis Tick Size Error (Plot Options tab)", "Invalid axis tick size was provided.")
-            return False
-
-        try:
-            if float(self.legend_font_size_E.get()) < 0:
-                raise ValueError("Provided legend font size is less than 0")
-        except ValueError:
-            messagebox.showerror("Legend Font Size Error (Plot Options tab)", "Invalid legend font size was provided.")
-            return False
-
-        # Check plot element sizes/widths
-        try:
-            if float(self.on_point_size_E.get()) < 0:
-                raise ValueError("Provided on-bout point size is less than 0")
-        except ValueError:
-            messagebox.showerror("Point Size Error (Plot Options tab)", "Invalid on-bout point size was provided.")
-            return False
-
-        try:
-            if float(self.bout_line_width_E.get()) < 0:
-                raise ValueError("Provided bout line width is less than 0")
-        except ValueError:
-            messagebox.showerror("Line Width Error (Plot Options tab)", "Invalid bout line width was provided.")
-            return False
-
-        try:
-            if float(self.air_line_width_E.get()) < 0:
-                raise ValueError("Provided air line width is less than 0")
-        except ValueError:
-            messagebox.showerror("Line Width Error (Plot Options tab)", "Invalid air temperature line width was provided.")
-            return False
-
-        if self.show_day_markers_BV.get():
-            try:
-                if float(self.day_marker_width_E.get()) < 0:
-                    raise ValueError("Provided day marker size is less than 0")
-            except ValueError:
-                messagebox.showerror("Day Marker Size Error (Plot Options tab)", "Invalid day marker size was provided.")
-                return False
-
-        return True
-
-    def check_valid_stat_ops(self):
-        """
-						Checks for valid configuration of all parameters housed on the Stat Options tab.
-		"""
-
-        try:
-            float(self.time_above_temper_E.get())
-        except:
-            messagebox.showerror("Custom Temperature Error (Stat Options tab)", 'Invalid "Time above" temperature.')
-            return False
-
-        try:
-            float(self.time_below_temper_E.get())
-        except:
-            messagebox.showerror("Custom Temperature Error (Stat Options tab)", 'Invalid "Time below" temperature.')
-            return False
-
-        return True
-
-    def check_valid_edit_ops(self, rerun=True):
-        """
-						Checks for valid configuration of all parameters housed on the Edit tab.
-
-						Args:
-										rerun (Bool): Indicates if checking should be performed for modified plot path as well.
-		"""
-
-        niq_misc.remove_curly(self.ori_plot_E, self.mod_plot_E)
-
-        paths_dict = {"Original Plot": Path(self.ori_plot_E.get()), "Modified Plot": Path(self.mod_plot_E.get())}
-
-        # Do not check modified plot path if not performing full rerun
-        if not rerun:
-            del paths_dict["Modified Plot"]
-
-        for name, path in paths_dict.items():
-            if not path.exists():
-                messagebox.showerror(f"{name} File Error (Edit tab)", f"{str(path)}, File with provided path could not be found.")
-                return False
-
-        return True
 
     def get_data_time_interval(self, master_list):
         """
@@ -1603,7 +941,7 @@ class GUIClass:
         in_file_paths = self.parse_input_file_entry()
         self.set_active_input(in_file_paths[0], replace_out=False)
 
-        if not all((self.check_valid_plot_ops(), self.check_valid_main(check_output=False), self.check_valid_adv())):
+        if not all((check_valid_plot_ops(self), check_valid_main(self, check_output=False), check_valid_adv(self))):
             return
 
         try:
@@ -1620,7 +958,7 @@ class GUIClass:
 
         # Get original vertices if undergoing manual vertex editing
         if mod_plot:
-            if not self.check_valid_edit_ops(rerun=False):
+            if not check_valid_edit_ops(self, rerun=False):
                 return False
             try:
                 ori_verts_ = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
@@ -1631,131 +969,6 @@ class GUIClass:
                 return False
 
         niq_misc.generate_plot(self, days_list, edit_mode=True, ori_verts=ori_verts_)
-
-    def init_config(self):
-        """
-            Initializes GUI from backup_config.ini.  backup_config.ini is used as a backup if anything goes wrong.
-		"""
-
-        self.config = configparser.RawConfigParser()
-
-        config_default_path = Path(self.master_dir_path / "config_files" / "default_config.ini")
-        backup_config_path = Path(self.master_dir_path / "config_files" / "backup_config.ini")
-
-        try:
-            self.config.read(str(config_default_path))
-        except configparser.ParsingError:
-            copyfile(backup_config_path, config_default_path)
-            self.config.read(str(config_default_path))
-
-    def update_config(self, config_file=None):
-        """
-            Generates a configuration file from the current GUI parameters. If no file name if provided,
-            this function saves to default_config.ini, resetting the default parameters for NestIQ.
-
-            Args:
-                config_file (string): path to and name of file to be saved
-		"""
-
-        if config_file is None:
-            config_file = Path(self.master_dir_path / "config_files" / "default_config.ini")
-
-        self.config.set("Main Settings", "show_warnings", self.show_warns_BV.get())
-        self.config.set("Main Settings", "day_start_time", self.day_start_E.get())
-        self.config.set("Main Settings", "night_start_time", self.night_start_E.get())
-        self.config.set("Main Settings", "restrict_bout_search", self.restrict_search_BV.get())
-
-        self.config.set("Main Settings", "smoothing_radius", self.smoothing_radius_E.get())
-        self.config.set("Main Settings", "duration_threshold", self.dur_thresh_E.get())
-        self.config.set("Main Settings", "train_from", int(self.train_from_IV.get()))
-
-        self.config.set("Advanced Settings", "run_unsup_by_default", self.UL_default_BV.get())
-        self.config.set("Advanced Settings", "off_bout_initial", self.init_off_E.get())
-        self.config.set("Advanced Settings", "on_bout_initial", self.init_on_E.get())
-        self.config.set("Advanced Settings", "off_off_trans", self.off_off_trans_E.get())
-        self.config.set("Advanced Settings", "off_on_trans", self.off_on_trans_E.get())
-        self.config.set("Advanced Settings", "on_on_trans", self.on_on_trans_E.get())
-        self.config.set("Advanced Settings", "on_off_trans", self.on_off_trans_E.get())
-        self.config.set("Advanced Settings", "off_bout_emis_mean", self.off_mean_E.get())
-        self.config.set("Advanced Settings", "off_bout_emis_stdev", self.off_stdev_E.get())
-        self.config.set("Advanced Settings", "on_bout_emis_mean", self.on_mean_E.get())
-        self.config.set("Advanced Settings", "on_bout_emis_stdev", self.on_stdev_E.get())
-
-        self.config.set("Plot Options", "manual_plot_dimensions", bool(self.manual_plot_dims.get()))
-        self.config.set("Plot Options", "plot_x_dim", self.plot_dim_x_E.get())
-        self.config.set("Plot Options", "plot_y_dim", self.plot_dim_y_E.get())
-        self.config.set("Plot Options", "title_font_size", self.title_font_size_E.get())
-        self.config.set("Plot Options", "axis_title_font_size", self.axis_title_font_size_E.get())
-        self.config.set("Plot Options", "axis_label_font_size", self.axis_label_font_size_E.get())
-        self.config.set("Plot Options", "axis_tick_size", self.axis_tick_size_E.get())
-        self.config.set("Plot Options", "legend_font_size", self.legend_font_size_E.get())
-
-        self.config.set("Plot Options", "plot_egg_tempers", self.plot_egg_BV.get())
-        self.config.set("Plot Options", "plot_air_tempers", self.plot_air_BV.get())
-        self.config.set("Plot Options", "plot_egg_minus_air", self.plot_adj_BV.get())
-        self.config.set("Plot Options", "plot_smoothed", bool(self.smooth_status_IV.get()))
-        self.config.set("Plot Options", "legend_location", self.legend_loc.get())
-
-        self.config.set("Plot Options", "on_point_color", self.on_point_color.get())
-        self.config.set("Plot Options", "off_point_color", self.off_point_color.get())
-        self.config.set("Plot Options", "bout_line_color", self.bout_line_color.get())
-        self.config.set("Plot Options", "air_line_color", self.air_line_color.get())
-        self.config.set("Plot Options", "day_marker_color", self.day_marker_color.get())
-
-        self.config.set("Plot Options", "on_point_size", self.on_point_size_E.get())
-        self.config.set("Plot Options", "bout_line_width", self.bout_line_width_E.get())
-        self.config.set("Plot Options", "air_line_width", self.air_line_width_E.get())
-        self.config.set("Plot Options", "day_marker_width", self.day_marker_width_E.get())
-
-        self.config.set("Plot Options", "show_day_marker", self.show_day_markers_BV.get())
-        self.config.set("Plot Options", "show_grid", self.show_grid_BV.get())
-
-        self.config.set("Stats Options", "day_number", self.day_num_BV.get())
-        self.config.set("Stats Options", "date", self.date_BV.get())
-        self.config.set("Stats Options", "off_bout_count", self.off_count_BV.get())
-        self.config.set("Stats Options", "mean_off_bout_duration", self.off_dur_BV.get())
-        self.config.set("Stats Options", "off_bout_duration_stdev", self.off_dur_sd_BV.get())
-        self.config.set("Stats Options", "mean_off_bout_temp_drop", self.off_dec_BV.get())
-        self.config.set("Stats Options", "off_bout_temp_drop_stdev", self.off_dec_sd_BV.get())
-        self.config.set("Stats Options", "mean_off_bout_temp", self.mean_off_temper_BV.get())
-        self.config.set("Stats Options", "off_bout_time_sum", self.off_time_sum_BV.get())
-        self.config.set("Stats Options", "on_bout_count", self.on_count_BV.get())
-        self.config.set("Stats Options", "mean_on_bout_duration", self.on_dur_BV.get())
-        self.config.set("Stats Options", "on_bout_duration_stdev", self.on_dur_sd_BV.get())
-        self.config.set("Stats Options", "mean_on_bout_temp_rise", self.on_inc_BV.get())
-        self.config.set("Stats Options", "on_bout_temp_rise_stdev", self.on_inc_sd_BV.get())
-        self.config.set("Stats Options", "mean_on_bout_temp", self.mean_on_temper_BV.get())
-        self.config.set("Stats Options", "on_bout_time_sum", self.on_time_sum_BV.get())
-        self.config.set("Stats Options", "time_above_critical", self.time_above_temper_BV.get())
-        self.config.set("Stats Options", "time_below_critical", self.time_below_temper_BV.get())
-        self.config.set("Stats Options", "bouts_dropped", self.bouts_dropped_BV.get())
-        self.config.set("Stats Options", "mean_daytime_temperature", self.mean_temper_d_BV.get())
-        self.config.set("Stats Options", "daytime_temp_stdev", self.mean_temper_d_sd_BV.get())
-        self.config.set("Stats Options", "median_daytime_temp", self.median_temper_d_BV.get())
-        self.config.set("Stats Options", "min_daytime_temp", self.min_temper_d_BV.get())
-        self.config.set("Stats Options", "max_daytime_temp", self.max_temper_d_BV.get())
-        self.config.set("Stats Options", "mean_nighttime_temp", self.mean_temper_n_BV.get())
-        self.config.set("Stats Options", "nighttime_temp_stdev", self.mean_temper_n_sd_BV.get())
-        self.config.set("Stats Options", "median_nighttime_temp", self.median_temper_n_BV.get())
-        self.config.set("Stats Options", "min_nighttime_temp", self.min_temper_n_BV.get())
-        self.config.set("Stats Options", "max_nighttime_temp", self.max_temper_n_BV.get())
-        self.config.set("Stats Options", "mean_daynight_temp", self.mean_temper_dn_BV.get())
-        self.config.set("Stats Options", "daynight_temp_stdev", self.mean_temper_dn_sd_BV.get())
-        self.config.set("Stats Options", "median_daynight_temp", self.median_temper_dn_BV.get())
-        self.config.set("Stats Options", "min_daynight_temp", self.min_temper_dn_BV.get())
-        self.config.set("Stats Options", "max_daynight_temp", self.max_temper_dn_BV.get())
-        self.config.set("Stats Options", "mean_air_temp", self.mean_air_temper_BV.get())
-        self.config.set("Stats Options", "mean_air_temp_stdev", self.mean_air_temper_sd_BV.get())
-        self.config.set("Stats Options", "min_air_temp", self.min_air_temper_BV.get())
-        self.config.set("Stats Options", "max_air_temp", self.max_air_temper_BV.get())
-        self.config.set("Stats Options", "custom_time_over_bool", self.time_above_temper_BV.get())
-        self.config.set("Stats Options", "custom_time_below_bool", self.time_below_temper_BV.get())
-
-        self.config.set("Stats Options", "custom_time_above_temperature", self.time_above_temper_E.get())
-        self.config.set("Stats Options", "custom_time_below_temperature", self.time_below_temper_E.get())
-
-        with open(config_file, "w") as out_file:
-            self.config.write(out_file)
 
     def parse_input_file_entry(self):
         """ Splits input file entry box into individual input paths if present. """
@@ -1806,13 +1019,13 @@ class GUIClass:
                 self.root.update()
 
                 # Check if all inputs are valid
-                edit_tab_check = True if not rerun else self.check_valid_edit_ops()
+                edit_tab_check = True if not rerun else check_valid_edit_ops(self)
 
                 if not (
-                    self.check_valid_main(first_in=(file_num == 1))
-                    and self.check_valid_adv()
-                    and self.check_valid_plot_ops()
-                    and self.check_valid_stat_ops()
+                    check_valid_main(self, first_in=(file_num == 1))
+                    and check_valid_adv(self)
+                    and check_valid_plot_ops(self)
+                    and check_valid_stat_ops(self)
                     and edit_tab_check
                 ):
                     break
@@ -1912,7 +1125,7 @@ class GUIClass:
 
         # If auto_run, check_valid_main will be called in trigger_run
         if not auto_run:
-            if not self.check_valid_main(check_output=False):
+            if not check_valid_main(self, check_output=False):
                 self.run_B["text"] = "Run"
                 self.run_B.config(bg="red4", fg="white", width=10, height=1)
                 self.run = False
@@ -1948,7 +1161,7 @@ class GUIClass:
 
             return False
 
-        if not self.check_vertex_file() or not self.check_valid_main(check_output=False):
+        if not check_valid_vertex_file(self) or not check_valid_main(self, check_output=False):
             return
 
         self.master_df = self.init_master_df(self.input_file_E.get())
