@@ -13,7 +13,6 @@ class Vertex:
             index (int)
             egg_temper (float): egg temperature at the point of transition
             vert_type (str): off, on, or None (start of night)
-
     """
 
     def __init__(self, index_, egg_temper_, vert_type_):
@@ -62,7 +61,7 @@ class Bout:
 
 class Block:
     """
-        Descrete section of time such as a single daytime period, nightime period, or date.
+        Houses information for a descrete section of time such as a single daytime period, nightime period, or date.
 
         Atributes:
                 first (int): index where the block begins

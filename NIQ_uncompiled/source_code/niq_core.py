@@ -43,9 +43,6 @@ class GUIClass:
         self.master_dir_path = Path.cwd().parent
         self.init_config()
 
-        # Store primary monitor dimensions
-        self.mon_dims = (self.root.winfo_screenwidth(), self.root.winfo_screenheight())
-
         # Variables used for storing information accross multiple input files
         self.multi_file_off_durs = []
         self.multi_file_off_decs = []
@@ -1669,7 +1666,7 @@ class GUIClass:
 
                 return False
 
-        niq_misc.generate_plot(self, self.master_df, days_list, self.mon_dims, select_mode=True, ori_verts=ori_verts_)
+        niq_misc.generate_plot(self, days_list, edit_mode=True, ori_verts=ori_verts_)
 
     def init_config(self):
         """
@@ -2036,7 +2033,7 @@ def main(gui):
 
     # Plot and write stats file if requested
     if gui.make_plot_BV.get():
-        niq_misc.generate_plot(gui, gui.master_df, date_block_list, gui.mon_dims)
+        niq_misc.generate_plot(gui, date_block_list)
     if gui.get_stats_BV.get():
         niq_misc.write_stats(gui, date_block_list, gui.master_block)
 

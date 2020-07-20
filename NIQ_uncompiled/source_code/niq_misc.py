@@ -314,9 +314,6 @@ def get_master_df(gui, source_path):
 
     df = add_daytime(gui, df)
 
-    # Set indices to data_point column
-    # df.set_index("data_point", inplace=True)
-
     return df.reset_index(drop=True)
 
 
@@ -442,8 +439,6 @@ def extract_bouts_in_range(gui, total_bouts, first_index, last_index):
     bouts_in_range = total_bouts[left_limit : (right_limit + 1)]
     bouts_in_range.sort(key=lambda x: x.first)
     return bouts_in_range
-
-
 
 def get_date_blocks(gui):
     """
@@ -834,43 +829,102 @@ def write_stats(gui, date_blocks, master_block):
         print("\n".join(bout_rows), file=out_file)
 
 
-def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_verts=None):
+def generate_plot(gui, days_list, edit_mode=False, ori_verts=None):
     """
         Uses the Bokeh module to generate an interactive plot for the current input file.
 
         Args:
             gui (GUIClass):
-            master_df (DataFrame): contains all of the critical information for plot creation
-            days_list (list): simply used to place vertical day delimiting line
-            mon_dims (tuple): x and y dimensions of main display
-            select_mode (bool): generates a modified plot that allows for vertex placement
+            days_list (list): used to place vertical day delimiting line
+            edit_mode (bool): generates a modified plot that allows for vertex manipulation
 	"""
+
+    def get_plot_dims():
+        """ 
+            Determine plot dimientions based on either user provided values or 
+            monitor dimension detection. 
+        """
+
+        if not gui.manual_plot_dims.get():
+            try:
+                mon_dims = (gui.root.winfo_screenwidth(), gui.root.winfo_screenheight())
+                mon_x = mon_dims[0]
+                mon_y = mon_dims[1]
+                plot_width = int(mon_x) - 100
+                plot_height = int(mon_y) - 200
+            except:
+                print("Defaulting to manual plot dimensions")
+                plot_width = int(gui.plot_dim_x_E.get())
+                plot_height = int(gui.plot_dim_y_E.get())
+        else:
+            plot_width = int(gui.plot_dim_x_E.get())
+            plot_height = int(gui.plot_dim_y_E.get())
+
+        return plot_width, plot_height
+    
+    def get_plot_axes():
+        """ Determine proper constrains of y axis """
+
+        y_min = float("inf")
+        y_max = float("-inf")
+
+        if gui.plot_egg_BV.get():
+            y_min = min(y_min, df["egg_temper"].min())
+            y_max = max(y_max, df["egg_temper"].max())
+
+        if gui.plot_air_BV.get() and gui.air_valid:
+            y_min = min(y_min, df["air_temper"].min())
+            y_max = max(y_max, df["air_temper"].max())
+
+        if gui.plot_adj_BV.get():
+            y_min = min(y_min, df["smoothed_adj_temper"].min())
+            y_max = max(y_max, df["smoothed_adj_temper"].max())
+
+        y_min -= 2
+        y_max += 2
+
+        return y_min, y_max
+
+    def generate_table(ori_verts):
+        """ Generate table with vertex information """
+
+        table_title = "Egg Temperature"
+        ori_verts = [] if not ori_verts else ori_verts
+        verts = get_verts_from_master_df(df) if not edit_mode else ori_verts
+        x_list, y_list = [], []
+
+        # Add vertices to table (allow egg_tempers or adj_tempers, not both)
+        if gui.plot_egg_BV.get():
+            x_list += [df.loc[vert.index, "data_point"] for vert in verts]
+            y_list += [df.loc[vert.index, "egg_temper"] for vert in verts]
+        elif gui.plot_adj_BV.get():
+            table_title = "Adjusted Temperature"
+            x_list += [df.loc[vert.index, "data_point"] for vert in verts]
+            y_list += [df.loc[vert.index, "smoothed_adj_temper"] for vert in verts]
+
+        data = {"x": x_list, "y": y_list}
+
+        src = ColumnDataSource(data)
+        columns = [TableColumn(field="x", title="Transition Data Point"), TableColumn(field="y", title=table_title)]
+
+        # FLAG shoud make height dynamic
+        data_table = DataTable(source=src, columns=columns, width=500, height=100000)
+        
+        return data_table
+
+    df = gui.master_df
+    master_array = df_to_array(df)
 
     # Clears previous plots from memory
     reset_output()
 
-    master_array = df_to_array(master_df)
-
     # Set output file
     output_file(Path(gui.plot_file_E.get()))
 
-    if select_mode:
+    if edit_mode:
         output_file(gui.master_dir_path / "misc_files" / "temp_plot.html")
 
-    # Set plot dimensions
-    if not gui.manual_plot_dims.get():
-        try:
-            mon_x = mon_dims[0]
-            mon_y = mon_dims[1]
-            plot_width = int(mon_x) - 100
-            plot_height = int(mon_y) - 200
-        except:
-            print("Defaulting to manual plot dimensions")
-            plot_width = int(gui.plot_dim_x_E.get())
-            plot_height = int(gui.plot_dim_y_E.get())
-    else:
-        plot_width = int(gui.plot_dim_x_E.get())
-        plot_height = int(gui.plot_dim_y_E.get())
+    plot_width, plot_height = get_plot_dims()
 
     TOOLTIPS = [("Data Point", "$x{int}"), ("Temperature", "$y")]
 
@@ -882,30 +936,14 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
         plot_name = gui.plot_title_E.get()
 
     # Set plot axes
-    y_min = float("inf")
-    y_max = float("-inf")
+    y_min, y_max = get_plot_axes()
 
-    if gui.plot_egg_BV.get():
-        y_min = min(y_min, master_df["egg_temper"].min())
-        y_max = max(y_max, master_df["egg_temper"].max())
-
-    if gui.plot_air_BV.get() and gui.air_valid:
-        y_min = min(y_min, master_df["air_temper"].min())
-        y_max = max(y_max, master_df["air_temper"].max())
-
-    if gui.plot_adj_BV.get():
-        y_min = min(y_min, master_df["smoothed_adj_temper"].min())
-        y_max = max(y_max, master_df["smoothed_adj_temper"].max())
-
-    y_min -= 2
-    y_max += 2
-
-    dp_col_num = gui.master_df.columns.get_loc("data_point")
+    dp_col_num = df.columns.get_loc("data_point")
 
     # Create core plot
     plot = figure(
         tools=[hover, "box_select, box_zoom, wheel_zoom, pan, reset, save"],
-        x_range=[master_df.iloc[0, dp_col_num], master_df.iloc[-1, dp_col_num]],
+        x_range=[df.iloc[0, dp_col_num], df.iloc[-1, dp_col_num]],
         y_range=[y_min, y_max],
         title=plot_name,
         x_axis_label="Data Point",
@@ -918,7 +956,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     if gui.show_day_markers_BV.get():
         for day in days_list:
             vertical_line = Span(
-                location=int(gui.master_df.loc[day.first, "data_point"]),
+                location=int(df.loc[day.first, "data_point"]),
                 dimension="height",
                 line_color=gui.day_marker_color.get(),
                 line_width=float(gui.day_marker_width_E.get()),
@@ -930,7 +968,7 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     plot.grid.visible = True if gui.show_grid_BV.get() else False
 
     # Define data point colors
-    if select_mode:
+    if edit_mode:
         # Set static color
         color_ = "gray"
         alpha_ = 1
@@ -945,14 +983,14 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     radius = int(gui.smoothing_radius_E.get())
 
     # Get array of air temperatures and smooth if requested
-    if gui.air_valid and (gui.plot_air_BV.get() or select_mode):
-        air_array = master_df["air_temper"]
+    if gui.air_valid and (gui.plot_air_BV.get() or edit_mode):
+        air_array = df["air_temper"]
         if gui.smooth_status_IV.get():
             air_array = smooth_series(radius, air_array)
 
         # Plot air temperatures
         plot.line(
-            master_df["data_point"],
+            df["data_point"],
             air_array,
             line_width=float(gui.air_line_width_E.get()),
             color=gui.air_line_color.get(),
@@ -962,44 +1000,44 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 
     # Get array of egg temperatures and smooth if requested
     if gui.plot_egg_BV.get():
-        egg_array = master_df["egg_temper"]
+        egg_array = df["egg_temper"]
         if gui.smooth_status_IV.get():
             egg_array = smooth_series(radius, egg_array)
 
         # Update legend
-        if not select_mode:
+        if not edit_mode:
             legend_ = "On-bout (egg)" if gui.plot_adj_BV.get() else "On-bout"
-            plot.circle(master_df.loc[0, "data_point"], egg_array[0], size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend=legend_)
+            plot.circle(df.loc[0, "data_point"], egg_array[0], size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend=legend_)
 
             legend_ = "Off-bout (egg)" if gui.plot_adj_BV.get() else "Off-bout"
-            plot.circle(master_df.loc[0, "data_point"], egg_array[0], size=float(gui.on_point_size_E.get()), color=gui.off_point_color.get(), legend=legend_)
+            plot.circle(df.loc[0, "data_point"], egg_array[0], size=float(gui.on_point_size_E.get()), color=gui.off_point_color.get(), legend=legend_)
 
         # Plot egg temperatures
         if float(gui.bout_line_width_E.get()) > 0:
-            plot.line(master_df["data_point"], egg_array, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
+            plot.line(df["data_point"], egg_array, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
 
-        plot.circle(master_df["data_point"], egg_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
+        plot.circle(df["data_point"], egg_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
 
     # Get array of adjusted (egg - air) temperatures and smooth if requested
     if gui.plot_adj_BV.get():
-        adj_array = master_df["smoothed_adj_temper"]
+        adj_array = df["smoothed_adj_temper"]
 
         # Plot line
         if float(gui.bout_line_width_E.get()) > 0:
-            plot.line(master_df["data_point"], adj_array, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
+            plot.line(df["data_point"], adj_array, line_width=float(gui.bout_line_width_E.get()), color=gui.bout_line_color.get())
 
         # Plot adjusted temperatures as triangles if egg temperatures are also being plotted
         plot_shape = plot.triangle if gui.plot_egg_BV.get() else plot.circle
         # Add legend values
-        if select_mode:
-            plot.circle(master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color="gray", legend="Temperature reading")
+        if edit_mode:
+            plot.circle(df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color="gray", legend="Temperature reading")
         else:
             plot_shape(
-                master_df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend="On-bout (egg - air)",
+                df.loc[0, "data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=gui.on_point_color.get(), legend="On-bout (egg - air)",
             )
 
             plot_shape(
-                master_df.loc[0, "data_point"],
+                df.loc[0, "data_point"],
                 adj_array,
                 size=float(gui.on_point_size_E.get()),
                 color=gui.off_point_color.get(),
@@ -1007,37 +1045,14 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
             )
 
         # Add data points
-        plot_shape(master_df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
+        plot_shape(df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
 
-    # -------------------------------------------------------------------------------------------
-    # Generate table with vertex information
-    table_title = "Egg Temperature"
-    ori_verts = [] if not ori_verts else ori_verts
-    verts = get_verts_from_master_df(master_df) if not select_mode else ori_verts
-    x_list, y_list = [], []
 
-    # Add vertices to table (allow egg_tempers or adj_tempers, not both)
-    if gui.plot_egg_BV.get():
-        x_list += [gui.master_df.loc[vert.index, "data_point"] for vert in verts]
-        y_list += [gui.master_df.loc[vert.index, "egg_temper"] for vert in verts]
-    elif gui.plot_adj_BV.get():
-        table_title = "Adjusted Temperature"
-        x_list += [gui.master_df.loc[vert.index, "data_point"] for vert in verts]
-        y_list += [gui.master_df.loc[vert.index, "smoothed_adj_temper"] for vert in verts]
+    data_table = generate_table(ori_verts)
 
-    data = {"x": x_list, "y": y_list}
-
-    src = ColumnDataSource(data)
-    columns = [TableColumn(field="x", title="Transition Data Point"), TableColumn(field="y", title=table_title)]
-
-    # FLAG shoud make height dynamic
-    data_table = DataTable(source=src, columns=columns, width=500, height=100000)
-
-    # -------------------------------------------------------------------------------------------
-
-    if select_mode:
+    if edit_mode:
         # Plot vertices as large circles in select mode
-        renderer = plot.circle("x", "y", size=float(gui.on_point_size_E.get()), color="red", fill_alpha=0.8, legend="Incubation State Change", source=src)
+        renderer = plot.circle("x", "y", size=float(gui.on_point_size_E.get()), color="red", fill_alpha=0.8, legend="Incubation State Change", source=data_table.source)
 
         draw_tool = PointDrawTool(renderers=[renderer], empty_value=1)
         plot.add_tools(draw_tool)
@@ -1061,14 +1076,14 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
     show(column(plot, widgetbox(data_table)))
 
     # Append input file information to the html file
-    if select_mode:
+    if edit_mode:
         out_path = gui.master_dir_path / "misc_files" / "temp_plot.html"
     else:
         out_path = Path(gui.plot_file_E.get())
 
     with open(out_path, "a") as file:
         file.write("\n\n<!--Input data\n")
-        file.write(master_df[["egg_temper", "air_temper"]].to_json())
+        file.write(df[["egg_temper", "air_temper"]].to_json())
         file.write("\n-->\n")
 
 
