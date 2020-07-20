@@ -1,4 +1,5 @@
 import datetime
+import json
 import re
 import time
 from pathlib import Path
@@ -700,7 +701,7 @@ def write_stats(gui, date_blocks, master_block):
         print("\n".join(bout_rows), file=out_file)
 
 
-def generate_plot(gui, days_list, edit_mode=False, ori_verts=None):
+def generate_plot(gui, days_list, edit_mode=False, out_path=None):
     """
         Uses the Bokeh module to generate an interactive plot for the current input file.
 
@@ -756,12 +757,11 @@ def generate_plot(gui, days_list, edit_mode=False, ori_verts=None):
 
         return y_min, y_max
 
-    def generate_table(ori_verts):
+    def generate_table():
         """ Generate table with vertex information """
 
         table_title = "Egg Temperature"
-        ori_verts = [] if not ori_verts else ori_verts
-        verts = get_verts_from_master_df(df) if not edit_mode else ori_verts
+        verts = get_verts_from_master_df(df)
         x_list, y_list = [], []
 
         # Add vertices to table (allow egg_tempers or adj_tempers, not both)
@@ -783,6 +783,29 @@ def generate_plot(gui, days_list, edit_mode=False, ori_verts=None):
         
         return data_table
 
+    def append_input_info(path):
+        # Get number of seconds between each data point
+        first = df["date_time"].iloc[0]
+        last = df["date_time"].iloc[-1]
+        delta_sec = (last - first).total_seconds()
+        interval = round(delta_sec / len(df))
+
+        # Create dictionary summarizing critical input file information
+        input_dict = {
+            "first_dp": int(df["data_point"].iloc[0]),
+            "first_dt": df["date_time"].iloc[0].strftime(r"%m/%d/%Y %H:%M"),
+            "dt_interval": interval,
+            "egg_temper": df["egg_temper"].astype(int).tolist(),
+            "air_temper": df["air_temper"].tolist()
+        }
+
+        # Append input file information to the HTML file
+        with open(path, "a") as file:
+            file.write("\n\n<!--Input data\n")
+            file.write(json.dumps(input_dict))
+            file.write("\n-->\n")
+
+
     df = gui.master_df
     master_array = df_to_array(df)
 
@@ -790,10 +813,9 @@ def generate_plot(gui, days_list, edit_mode=False, ori_verts=None):
     reset_output()
 
     # Set output file
-    output_file(Path(gui.plot_file_E.get()))
+    out_path = out_path if out_path is not None else Path(gui.plot_file_E.get())
+    output_file(out_path)
 
-    if edit_mode:
-        output_file(gui.master_dir_path / "misc_files" / "temp_plot.html")
 
     plot_width, plot_height = get_plot_dims()
 
@@ -854,7 +876,7 @@ def generate_plot(gui, days_list, edit_mode=False, ori_verts=None):
     radius = int(gui.smoothing_radius_E.get())
 
     # Get array of air temperatures and smooth if requested
-    if gui.air_valid and (gui.plot_air_BV.get() or edit_mode):
+    if gui.air_valid and gui.plot_air_BV.get():
         air_array = df["air_temper"]
         if gui.smooth_status_IV.get():
             air_array = smooth_series(radius, air_array)
@@ -919,7 +941,7 @@ def generate_plot(gui, days_list, edit_mode=False, ori_verts=None):
         plot_shape(df["data_point"], adj_array, size=float(gui.on_point_size_E.get()), color=color_, alpha=alpha_)
 
 
-    data_table = generate_table(ori_verts)
+    data_table = generate_table()
 
     if edit_mode:
         # Plot vertices as large circles in select mode
@@ -944,20 +966,10 @@ def generate_plot(gui, days_list, edit_mode=False, ori_verts=None):
     plot.background_fill_color = None
     plot.border_fill_color = None
 
+
     show(column(plot, widgetbox(data_table)))
 
-    # Append input file information to the html file
-    if edit_mode:
-        out_path = gui.master_dir_path / "misc_files" / "temp_plot.html"
-    else:
-        out_path = Path(gui.plot_file_E.get())
-
-    with open(out_path, "a") as file:
-        file.write("\n\n<!--Input data\n")
-        file.write(df[["egg_temper", "air_temper"]].to_json())
-        file.write("\n-->\n")
-
-
+    append_input_info(out_path)
 
 
 def get_verts_from_master_df(master_df):
@@ -967,6 +979,9 @@ def get_verts_from_master_df(master_df):
         Args:
             master_df (pd.DataFrame)
 	"""
+
+    if "bout_state" not in master_df.columns:
+        return []
 
     # Convert bout_states to integers
     temp_df = master_df.copy()

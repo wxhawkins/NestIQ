@@ -1,16 +1,14 @@
-from pathlib import Path
 import re
-from random import randint
 import traceback
+from pathlib import Path
+from random import randint
+from tkinter import filedialog
 
 import colorama
 from termcolor import colored
 
+from configuration import load_config, save_config
 from niq_misc import replace_entry
-
-from tkinter import filedialog
-
-from configuration import load_config
 
 
 def test_run(gui):
@@ -168,11 +166,11 @@ def master_test(gui):
     # ---------------------------------Unsupervised learning--------------------------------------
     print(f"\n\nTesting unsupervised learning")
 
-    gui.load_config(config_file_=ref_config_path)
+    load_config(gui, config_file_=ref_config_path)
     gui.unsupervised_learning()
     unsup_test_path = test_out_dir / f"{rand_key}_unsup_test_config.ini"
     unsup_ref_path = test_dir_path / "config" / "unsup_ref_config.ini"
-    gui.save_config(out_file=str(unsup_test_path))
+    save_config(gui, out_file=str(unsup_test_path))
 
     # Search for config discrepencies
     mismatches = dict()
@@ -205,11 +203,11 @@ def master_test(gui):
 
     replace_entry(gui.vertex_file_E, vertex_file_path)
 
-    gui.load_config(config_file_=ref_config_path)
+    load_config(gui, config_file_=ref_config_path)
     gui.supervised_learning()
     sup_test_path = test_out_dir / f"{rand_key}_sup_test_config.ini"
     sup_ref_path = test_dir_path / "config" / "sup_ref_config.ini"
-    gui.save_config(out_file=str(sup_test_path))
+    save_config(gui, out_file=str(sup_test_path))
 
     # Search for config discrepencies
     mismatches = dict()
@@ -233,7 +231,7 @@ def master_test(gui):
 
     # Establish configuration
     ref_config_path = test_dir_path / "config" / "test_config.ini"
-    gui.load_config(config_file_=ref_config_path)
+    load_config(gui, config_file_=ref_config_path)
 
     # Declare file paths
     mod_ref_path = test_dir_path / "stats" / "ref_mod_stats.csv"

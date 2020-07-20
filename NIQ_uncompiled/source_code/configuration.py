@@ -19,7 +19,7 @@ def save_config(gui, out_file=None):
 
     # Copy over defualt_backup as template
     copyfile(gui.master_dir_path / "config_files" / "backup_config.ini", out_file)
-    update_config(out_file)
+    update_config(gui, out_file)
 
 def load_config(gui, program_startup=False, config_file_=None):
     """

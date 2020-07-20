@@ -936,7 +936,6 @@ class GUIClass:
 		"""
 
         days_list = []
-        ori_verts_ = None
         
         in_file_paths = self.parse_input_file_entry()
         self.set_active_input(in_file_paths[0], replace_out=False)
@@ -954,21 +953,22 @@ class GUIClass:
             traceback.print_exc()
             return False
 
-        ori_verts_ = None
-
         # Get original vertices if undergoing manual vertex editing
         if mod_plot:
             if not check_valid_edit_ops(self, rerun=False):
                 return False
             try:
-                ori_verts_ = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
+                ori_verts = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
+                self.master_df = self.add_states(verts=ori_verts) 
             except Exception:
                 traceback.print_exc()
                 messagebox.showerror(("Input File Error (Edit tab)"), "Original plot file could not be read.")
 
                 return False
 
-        niq_misc.generate_plot(self, days_list, edit_mode=True, ori_verts=ori_verts_)
+        path = self.master_dir_path / "misc_files" / "temp_plot.html"
+
+        niq_misc.generate_plot(self, days_list, edit_mode=True, out_path=path)
 
     def parse_input_file_entry(self):
         """ Splits input file entry box into individual input paths if present. """
@@ -1067,7 +1067,7 @@ class GUIClass:
             traceback.print_exc()
             messagebox.showerror(("Unidentified Error"), "An unknown error has occerred." + "Please report this error to wxhawkins@gmail.com")
 
-        print(f"Run took {round(time.time() - run_start, 2)}")
+        print(f"Run took {round(time.time() - run_start, 2)} seconds")
 
     def close_niq(self):
         """
@@ -1385,7 +1385,7 @@ def main(gui):
 
     # Plot and write stats file if requested
     if gui.make_plot_BV.get():
-        niq_misc.generate_plot(gui, date_block_list)
+        niq_misc.generate_plot(gui, date_block_list, edit_mode=gui.edit_mode_BV.get())
     if gui.get_stats_BV.get():
         niq_misc.write_stats(gui, date_block_list, gui.master_block)
 
