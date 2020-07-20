@@ -56,7 +56,6 @@ class GUIClass:
         self.multi_in_air_tempers = []
         self.multi_in_full_day_count = 0
 
-        self.input_root = None
         self.time_interval = None
         self.air_valid = True
         self.bouts_dropped_locs = set()
@@ -113,7 +112,11 @@ class GUIClass:
         # ----- Plot file -----
         self.make_plot_BV = tk.BooleanVar()
         self.plot_CB = tk.Checkbutton(tab1, text="Generate Plot", variable=self.make_plot_BV, font=STANDARD_FONT)
-        self.plot_CB.grid(row=8, sticky="W", padx=10)
+        self.plot_CB.grid(row=7, sticky="W", padx=10)
+
+        self.edit_mode_BV = tk.BooleanVar()
+        self.edit_mode_CB = tk.Checkbutton(tab1, text="Edit mode", variable=self.edit_mode_BV, font=STANDARD_FONT)
+        self.edit_mode_CB.grid(row=8, sticky="W", padx=27)
         
         self.plot_file_E = tk.Entry(tab1, width=44)
         self.plot_file_E.grid(row=9, sticky="W", padx=33)
@@ -195,10 +198,12 @@ class GUIClass:
         # Display and retract file entry boxes based on selection status
         def main_tab_callback(*args):
             if self.make_plot_BV.get():
+                self.edit_mode_CB.grid(row=8, sticky="W", padx=27)
                 self.plot_file_E.grid(row=9, sticky="W", padx=32)
                 self.plot_save_as_B.grid(row=9, sticky="W", padx=308)
                 self.plot_save_as_B.configure(background="white")
             else:
+                self.edit_mode_CB.grid_forget()
                 self.plot_file_E.grid_forget()
                 self.plot_save_as_B.grid_forget()
 
@@ -1565,7 +1570,7 @@ class GUIClass:
     def get_input_file_name(self):
         """ Handles input file browsing and selection. """
 
-        input_paths = list(filedialog.askopenfilename(multiple=True))
+        input_paths = list(filedialog.askopenfilename(initialdir=(self.master_dir_path / "input_files"), multiple=True))
 
         # Remove curley braces that are sometimes added automatically
         input_paths = [item.replace("{", "").replace("}", "") for item in input_paths]
@@ -1802,7 +1807,6 @@ class GUIClass:
 
         replace_entry(self.input_file_E, str(path))
         self.active_input_path = path
-        self.input_root = path.stem
 
         if replace_out:
             # Update default output file names

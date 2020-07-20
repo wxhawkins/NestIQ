@@ -836,14 +836,14 @@ def write_stats(gui, date_blocks, master_block):
 
 def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_verts=None):
     """
-			Uses the Bokeh module to generate an interactive plot for the current input file.
+        Uses the Bokeh module to generate an interactive plot for the current input file.
 
-			Args:
-					gui (GUIClass):
-					master_df (DataFrame): contains all of the critical information for plot creation
-					days_list (list): simply used to place vertical day delimiting line
-					mon_dims (tuple): x and y dimensions of main display
-					select_mode (bool): generates a modified plot that allows for vertex placement
+        Args:
+            gui (GUIClass):
+            master_df (DataFrame): contains all of the critical information for plot creation
+            days_list (list): simply used to place vertical day delimiting line
+            mon_dims (tuple): x and y dimensions of main display
+            select_mode (bool): generates a modified plot that allows for vertex placement
 	"""
 
     # Clears previous plots from memory
@@ -1060,13 +1060,26 @@ def generate_plot(gui, master_df, days_list, mon_dims, select_mode=False, ori_ve
 
     show(column(plot, widgetbox(data_table)))
 
+    # Append input file information to the html file
+    if select_mode:
+        out_path = gui.master_dir_path / "misc_files" / "temp_plot.html"
+    else:
+        out_path = Path(gui.plot_file_E.get())
+
+    with open(out_path, "a") as file:
+        file.write("\n\n<!--Input data\n")
+        file.write(master_df[["egg_temper", "air_temper"]].to_json())
+        file.write("\n-->\n")
+
+
+
 
 def get_verts_from_master_df(master_df):
     """
-			Extracts vertex objects based on state transitions in master_df.
+        Extracts vertex objects based on state transitions in master_df.
 
-			Args:
-					master_df (pd.DataFrame)
+        Args:
+            master_df (pd.DataFrame)
 	"""
 
     # Convert bout_states to integers
@@ -1137,14 +1150,15 @@ def set_unique_path(entry, path, ext):
 	"""
 
     counter = 0
+    ori_stem = path.stem
     file_path = Path(path).with_suffix(ext)
 
     # Adds trailing number until unique path is found
     while file_path.exists():
         counter += 1
-        file_path = file_path.parent / (file_path.stem + "_" + str(counter).zfill(3) + file_path.suffix)
+        file_path = (file_path.parent / (ori_stem + "_" + str(counter).zfill(3))).with_suffix(ext)
 
-    replace_entry(entry, file_path.name)
+    replace_entry(entry, file_path)
 
 def add_states(df, verts=None, states=None):
     """
