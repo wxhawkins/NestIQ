@@ -45,7 +45,7 @@ class Bout:
         self.middle = int(round(np.mean([first_, last_])))
         self.bout_type = bout_type_
         self.is_daytime = gui.master_df.loc[self.middle, "is_daytime"]
-        self.dur = gui.time_interval * (last_ - first_)
+        self.dur = gui.time_interval * (last_ - first_) / 60
         self.mean_egg_temper = None
         self.mean_air_temper = None
 
@@ -217,8 +217,8 @@ class Block:
         # Get number of data points passing threshold and multiply by duration
         data_points_above_temper = len(self.egg_tempers.loc[self.egg_tempers > float(gui.time_above_temper_E.get())])
         data_points_below_temper = len(self.egg_tempers.loc[self.egg_tempers < float(gui.time_below_temper_E.get())])
-        self.time_above_temper = data_points_above_temper * gui.time_interval
-        self.time_below_temper = data_points_below_temper * gui.time_interval
+        self.time_above_temper = data_points_above_temper * gui.time_interval / 60
+        self.time_below_temper = data_points_below_temper * gui.time_interval / 60
 
         # Get off-bout stats
         if self.off_count > 0:

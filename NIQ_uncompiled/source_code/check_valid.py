@@ -1,8 +1,10 @@
 import time
+import datetime as dt
 from pathlib import Path
 from tkinter import messagebox
 import re
 import niq_misc
+import math
 import traceback
 
 
@@ -81,10 +83,59 @@ def check_valid_main(gui, first_in=True, check_output=True):
             Also displays warnings for less severe format violations.
         """
 
-        in_file_path = gui.active_input_path
-        datetime_valid = True
+        def check_datetime_intervals():
+            # Flag -- test with explicit 30 sec leap
+            """ Sets time interval between temperature readings and checks for gaps in date/time column. """
 
+            # Set date/time interval (seconds)
+            delta_secs = (datetimes[-1] - datetimes[0]).total_seconds()
+            gui.time_interval = round(delta_secs / len(master_list))
+            interval = dt.timedelta(seconds=gui.time_interval)
+
+            if not gui.show_warns_BV.get():
+                return True
+
+            # If interval is greater than or equal to one minute
+            if interval.seconds >= 60:
+                i = 1
+                while i < len(datetimes):
+                    if datetimes[i - 1] + interval != datetimes[i]:
+                        messagebox.showwarning(
+                            "Date/time Warning",
+                            f"{file_name_appendage}Discontinuous date/time found for data point {master_list[i][0]}." +
+                            "The run will continue, but this could cause inaccurate statistical output.",
+                        )
+                    i += 1
+                
+                return True
+
+            # If interval is less than one minute
+            # Identify first change in date/time
+            i = 0
+            while datetimes[i] == datetimes[0]:
+                i += 1
+
+            # Find least common denominator with one minute
+            LCD = abs(interval.seconds*60) // math.gcd(interval.seconds, 60)
+            dp_leap = int(LCD / interval.seconds) # There should be a whole number minute change after this many data points
+            min_leap = dt.timedelta(minutes=int(LCD / 60)) # That whole number of minutes is this
+
+            i += dp_leap
+            while i < len(datetimes):
+                if datetimes[i - dp_leap] + min_leap != datetimes[i]:
+                    messagebox.showwarning(
+                    "Date/time Warning",
+                    f"{file_name_appendage}Discontinuous date/time found for data point {master_list[i][0]}." +
+                    "The run will continue, but this could cause inaccurate statistical output.",
+                )
+                i += dp_leap
+
+            return True
+
+
+        in_file_path = gui.active_input_path
         file_name_appendage = f"For file: {in_file_path.name} \n\n"
+        datetimes = []
 
         if in_file_path.name == "":
             messagebox.showerror("Input error (Main tab)", "No input file provided.")
@@ -114,7 +165,6 @@ def check_valid_main(gui, first_in=True, check_output=True):
             with open(in_file_path, "r") as f:
                 lines = f.readlines()
 
-
             master_list = [line.strip().rstrip(",").split(",") for line in lines]
 
             pop_indices = []
@@ -134,10 +184,6 @@ def check_valid_main(gui, first_in=True, check_output=True):
             if len(prev_line) < 3:
                 gui.air_valid = False
 
-            # interval_clock = 0 if gui.time_interval >= 1 else round(1 / gui.time_interval)
-            interval_time = 1
-            start_found = False
-
             for line in master_list[1:]:
                 line = line[:4] if gui.air_valid else line[:3]
 
@@ -155,45 +201,12 @@ def check_valid_main(gui, first_in=True, check_output=True):
 
                 # Test conversion of date/time string to datetime object
                 try:
-                    prev_datetime = niq_misc.convert_to_datetime(prev_line[1])
-                    cur_datetime = niq_misc.convert_to_datetime(line[1])
+                    datetimes.append(niq_misc.convert_to_datetime(line[1]))
                 except ValueError:
                     messagebox.showerror(
-                        "Date/Time Error", f"{file_name_appendage}No time found for data point {line[0]}.  Date/Time should be in MM/DD/YYYY HH:MM format."
+                        "Date/Time Error", f"{file_name_appendage}Invalid date/time found for data point {line[0]}.  Date/Time should be in MM/DD/YYYY HH:MM (:SS) format."
                     )
                     return False
-
-                # Flag - delete or do better - Check for inconsistencies in date/time values
-                # datetime_diff = (cur_datetime - prev_datetime).seconds / 60
-
-                # if datetime_diff == 0 or datetime_diff == gui.time_interval:
-                #     start_found = True
-
-                # if datetime_valid and start_found:
-                #     if cur_datetime == False:
-                #         return False
-
-                #     if datetime_diff != gui.time_interval:
-                #         if not interval_clock > 0:
-                #             datetime_valid = False
-                #         else:
-                #             if datetime_diff == 0:
-                #                 interval_time += 1
-                #             elif datetime_diff != 1:
-                #                 datetime_valid = False
-                #             else:
-                #                 if interval_time == interval_clock:
-                #                     interval_time = 1
-                #                 else:
-                #                     datetime_valid = False
-
-                #     if not datetime_valid:
-                #         if gui.show_warns_BV.get():
-                #             messagebox.showwarning(
-                #                 "Date/time Warning",
-                #                 f"{file_name_appendage}Discontinuous date/time found for data point "
-                #                 + f"{line[0]}. The program will continue, but this could cause inaccurate statistical output.",
-                #             )
 
                 # Check egg temperatures column
                 try:
@@ -216,7 +229,8 @@ def check_valid_main(gui, first_in=True, check_output=True):
                             )
                 prev_line = line
 
-            return True
+            # Lastly, check if date/times are continuous
+            return check_datetime_intervals()
 
         except Exception as e:
             print(e)
@@ -270,9 +284,9 @@ def check_valid_main(gui, first_in=True, check_output=True):
     # Check time entry boxes
     for time_str in (gui.day_start_E.get(), gui.night_start_E.get()):
         try:
-            time_struct = time.strptime(time_str, "%H:%M")
+            time.strptime(time_str, "%H:%M")
         except ValueError:
-            messagebox.showerror("Daytime Start/End Error", f"Provided value of {time_str} is invalid. Please provide times in 24 hr HH:MM format.")
+            messagebox.showerror("Daytime Start/End Error", f"Provided value of {time_str} is invalid. Please provide times in 24 hr HH:MM (:SS) format.")
             return False
 
     # Check data smoothing box

@@ -1,3 +1,5 @@
+import datetime
+import json
 import subprocess
 import time
 import tkinter as tk
@@ -5,8 +7,7 @@ import traceback
 from pathlib import Path
 from shutil import copyfile
 from tkinter import filedialog, font, messagebox, ttk
-import json
-import datetime
+
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageTk
@@ -16,10 +17,10 @@ import niq_classes
 import niq_hmm
 import niq_misc
 import testing
-from check_valid import (check_valid_adv, check_valid_edit_ops,
-                         check_valid_main, check_valid_plot_ops,
-                         check_valid_stat_ops, check_valid_vertex_file)
-from configuration import save_config, load_config, set_defaults, init_config
+from check_valid import (check_valid_adv, check_valid_main,
+                         check_valid_plot_ops, check_valid_stat_ops,
+                         check_valid_vertex_file)
+from configuration import init_config, load_config, save_config, set_defaults
 from niq_misc import remove_curly, replace_entry, set_unique_path
 
 root = tk.Tk()
@@ -922,8 +923,6 @@ class GUIClass:
 
         # Get original vertices if undergoing manual vertex editing
         if mod_plot:
-            if not check_valid_edit_ops(self, rerun=False):
-                return False
             try:
                 ori_verts = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
                 self.master_df = self.add_states(verts=ori_verts) 
@@ -986,7 +985,6 @@ class GUIClass:
                 self.root.update()
 
                 # Check if all inputs are valid
-                edit_tab_check = True if not rerun else check_valid_edit_ops(self)
 
                 if not (
                     check_valid_main(self, first_in=(file_num == 1))
@@ -1247,11 +1245,11 @@ class GUIClass:
 
             return True
 
+        in_path = Path(in_path)
         if in_path.suffix == ".html":
             df = html_to_df(str(in_path))
         else:
             df = csv_to_df(str(in_path))
-
         
         # Fill air_temper column with 0's if none provided
         if not self.air_valid:
@@ -1305,15 +1303,6 @@ class GUIClass:
         df.iloc[0, df.columns.get_loc("delta_temper")] = df.iloc[1, df.columns.get_loc("delta_temper")]
 
         df = add_daytime(df)
-
-        # Flag - need to relocate
-        # Set date/time interval (minutes)
-        first = df["date_time"].iloc[0]
-        last = df["date_time"].iloc[-1]
-        delta_sec = (last - first).total_seconds()
-        self.time_interval = round(delta_sec / len(df)) / 60
-
-
 
         return df.reset_index(drop=True)
 
