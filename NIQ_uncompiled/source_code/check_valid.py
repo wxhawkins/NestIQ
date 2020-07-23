@@ -84,7 +84,6 @@ def check_valid_main(gui, first_in=True, check_output=True):
         """
 
         def check_datetime_intervals():
-            # Flag -- test with explicit 30 sec leap
             """ Sets time interval between temperature readings and checks for gaps in date/time column. """
 
             # Set date/time interval (seconds)
@@ -159,7 +158,7 @@ def check_valid_main(gui, first_in=True, check_output=True):
                 if "NestIQ input data" in content:
                     return True
                 else:
-                    # Flag add error message pop up
+                    messagebox.showerror("Input File Error", f'{file_name_appendage} HTML file does not contain the necessary information for processing.')
                     return False
             
             with open(in_file_path, "r") as f:
@@ -491,28 +490,5 @@ def check_valid_stat_ops(gui):
     except:
         messagebox.showerror("Custom Temperature Error (Stat Options tab)", 'Invalid "Time below" temperature.')
         return False
-
-    return True
-
-def check_valid_edit_ops(gui, rerun=True):
-    """
-                    Checks for valid configuration of all parameters housed on the Edit tab.
-
-                    Args:
-                                    rerun (Bool): Indicates if checking should be performed for modified plot path as well.
-    """
-
-    niq_misc.remove_curly(gui.ori_plot_E, gui.mod_plot_E)
-
-    paths_dict = {"Original Plot": Path(gui.ori_plot_E.get()), "Modified Plot": Path(gui.mod_plot_E.get())}
-
-    # Do not check modified plot path if not performing full rerun
-    if not rerun:
-        del paths_dict["Modified Plot"]
-
-    for name, path in paths_dict.items():
-        if not path.exists():
-            messagebox.showerror(f"{name} File Error (Edit tab)", f"{str(path)}, File with provided path could not be found.")
-            return False
 
     return True

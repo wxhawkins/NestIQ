@@ -738,37 +738,6 @@ class GUIClass:
         self.time_below_temper_E = tk.Entry(tab4, width=5)
         self.time_below_temper_E.grid(row=25, sticky="W", padx=97)
 
-        # ----------------------------------------------- Edit tab -----------------------------------------------
-        # ----- Header -----
-        tab5_BG = tk.Label(tab5, text="", bg="red4")
-        tab5_BG.grid(row=0, sticky="NSEW")
-        header_title = tk.Label(tab5, text="NestIQ", fg="white", bg="red4", font=("Helvetica", 18))
-        header_title.grid(row=0, sticky="NSW", padx=10, pady=5)
-
-        ori_plot_L = tk.Label(tab5, text="Original Plot:", font=STANDARD_FONT)
-        ori_plot_L.grid(row=10, sticky="W", padx=10, pady=(10, 0))
-        self.ori_plot_E = tk.Entry(tab5, width=30)
-        self.ori_plot_E.grid(row=10, sticky="W", padx=90, pady=(10, 0))
-        ori_plot_B = tk.Button(tab5, text="Browse File", command=(lambda: self.get_plot_file(self.ori_plot_E)))
-        ori_plot_B.grid(row=10, sticky="W", padx=287, pady=(10, 0))
-        ori_plot_B.configure(background="white")
-
-        mod_B = tk.Button(tab5, text="Modify", command=lambda: self.select_vertices(mod_plot=True))
-        mod_B.grid(row=11, sticky="W", padx=10, pady=(10, 0))
-        mod_B.configure(background="white")
-
-        mod_plot_L = tk.Label(tab5, text="Modified Plot:", font=STANDARD_FONT)
-        mod_plot_L.grid(row=12, sticky="W", padx=10, pady=(10, 0))
-        self.mod_plot_E = tk.Entry(tab5, width=30)
-        self.mod_plot_E.grid(row=12, sticky="W", padx=90, pady=(10, 0))
-        mod_plot_B = tk.Button(tab5, text="Browse File", command=(lambda: self.get_plot_file(self.mod_plot_E)))
-        mod_plot_B.grid(row=12, sticky="W", padx=287, pady=(10, 0))
-        mod_plot_B.configure(background="white")
-
-        rerun_B = tk.Button(tab5, text="Rerun", command=lambda: self.trigger_run(rerun=True))
-        rerun_B.grid(row=13, sticky="W", padx=10, pady=(10, 0))
-        rerun_B.configure(background="white")
-
         # -----------------------------------------------------------------------------------------------------------
         # ----- Footer -----
         uark_path = str(self.master_dir_path / "misc_files" / "NIQ_Sups" / "uark.png")
@@ -809,10 +778,10 @@ class GUIClass:
 
     def run_loop(self):
         """
-						Updates GUI and sets program clock
+            Updates GUI and sets program clock
 
-						Args:
-										root (tk root widget): base widget of GUI
+            Args:
+                root (tk root widget): base widget of GUI
 		"""
 
         self.root.update_idletasks()
@@ -897,7 +866,7 @@ class GUIClass:
         self.multi_in_air_tempers = []
         self.multi_in_full_day_count = 0
 
-    def select_vertices(self, mod_plot=False):
+    def select_vertices(self):
         """
             Generates special plot for the user to select their ideal vertex locations. This plot can be
             saved and later used for supervised parameter acquisition or manual vertex modification.
@@ -956,13 +925,12 @@ class GUIClass:
 
 
     # Ensure valid parameters and execute processing
-    def trigger_run(self, rerun=False):
+    def trigger_run(self):
         """
             Ensure everything is in order and if so, initiate processing of the input file(s).
 
             Args:
                 root (tk root widget): base widget of GUI
-                rerun (Bool): indicates if this is a rerun off of user provided vertices
 		"""
 
         run_start = time.time()
@@ -984,14 +952,11 @@ class GUIClass:
                 self.run_B.config(bg="gray", fg="white", width=15, height=1)
                 self.root.update()
 
-                # Check if all inputs are valid
-
                 if not (
                     check_valid_main(self, first_in=(file_num == 1))
                     and check_valid_adv(self)
                     and check_valid_plot_ops(self)
                     and check_valid_stat_ops(self)
-                    and edit_tab_check
                 ):
                     break
 
@@ -1001,9 +966,6 @@ class GUIClass:
                 self.master_df = self.init_master_df(path)
 
                 if path.suffix == ".html":
-                    rerun = True
-
-                if rerun:
                     custom_verts = niq_misc.get_verts_from_html(self, self.input_file_E.get())
                     self.master_df = self.add_states(verts=custom_verts)
                 else:

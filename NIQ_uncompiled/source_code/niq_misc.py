@@ -268,7 +268,6 @@ def get_verts_from_html(gui, in_file, alt=False):
     delta = int(gui.master_df.loc[first_dp_index, "data_point"] - first_dp_index)
 
     # Determine if first vertex is an off start or on start
-    # (FLAG) may lead to some issues due to invalid assumption
     first_vert_temper = gui.master_df.loc[vertex_data_points[0] - delta, "egg_temper"]
     second_vert_temper = gui.master_df.loc[vertex_data_points[1] - delta, "egg_temper"]
     vert_type = "off" if first_vert_temper > second_vert_temper else "on"
@@ -797,8 +796,7 @@ def generate_plot(gui, days_list, edit_mode=False, out_path=None):
         # Create dictionary summarizing critical input file information
         input_dict = {
             "first_dp": int(df["data_point"].iloc[0]),
-            # Flag allow for seconds
-            "first_dt": df["date_time"].iloc[0].strftime(r"%m/%d/%Y %H:%M"),
+            "first_dt": df["date_time"].iloc[0].strftime(r"%m/%d/%Y %H:%M:%S"),
             "dt_interval": interval,
             "egg_temper": df["egg_temper"].tolist(),
             "air_temper": df["air_temper"].tolist()
