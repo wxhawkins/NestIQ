@@ -86,10 +86,8 @@ def check_valid_main(gui, first_in=True, check_output=True):
         def check_datetime_intervals():
             """ Sets time interval between temperature readings and checks for gaps in date/time column. """
 
-            # Set date/time interval (seconds)
             delta_secs = (datetimes[-1] - datetimes[0]).total_seconds()
-            gui.time_interval = round(delta_secs / len(master_list))
-            interval = dt.timedelta(seconds=gui.time_interval)
+            interval = dt.timedelta(seconds=round(delta_secs / len(master_list)))
 
             if not gui.show_warns_BV.get():
                 return True

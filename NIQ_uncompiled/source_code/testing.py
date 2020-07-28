@@ -225,52 +225,52 @@ def master_test(gui):
                 + " did not match reference "
                 + colored(str(values[0]), "yellow")
             )
+    if False:
+        # ---------------------------------Plot Editing----------------------------------------
+        print(f"\n\nTesting plot editing")
 
-    # ---------------------------------Plot Editing----------------------------------------
-    print(f"\n\nTesting plot editing")
+        # Establish configuration
+        ref_config_path = test_dir_path / "config" / "test_config.ini"
+        load_config(gui, config_file_=ref_config_path)
 
-    # Establish configuration
-    ref_config_path = test_dir_path / "config" / "test_config.ini"
-    load_config(gui, config_file_=ref_config_path)
+        # Load testing input file and run
+        in_file_path = test_dir_path / "input" / "test_input_long.csv"
+        replace_entry(gui.input_file_E, in_file_path)
+        gui.edit_mode_CB.select()
+        gui.trigger_run()
 
-    # Declare file paths
-    mod_ref_path = test_dir_path / "stats" / "ref_mod_stats.csv"
-    ori_plot_path = test_dir_path / "input" / "test_input_long.html"
-    mod_plot_path = test_dir_path / "input" / "mod_plot.html"
+        # Declare file paths
+        mod_input_path = test_dir_path / "input" / "mod_plot.html"
+        mod_ref_path = test_dir_path / "stats" / "ref_mod_stats.csv"
 
-    # Fill entry boxes
-    replace_entry(gui.input_file_E, in_file_path)
-    replace_entry(gui.ori_plot_E, ori_plot_path)
-    replace_entry(gui.mod_plot_E, mod_plot_path)
+        # Fill entry boxes
+        replace_entry(gui.input_file_E, mod_input_path)
 
-    # Make modifiable plot
-    gui.select_vertices(mod_plot=True)
+        # Set up output file names
+        test_mod_stats_path = test_out_dir / f"{rand_key}_modified.csv"
+        test_mod_plot_path = test_out_dir / f"{rand_key}_modified.html"
+        replace_entry(gui.stats_file_E, test_mod_stats_path)
+        replace_entry(gui.plot_file_E, test_mod_plot_path)
 
-    # Set up output file names
-    test_mod_stats_path = test_out_dir / f"{rand_key}_modified.csv"
-    test_mod_plot_path = test_out_dir / f"{rand_key}_modified.html"
-    replace_entry(gui.stats_file_E, test_mod_stats_path)
-    replace_entry(gui.plot_file_E, test_mod_plot_path)
+        # Rerun with modified verticies
+        gui.trigger_run()
 
-    # Rerun with modified verticies
-    gui.trigger_run(rerun=True)
+        # Look for discrepencies in output files
+        mismatches = dict()
+        mismatches = compare_stats(rand_key, mod_ref_path, test_mod_stats_path)
 
-    # Look for discrepencies in output files
-    mismatches = dict()
-    mismatches = compare_stats(rand_key, mod_ref_path, test_mod_stats_path)
-
-    # Notify user of mismatched values if any
-    if not mismatches:
-        print(colored("PLOT EDITING PASSED".center(100, "-"), "green"))
-    else:
-        print(colored("PLOT EDITING FAILED".center(100, "-"), "red"))
-        for key, values in mismatches.items():
-            print(
-                colored(key, "yellow")
-                + ": test value of "
-                + colored(str(values[1]), "yellow")
-                + " did not match reference "
-                + colored(str(values[0]), "yellow")
-            )
+        # Notify user of mismatched values if any
+        if not mismatches:
+            print(colored("PLOT EDITING PASSED".center(100, "-"), "green"))
+        else:
+            print(colored("PLOT EDITING FAILED".center(100, "-"), "red"))
+            for key, values in mismatches.items():
+                print(
+                    colored(key, "yellow")
+                    + ": test value of "
+                    + colored(str(values[1]), "yellow")
+                    + " did not match reference "
+                    + colored(str(values[0]), "yellow")
+                )
 
     print(colored("TESTING COMPLETED".center(100, "-"), "blue"))

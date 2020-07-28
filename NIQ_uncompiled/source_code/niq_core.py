@@ -21,7 +21,7 @@ from check_valid import (check_valid_adv, check_valid_main,
                          check_valid_plot_ops, check_valid_stat_ops,
                          check_valid_vertex_file)
 from configuration import init_config, load_config, save_config, set_defaults
-from niq_misc import remove_curly, replace_entry, set_unique_path
+from niq_misc import convert_to_datetime, remove_curly, replace_entry, set_unique_path
 
 root = tk.Tk()
 STANDARD_FONT = font.Font(size=10)
@@ -891,15 +891,15 @@ class GUIClass:
             return False
 
         # Get original vertices if undergoing manual vertex editing
-        if mod_plot:
-            try:
-                ori_verts = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
-                self.master_df = self.add_states(verts=ori_verts) 
-            except Exception:
-                traceback.print_exc()
-                messagebox.showerror(("Input File Error (Edit tab)"), "Original plot file could not be read.")
+        # if mod_plot:
+        #     try:
+        #         ori_verts = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
+        #         self.master_df = self.add_states(verts=ori_verts) 
+        #     except Exception:
+        #         traceback.print_exc()
+        #         messagebox.showerror(("Input File Error (Edit tab)"), "Original plot file could not be read.")
 
-                return False
+        #         return False
 
         path = self.master_dir_path / "misc_files" / "temp_plot.html"
 
@@ -1212,7 +1212,12 @@ class GUIClass:
             df = html_to_df(str(in_path))
         else:
             df = csv_to_df(str(in_path))
-        
+
+        # Set time interval
+        delta_secs = (convert_to_datetime(df.iloc[-1, 1]) - convert_to_datetime(df.iloc[0, 1])).total_seconds()
+        self.time_interval = round(delta_secs / len(df))
+        print("interval =", self.time_interval)
+
         # Fill air_temper column with 0's if none provided
         if not self.air_valid:
             df.iloc[:, 3] = np.zeros(len(df))
@@ -1333,7 +1338,14 @@ def main(gui):
     gui.master_block = niq_classes.Block(gui, 0, len(gui.master_df) - 1, False)
     gui.master_block.vertices = niq_misc.get_verts_from_master_df(gui.master_df)
     gui.master_block.bouts = niq_misc.get_bouts_from_verts(gui, gui.master_block.vertices)
+
     gui.master_df, gui.bouts_dropped_locs = niq_misc.filter_by_dur(gui)
+
+    # FLAG - need to figure out how to reduce this redundancy
+    gui.master_block = niq_classes.Block(gui, 0, len(gui.master_df) - 1, False)
+    gui.master_block.vertices = niq_misc.get_verts_from_master_df(gui.master_df)
+    gui.master_block.bouts = niq_misc.get_bouts_from_verts(gui, gui.master_block.vertices)
+
     gui.master_block.get_stats(gui)
     file_bouts = gui.master_block.bouts
 
