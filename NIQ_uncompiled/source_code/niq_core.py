@@ -86,7 +86,6 @@ class GUIClass:
         nb.add(tab2, text="Advanced")
         nb.add(tab3, text="Plot Options")
         nb.add(tab4, text="Stats Options")
-        nb.add(tab5, text="Edit")
 
         # ----------------------------------------------- Main tab ---------------------------------------------------
         # ----- Header -----
@@ -769,7 +768,7 @@ class GUIClass:
         _ = None
         self.root.bind("<Return>", lambda _: self.trigger_run())
 
-        # self.root.bind("<`>", lambda _: testing.test_run(self))
+        self.root.bind("<`>", lambda _: testing.test_run(self))
         self.root.bind("<Control-`>", lambda _: testing.master_test(self))
 
         self.valid = True
@@ -889,17 +888,6 @@ class GUIClass:
             messagebox.showerror(("Input File Error (Advanced tab)"), "Input file could not be processed.")
             traceback.print_exc()
             return False
-
-        # Get original vertices if undergoing manual vertex editing
-        # if mod_plot:
-        #     try:
-        #         ori_verts = niq_misc.get_verts_from_html(self, self.ori_plot_E.get(), alt=True)
-        #         self.master_df = self.add_states(verts=ori_verts) 
-        #     except Exception:
-        #         traceback.print_exc()
-        #         messagebox.showerror(("Input File Error (Edit tab)"), "Original plot file could not be read.")
-
-        #         return False
 
         path = self.master_dir_path / "misc_files" / "temp_plot.html"
 

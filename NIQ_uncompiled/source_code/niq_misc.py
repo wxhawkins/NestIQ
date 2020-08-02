@@ -819,11 +819,9 @@ def generate_plot(gui, days_list, edit_mode=False, out_path=None):
     out_path = out_path if out_path is not None else Path(gui.plot_file_E.get())
     output_file(out_path)
 
-
     plot_width, plot_height = get_plot_dims()
 
     TOOLTIPS = [("Data Point", "$x{int}"), ("Temperature", "$y")]
-
     hover = HoverTool(tooltips=TOOLTIPS)
 
     # Set plot title

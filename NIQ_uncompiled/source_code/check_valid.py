@@ -7,6 +7,8 @@ import niq_misc
 import math
 import traceback
 
+from niq_misc import replace_entry
+
 
 def check_valid_vertex_file(gui):
     """
@@ -269,12 +271,21 @@ def check_valid_main(gui, first_in=True, check_output=True):
 
         entry_path = Path(entry.get()).with_suffix(ext)
 
+        # Default to "output_files" directory if only filename (no dir) provided
+        if str(entry_path.parent) == ".":
+            entry_path = gui.master_dir_path / "output_files" / entry_path
+
+        replace_entry(entry, str(entry_path))
+
         # Check if plot file already exists and if so, ask to override
         if entry_path.exists():
             if gui.show_warns_BV.get():
                 if not messagebox.askyesno("Override?", f"The file '{entry.get()}' already exists.  Do you want to override?"):
                     return False
-            entry_path.unlink()
+            try:
+                entry_path.unlink()
+            except PermissionError:
+                messagebox.showerror(f"{title} Error", "File could not be overridden. Please ensure files are closed before overriding.")
 
         return True
 
