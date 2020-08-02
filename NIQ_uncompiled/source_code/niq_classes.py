@@ -35,7 +35,9 @@ class Bout:
             bout_type (int): off or on
             dur (int): duration in number of data points
             mean_egg_temper (float)
+            egg_temper_stdev (float)
             mean_air_temper (float)
+            air_temper_stdev (float)
             egg_tempers (list of floats): list of egg temperatures for each data point in bout
     """
 
@@ -47,14 +49,18 @@ class Bout:
         self.is_daytime = gui.master_df.loc[self.middle, "is_daytime"]
         self.dur = gui.time_interval * (last_ - first_) / 60
         self.mean_egg_temper = None
+        self.egg_temper_stdev = None
         self.mean_air_temper = None
+        self.air_temper_stdev = None
 
         # Flag convert to series
         
         self.egg_tempers = gui.master_df.loc[self.first : self.last, "egg_temper"].tolist()
         self.mean_egg_temper = round(np.mean(self.egg_tempers), 3)
+        self.egg_temper_stdev = round(pd.Series(self.egg_tempers).std(), 3)
         self.air_tempers = gui.master_df.loc[self.first : self.last, "air_temper"].tolist()
         self.mean_air_temper = round(np.mean(self.air_tempers), 3)
+        self.air_temper_stdev = round(pd.Series(self.air_tempers).std(), 3)
         self.temper_change = gui.master_df.loc[self.last, "egg_temper"] - gui.master_df.loc[self.first, "egg_temper"]
 
         self.main_date = gui.master_df.loc[self.middle, "date_time"].date()

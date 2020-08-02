@@ -663,11 +663,11 @@ def write_stats(gui, date_blocks, master_block):
     indi_header = "Individual Bout Stats\n"
 
     indi_header += (
-        "Date,Bout Type,Start Time,End Time,Start Data Point,End Data Point,Duration (min),Egg Temp Change,Start Egg Temp,End Egg Temp,Mean Egg Temp,"
+        "Date,Bout Type,Start Time,End Time,Start Data Point,End Data Point,Duration (min),Egg Temp Change,Start Egg Temp,End Egg Temp,Mean Egg Temp, Egg Temp StDev,"
     )
 
     if gui.air_valid:
-        indi_header += "Start Air Temp, End Air Temp, Mean Air Temp"
+        indi_header += "Start Air Temp, End Air Temp, Mean Air Temp, Air Temp StDev"
 
     bouts = master_block.bouts
 
@@ -692,10 +692,16 @@ def write_stats(gui, date_blocks, master_block):
             + f"{gui.master_df.loc[bout.first, 'egg_temper']},"
             + f"{gui.master_df.loc[bout.last, 'egg_temper']},"
             + f"{bout.mean_egg_temper},"
+            + f"{bout.egg_temper_stdev},"
         )
 
         if gui.air_valid:
-            row += f"{gui.master_df.loc[bout.first, 'air_temper']},{gui.master_df.loc[bout.last, 'air_temper']},{bout.mean_air_temper},"
+            row += (
+                f"{gui.master_df.loc[bout.first, 'air_temper']},"
+                + f"{gui.master_df.loc[bout.last, 'air_temper']},"
+                + f"{bout.mean_air_temper},"
+                + f"{bout.air_temper_stdev}"
+            )
 
         bout_rows.append(row)
 

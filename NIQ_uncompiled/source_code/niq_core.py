@@ -1201,6 +1201,9 @@ class GUIClass:
         else:
             df = csv_to_df(str(in_path))
 
+        # Remove partial rows
+        df = df.iloc[:, :(3 + int(self.air_valid))].dropna()
+
         # Set time interval
         delta_secs = (convert_to_datetime(df.iloc[-1, 1]) - convert_to_datetime(df.iloc[0, 1])).total_seconds()
         self.time_interval = round(delta_secs / len(df))
@@ -1208,7 +1211,7 @@ class GUIClass:
 
         # Fill air_temper column with 0's if none provided
         if not self.air_valid:
-            df.iloc[:, 3] = np.zeros(len(df))
+            df.loc[:, "air_temper"] = 0
 
         # Remove any "extra" columns
         if len(df.columns) > 4:
@@ -1260,6 +1263,7 @@ class GUIClass:
         df = add_daytime(df)
 
         return df.reset_index(drop=True)
+    
 
     def add_states(self, verts=None, states=None):
         """
