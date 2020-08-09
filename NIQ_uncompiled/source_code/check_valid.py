@@ -286,6 +286,7 @@ def check_valid_main(gui, first_in=True, check_output=True):
                 entry_path.unlink()
             except PermissionError:
                 messagebox.showerror(f"{title} Error", "File could not be overridden. Please ensure files are closed before overriding.")
+                return False
 
         return True
 
@@ -375,7 +376,6 @@ def check_valid_adv(gui):
             return True
 
         messagebox.showerror("Parameter Error (Advanced tab)", "Probabilities must be real numbers greater than 0.")
-
         return False
 
     try:

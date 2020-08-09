@@ -1208,7 +1208,7 @@ class GUIClass:
         # Set time interval
         delta_secs = (convert_to_datetime(df.iloc[-1, 1]) - convert_to_datetime(df.iloc[0, 1])).total_seconds()
         self.time_interval = round(delta_secs / len(df))
-        print("interval =", self.time_interval)
+        print("interval =", self.time_interval, "seconds")
 
         # Fill air_temper column with 0's if none provided
         if not self.air_valid:
