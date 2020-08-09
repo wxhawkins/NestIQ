@@ -1,13 +1,19 @@
 *.pyc
 *bokeh*
 */__pycache__/
-*/input_files/
 */output_files/
 */testing/temp_output/
 **/temp*
-
 
 NIQ_uncompiled/source_code/.vscode/tasks.json
 NIQ_uncompiled/output_files/trash
 NIQ_uncompiled/source_code/trash/
 NIQ_uncompiled/source_code/.vscode/settings.json
+
+
+NIQ_uncompiled/input_files/Quail clipped/
+NIQ_uncompiled/input_files/Great tit/
+NIQ_uncompiled/input_files/Bird mix/
+NIQ_uncompiled/input_files/Static/
+NIQ_uncompiled/input_files/Tree swallow/
+NIQ_uncompiled/input_files/Wood duck/
