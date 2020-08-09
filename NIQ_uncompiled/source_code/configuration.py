@@ -15,7 +15,10 @@ def save_config(gui, out_file=None):
     """
 
     if out_file is None:
-        out_file = Path(filedialog.asksaveasfilename()).with_suffix(".ini")
+        try:
+            out_file = Path(filedialog.asksaveasfilename()).with_suffix(".ini")
+        except ValueError: 
+            return
 
     # Copy over defualt_backup as template
     copyfile(gui.master_dir_path / "config_files" / "backup_config.ini", out_file)
@@ -55,15 +58,12 @@ def load_config(gui, program_startup=False, config_file_=None):
     try:
         gui.time_interval = gui.config.get("Main Settings", "data_time_interval")
         gui.show_warns_CB.select() if gui.config.get("Main Settings", "show_warnings").lower() == "true" else gui.show_warns_CB.deselect()
-        gui.restrict_search_CB.select() if gui.config.get(
-            "Main Settings", "restrict_bout_search"
-        ).lower() == "true" else gui.restrict_search_CB.deselect()
-        gui.train_from_IV.set(0) if gui.config.get("Main Settings", "train_from").lower() == "0" else gui.train_from_IV.set(1)
-        gui.UL_default_CB.select() if gui.config.get("Advanced Settings", "run_unsup_by_default").lower() == "true" else gui.UL_default_CB.deselect()
+        gui.restrict_search_CB.select() if gui.config.get("Main Settings", "restrict_bout_search").lower() == "true" else gui.restrict_search_CB.deselect()
         replace_entry(gui.day_start_E, gui.config.get("Main Settings", "day_Start_Time"))
         replace_entry(gui.night_start_E, gui.config.get("Main Settings", "night_Start_Time"))
         replace_entry(gui.smoothing_radius_E, gui.config.get("Main Settings", "smoothing_radius"))
         replace_entry(gui.dur_thresh_E, gui.config.get("Main Settings", "duration_threshold"))
+        gui.train_from_IV.set(0) if gui.config.get("Advanced Settings", "train_from").lower() == "0" else gui.train_from_IV.set(1)
         replace_entry(gui.init_off_E, gui.config.get("Advanced Settings", "off_bout_initial"))
         replace_entry(gui.init_on_E, gui.config.get("Advanced Settings", "on_bout_initial"))
         replace_entry(gui.off_off_trans_E, gui.config.get("Advanced Settings", "off_off_trans"))
@@ -222,9 +222,8 @@ def update_config(gui, config_file=None):
 
     gui.config.set("Main Settings", "smoothing_radius", gui.smoothing_radius_E.get())
     gui.config.set("Main Settings", "duration_threshold", gui.dur_thresh_E.get())
-    gui.config.set("Main Settings", "train_from", int(gui.train_from_IV.get()))
-
-    gui.config.set("Advanced Settings", "run_unsup_by_default", gui.UL_default_BV.get())
+    
+    gui.config.set("Advanced Settings", "train_from", int(gui.train_from_IV.get()))
     gui.config.set("Advanced Settings", "off_bout_initial", gui.init_off_E.get())
     gui.config.set("Advanced Settings", "on_bout_initial", gui.init_on_E.get())
     gui.config.set("Advanced Settings", "off_off_trans", gui.off_off_trans_E.get())

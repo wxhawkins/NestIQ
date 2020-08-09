@@ -371,9 +371,8 @@ def check_valid_adv(gui):
             if float(entry.get()) < 0:
                 raise ValueError("Probability less than 0 provided.")
     except ValueError:
-        if gui.UL_default_BV.get():
-            if try_autofill():
-                return True
+        if try_autofill():
+            return True
 
         messagebox.showerror("Parameter Error (Advanced tab)", "Probabilities must be real numbers greater than 0.")
 

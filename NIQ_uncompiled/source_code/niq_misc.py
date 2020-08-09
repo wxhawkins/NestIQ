@@ -12,6 +12,7 @@ from bokeh.models import HoverTool, PointDrawTool, Span
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.plotting import ColumnDataSource, figure, output_file, show
 from bs4 import BeautifulSoup
+from contextlib import suppress
 
 import niq_classes
 
@@ -28,15 +29,25 @@ def convert_to_datetime(dt_string):
     if type(dt_string) == pd._libs.tslibs.timestamps.Timestamp:
         return dt_string
 
-    # Initially include seconds in search, then ommit if not found
-    try:
-        time_struct = time.strptime(dt_string, r"%m/%d/%Y %H:%M:%S")
-    except ValueError:
-        try:
-            time_struct = time.strptime(dt_string, r"%m/%d/%Y %H:%M")
-        except ValueError:
-            time_struct = time.strptime(dt_string, r"%m/%d/%y %H:%M")
+    # Try extracting date/time with various formats
+    while True:
+        with suppress(ValueError):
+            time_struct = time.strptime(dt_string, r"%m/%d/%y %H:%M:%S")
+            break
 
+        with suppress(ValueError):
+            time_struct = time.strptime(dt_string, r"%m/%d/%y %H:%M")
+            break
+
+        with suppress(ValueError):
+            time_struct = time.strptime(dt_string, r"%m/%d/%Y %H:%M:%S")
+            break
+
+        with suppress(ValueError):
+            time_struct = time.strptime(dt_string, r"%m/%d/%Y %H:%M")
+            break
+
+        
     dt = datetime.datetime(*time_struct[0:6])
 
     return dt

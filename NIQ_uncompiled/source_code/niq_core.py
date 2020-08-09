@@ -80,7 +80,6 @@ class GUIClass:
         tab2 = ttk.Frame(nb)
         tab3 = ttk.Frame(nb)
         tab4 = ttk.Frame(nb)
-        tab5 = ttk.Frame(nb)
 
         nb.add(tab1, text="Main")
         nb.add(tab2, text="Advanced")
@@ -185,16 +184,6 @@ class GUIClass:
         self.dur_thresh_E = tk.Entry(tab1, width=5)
         self.dur_thresh_E.grid(row=24, sticky="W", padx=207)
 
-        # ----- Training (emission) values -----
-        train_from_L = tk.Label(tab1, text="Train from:", font=STANDARD_FONT)
-        train_from_L.grid(row=25, sticky="W", padx=10)
-
-        self.train_from_IV = tk.IntVar()
-        egg_RB = tk.Radiobutton(tab1, text="Egg temperature", variable=self.train_from_IV, value=0)
-        egg_RB.grid(row=26, sticky="W", padx=30)
-        adj_RB = tk.Radiobutton(tab1, text="Adjusted temperature", variable=self.train_from_IV, value=1)
-        adj_RB.grid(row=27, sticky="W", padx=30)
-
         # Display and retract file entry boxes based on selection status
         def main_tab_callback(*args):
             if self.make_plot_BV.get():
@@ -254,10 +243,6 @@ class GUIClass:
         UL_train_B.grid(row=5, sticky="W", padx=10, pady=(10, 0))
         UL_train_B.configure(background="white")
 
-        self.UL_default_BV = tk.BooleanVar()
-        self.UL_default_CB = tk.Checkbutton(tab2, text="Run unsup. learning by defualt", variable=self.UL_default_BV, font=STANDARD_FONT)
-        self.UL_default_CB.grid(row=5, sticky="NW", padx=150, pady=(10, 0))
-
         # ----- Supervised learning -----
         SL_train_B = tk.Button(tab2, text="Supervised Learning", command=(lambda: self.supervised_learning()))
         SL_train_B.grid(row=6, sticky="W", padx=10, pady=(10, 0))
@@ -275,44 +260,60 @@ class GUIClass:
         vertex_file_B.grid(row=10, sticky="W", padx=287, pady=(10, 0))
         vertex_file_B.configure(background="white")
 
+
+
+
+        # ----- Training (emission) values -----
+        train_from_L = tk.Label(tab2, text="Train from:", font=STANDARD_FONT)
+        train_from_L.grid(row=11, sticky="W", padx=10, pady=(5, 0))
+
+        self.train_from_IV = tk.IntVar()
+        egg_RB = tk.Radiobutton(tab2, text="Egg temperature", variable=self.train_from_IV, value=0)
+        egg_RB.grid(row=12, sticky="W", padx=30)
+        adj_RB = tk.Radiobutton(tab2, text="Adjusted temperature", variable=self.train_from_IV, value=1)
+        adj_RB.grid(row=13, sticky="W", padx=30)
+
+
+
+
         # ----- Iniitial probabilities -----
         init_probs_L = tk.Label(tab2, text="Initial Probabilities:", font=SUBHEADER_FONT)
-        init_probs_L.grid(row=12, sticky="W", padx=10, pady=(30, 0))
+        init_probs_L.grid(row=14, sticky="W", padx=10, pady=(20, 0))
 
-        ttk.Separator(tab2, orient="horizontal").grid(row=13, sticky="NSEW", pady=(0, 10))
+        ttk.Separator(tab2, orient="horizontal").grid(row=15, sticky="NSEW", pady=(0, 10))
 
-        tk.Label(tab2, text="Off", font=STANDARD_FONT).grid(row=14, sticky="W", padx=120)
-        tk.Label(tab2, text="On", font=STANDARD_FONT).grid(row=14, sticky="W", padx=220)
+        tk.Label(tab2, text="Off", font=STANDARD_FONT).grid(row=16, sticky="W", padx=120)
+        tk.Label(tab2, text="On", font=STANDARD_FONT).grid(row=16, sticky="W", padx=220)
 
         self.init_off_E = tk.Entry(tab2, width=10)
-        self.init_off_E.grid(row=15, sticky="W", padx=120)
+        self.init_off_E.grid(row=17, sticky="W", padx=120)
         self.init_on_E = tk.Entry(tab2, width=10)
-        self.init_on_E.grid(row=15, sticky="W", padx=220)
+        self.init_on_E.grid(row=17, sticky="W", padx=220)
 
         # ----- Transition probabilities -----
         trans_probs_L = tk.Label(tab2, text="Transition Probabilites:", font=SUBHEADER_FONT)
-        trans_probs_L.grid(row=16, sticky="W", padx=10, pady=(20, 0))
+        trans_probs_L.grid(row=18, sticky="W", padx=10, pady=(20, 0))
 
-        ttk.Separator(tab2, orient="horizontal").grid(row=17, sticky="NSEW", pady=(0, 10))
+        ttk.Separator(tab2, orient="horizontal").grid(row=19, sticky="NSEW", pady=(0, 10))
 
         x_axis_off_L = tk.Label(tab2, text="Off", font=STANDARD_FONT)
-        x_axis_off_L.grid(row=18, sticky="W", padx=120)
+        x_axis_off_L.grid(row=20, sticky="W", padx=120)
         x_axis_on_L = tk.Label(tab2, text="On", font=STANDARD_FONT)
-        x_axis_on_L.grid(row=18, sticky="W", padx=220)
+        x_axis_on_L.grid(row=20, sticky="W", padx=220)
 
         y_axis_off_L = tk.Label(tab2, text="Off", font=STANDARD_FONT)
-        y_axis_off_L.grid(row=19, sticky="W", padx=90)
+        y_axis_off_L.grid(row=21, sticky="W", padx=90)
         y_axis_on_L = tk.Label(tab2, text="On", font=STANDARD_FONT)
-        y_axis_on_L.grid(row=20, sticky="W", padx=90)
+        y_axis_on_L.grid(row=22, sticky="W", padx=90)
 
         self.off_off_trans_E = tk.Entry(tab2, width=10)
-        self.off_off_trans_E.grid(row=19, sticky="W", padx=120)
+        self.off_off_trans_E.grid(row=21, sticky="W", padx=120)
         self.off_on_trans_E = tk.Entry(tab2, width=10)
-        self.off_on_trans_E.grid(row=19, sticky="W", padx=220)
+        self.off_on_trans_E.grid(row=21, sticky="W", padx=220)
         self.on_off_trans_E = tk.Entry(tab2, width=10)
-        self.on_off_trans_E.grid(row=20, sticky="W", padx=120)
+        self.on_off_trans_E.grid(row=22, sticky="W", padx=120)
         self.on_on_trans_E = tk.Entry(tab2, width=10)
-        self.on_on_trans_E.grid(row=20, sticky="W", padx=220)
+        self.on_on_trans_E.grid(row=22, sticky="W", padx=220)
 
         # ----- Temperature change distribution -----
         distrib_params_L = tk.Label(tab2, text="Temperature Change Parameters:", font=SUBHEADER_FONT)
