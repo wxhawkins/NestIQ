@@ -1,7 +1,6 @@
 *.pyc
 *bokeh*
 */__pycache__/
-*/output_files/
 */testing/temp_output/
 **/temp*
 
