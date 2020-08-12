@@ -3,6 +3,7 @@
 */__pycache__/
 */testing/temp_output/
 **/temp*
+**/output_files/*
 
 NIQ_uncompiled/source_code/.vscode/tasks.json
 NIQ_uncompiled/output_files/trash
