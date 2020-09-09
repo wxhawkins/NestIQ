@@ -13,6 +13,7 @@ from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.plotting import ColumnDataSource, figure, output_file, show
 from bs4 import BeautifulSoup
 from contextlib import suppress
+from tkinter import messagebox
 
 import niq_classes
 
@@ -251,8 +252,12 @@ def get_verts_from_html(gui, in_file, alt=False):
                 dp_list.append(selected.group(1))
         except AttributeError:
             # Fall back to regex method
-            dp_list = re.search(r'"data"\:\{"x":\[([^\]]*)', content).group(1).split(",")
+            try:
+                dp_list = re.search(r'"data"\:\{"x":\[([^\]]*)', content).group(1).split(",")
+            except AttributeError:
+                dp_list = []
 
+        dp_list = [dp for dp in dp_list if is_number(dp)]
         for hit in dp_list:
             # Clean hits and append
             data_point = round(float(hit))
@@ -264,8 +269,18 @@ def get_verts_from_html(gui, in_file, alt=False):
         return sorted(set(data_point_list))
 
     vertices = []
-
     vertex_data_points = get_data_points_from_html(gui, in_file)
+
+    # Make sure there is at least one data point detected in input plot
+    if len(vertex_data_points) == 0:
+        messagebox.showerror(
+            "Input Plot Error", 
+            'No vertices were detected in the provided plot.\n\n' +
+            'When saving plots, ensure the file type option is set to \"Webpage, Complete\" not \"Webpage, HTML only\".'
+        )
+        return None
+
+    # Flag -- make more pandas friendly
     for i in range(len(gui.master_df)):
         # Search for gap between index value and corresponding datapoint
         if int(gui.master_df.loc[i, "data_point"]) == int(vertex_data_points[0]):
@@ -1144,3 +1159,11 @@ def get_bouts_from_verts(gui, verts):
 
     bouts.sort(key=lambda x: x.first)
     return bouts
+
+def is_number(string):
+    try:
+        float(string)
+    except ValueError:
+        return False
+
+    return True

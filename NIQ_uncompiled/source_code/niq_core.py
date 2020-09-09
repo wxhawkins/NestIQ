@@ -942,7 +942,7 @@ class GUIClass:
                 self.root.update()
 
                 if not (
-                    check_valid_main(self, first_in=(file_num == 1))
+                    check_valid_main(self, first_in=(file_num==1))
                     and check_valid_adv(self)
                     and check_valid_plot_ops(self)
                     and check_valid_stat_ops(self)
@@ -956,6 +956,7 @@ class GUIClass:
 
                 if path.suffix == ".html":
                     custom_verts = niq_misc.get_verts_from_html(self, self.input_file_E.get())
+                    if custom_verts is None: break
                     self.master_df = self.add_states(verts=custom_verts)
                 else:
                     self.master_hmm = niq_hmm.HMM()
@@ -1085,8 +1086,9 @@ class GUIClass:
             return
 
         self.master_df = self.init_master_df(self.input_file_E.get())
-
         training_verts = niq_misc.get_verts_from_html(self, self.vertex_file_E.get())
+        if training_verts is None: return
+
         self.master_hmm = niq_hmm.HMM()
         self.master_df = self.add_states(verts=training_verts)
         reduced_df = self.master_df.iloc[training_verts[0].index:training_verts[-1].index + 1]
@@ -1188,14 +1190,6 @@ class GUIClass:
 
             return df
 
-        def is_number(string):
-            try:
-                float(string)
-            except ValueError:
-                return False
-
-            return True
-
         in_path = Path(in_path)
         if in_path.suffix == ".html":
             df = html_to_df(str(in_path))
@@ -1227,7 +1221,7 @@ class GUIClass:
         # Set any data_point, egg_temper or air_temper cells with non-number values to NaN
         numeric_cols = col_names[:1] + col_names[2:]
         for col in numeric_cols:
-            filt = df[col].astype(str).apply(is_number)
+            filt = df[col].astype(str).apply(niq_misc.is_number)
             df.loc[~filt, col] = np.NaN
 
         # Delete any rows containing NaN value

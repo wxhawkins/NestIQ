@@ -52,6 +52,7 @@ def check_valid_vertex_file(gui):
     # Get datapoints
     tokens = re.finditer(r">([\d\.-]+)</span>", cleaned_content)
 
+    token_num = 0
     try:
         # Every other value in tokens will be temperature and so is ignored
         for counter, match in enumerate(tokens):
@@ -63,7 +64,11 @@ def check_valid_vertex_file(gui):
         return False
 
     if token_num < 2:
-        messagebox.showerror(("Vertex File Error"), "No vertices detected in vertex file.")
+        messagebox.showerror(
+            "Vertex File Error", 
+            "No vertices detected in vertex file.\n\n" + 
+            'When saving plots, ensure the file type option is set to \"Webpage, Complete\" not \"Webpage, HTML only\".'
+        )
         return False
 
     return True
